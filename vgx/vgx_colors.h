@@ -126,9 +126,6 @@ namespace vgx {
 #ifndef VGX_COLOR_DARKORANGE
   #define VGX_COLOR_DARKORANGE      VGX_COLOR_RGB(255, 140, 0)
 #endif
-#ifndef VGX_COLOR_DARKBLUE
-  #define VGX_COLOR_DARKBLUE        VGX_COLOR_RGB(0, 0, 64)
-#endif
 #ifndef VGX_COLOR_DARKGRAY
   #define VGX_COLOR_DARKGRAY        VGX_COLOR_RGB(64, 64, 64)
 #endif
