@@ -235,9 +235,10 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
   std::int16_t tmp;
   if (y1 < y0) { tmp = y0; y0 = y1; y1 = tmp; tmp = x0; x0 = x1; x1 = tmp; }
   if (y2 < y0) { tmp = y0; y0 = y2; y2 = tmp; tmp = x0; x0 = x2; x2 = tmp; }
-  if (x0 > x2) { tmp = y0; y0 = y2; y2 = tmp; tmp = x0; x0 = x2; x2 = tmp; }
+  if (x1 > x2) { tmp = y1; y1 = y2; y2 = tmp; tmp = x1; x1 = x2; x2 = tmp; }
 
-  std::int16_t xl = x0, xr = x0;
+  std::int16_t xl = y0 != y1 ? x0 : x1;
+  std::int16_t xr = y0 != y2 ? x0 : x2;
   std::int16_t ymax = y1 < y2 ? y2 : y1;
   std::int16_t ymin = y1 < y2 ? y1 : y2;
   std::int16_t dx0 = x1 > x0 ? x1 - x0 : x0 - x1;
