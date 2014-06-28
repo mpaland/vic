@@ -82,7 +82,7 @@ public:
   virtual std::uint16_t get_height() const = 0;
 
   /**
-   * Clear screen, set all pixels off (black), delete all characters
+   * Clear screen, set all pixels off, delete all characters or fill screen with background color
    */
   virtual void cls() = 0;
 
@@ -115,7 +115,7 @@ public:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual std::uint32_t pixel_get(std::uint16_t x, std::uint16_t y) const
+  virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const
   { (void)x; (void)y; return 0U; }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -144,6 +144,10 @@ class drv_head : public drv
 public:
   /**
    * ctor
+   * \param xsize Screen width
+   * \param ysize Screen height
+   * \param xoffset X offset of the screen, relative to top/left corner
+   * \param yoffset Y offset of the screen, relative to top/left corner
    */
   drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
     : xsize_(xsize)
