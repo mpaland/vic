@@ -43,10 +43,10 @@ typedef enum enum_line_style_type {
   vgx_line_style_dashed
 } line_style_type;
 
-typedef struct struct_point_type {
+typedef struct struct_vertex_type {
   std::uint16_t x;
   std::uint16_t y;
-} point_type;
+} vertex_type;
 
 typedef struct struct_gradient_type {
   bool           horizontal;
@@ -146,7 +146,7 @@ public:
 // C O L O R   F U N C T I O N S
 
   /**
-   * Set drawing color
+   * Set the drawing color
    * \param color New drawing color in ARGB format
    */
   inline void color_set(std::uint32_t color)
@@ -158,6 +158,13 @@ public:
    */
   inline std::uint32_t color_get() const
   { return color_; }
+
+  /**
+   * Set the background color (e.g. for cls)
+   * \param color_background New background color in ARGB format
+   */
+  inline std::uint32_t color_set_bg(std::uint32_t color_background)
+  { color_bg_ = color_background; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -236,11 +243,11 @@ public:
 
   /**
    * Draw a polygon
-   * \param points Pointer to array of polygon points, at least 3
-   * \param point_count Number of polygon points in the structure, at least 3
+   * \param vertexes Pointer to array of polygon vertexes, at least 3
+   * \param vertex_count Number of polygon points in the structure, at least 3
    * \return true if successful
    */
-  bool polygon(const point_type* points, std::uint16_t point_count);
+  bool polygon(const vertex_type* vertexes, std::uint16_t vertex_count);
 
   /**
    * Draw a triangle
@@ -313,7 +320,7 @@ public:
    * \param inner_radius Inner sector radius
    * \param outer_radius Outer sector radius
    * \param start_angle Start angle in degree, 0° is horizontal right, counting anticlockwise
-   * \param end_angle end angle in degree
+   * \param end_angle End angle in degree
    * \return true if successful
    */
   bool sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle);
@@ -321,10 +328,10 @@ public:
   ///////////////////////////////////////////////////////////////////////////////
 
   /**
-   *  Fill region up to the bounding border_color with the drawing color
+   *  Fill region up to the bounding color with the drawing color
    * \param x X start value inside region to fill
    * \param y Y start value inside region to fill
-   * \param bounding_color Color of the bound
+   * \param bounding_color Color of the surrounding bound
    * \return true if successful
    */
   bool fill(std::int16_t x, std::int16_t y, std::uint32_t bounding_color);
@@ -430,11 +437,23 @@ public:
 
   /**
    * Output a rotated string
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
+   * \param x X value in pixel on graphic displays
+   * \param y Y value in pixel on graphic displays
    * \param angle Angle in degree, 0° is horizontal right, counting anticlockwise
+   * \param string Output string in ASCII/UTF-8 format, zero terminated
    * \return Number of written characters, not bytes (as a character may consist out of two bytes)
    */
   std::uint16_t text_string_rotate(std::int16_t x, std::int16_t y, std::uint16_t angle, const std::uint8_t* string);
+
+  /**
+   * Returns the width and height the rendered string would take.
+   * The string is not rendered on screen
+   * \param width Width the rendered string would take
+   * \param height Height the rendered string would take
+   * \param string Output string in ASCII/UTF-8 format, zero terminated
+   * \return Number of written characters, not bytes (as a character may consist out of two bytes)
+   */
+  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t height, const std::uint8_t* string);
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -694,8 +713,28 @@ protected:
 
 ///////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * ctor
+   * Init vars
+   */
+  gpr()
+    : color_(0U)
+    , color_bg_(0U)
+    , text_font_(nullptr)
+    , text_x_set_(0)
+    , text_x_act_(0)
+    , text_y_act_(0)
+    , text_mode_(text_mode_normal)
+  #if defined(VGX_CFG_ANTIALIASING)
+    , anti_aliasing_(false)
+  #endif
+  { }
+
+///////////////////////////////////////////////////////////////////////////////
+
 protected:
   std::uint32_t     color_;           // drawing color
+  std::uint32_t     color_bg_;        // background color
 
   const font_type*  text_font_;       // actual selected font
   std::int16_t      text_x_set_;      // x cursor position for new line
