@@ -1,4 +1,4 @@
-PROJ_NAME = vgx
+PROJ = vgx
 
 ##########################################
 # Toolchain Settings
@@ -16,23 +16,26 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 ##########################################
 # Includes
 ##########################################
-INCLUDES = ./vgx
+INCLUDES = vgx
 LIBS     =
 
 ##########################################
 # Flag Settings
 ##########################################
-CFLAGS  = -I$(INCLUDES) -g -Wall -O0 -std=gnu++0x
+CCFLAGS = -I$(INCLUDES) -g -Wall -O0 -std=gnu++0x
 LDFLAGS = -g $(LIBS) -o $(PROJ_NAME)
 
 ##########################################
 # Targets
 ##########################################
-all: $(PROJ_NAME)
+all: $(PROJ)
 
-$(PROJ_NAME): $(OBJS)
-	@$(CC) $(OBJS) $(LDFLAGS)
+$(PROJ): $(OBJS)
+	@$(CC) $(OBJS) $(LDFLAGS) -o $(PROJ)
 	@echo $@
+
+%.o: %.cpp
+	$(CC) -c $(CCFLAGS) $< -o $@
 
 clean:
 	rm -f $(OBJS)
