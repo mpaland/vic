@@ -23,7 +23,7 @@ LIBS     =
 # Flag Settings
 ##########################################
 CCFLAGS = -I$(INCLUDES) -g -Wall -O0 -std=gnu++0x
-LDFLAGS = -g $(LIBS) -o $(PROJ_NAME)
+LDFLAGS = -g $(LIBS)
 
 ##########################################
 # Targets
