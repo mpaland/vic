@@ -42,7 +42,7 @@ void drv_windows::worker_thread(void* arg)
   drv_windows* d = static_cast<drv_windows*>(arg);
 
   // create a window with emulated screen size
-  HINSTANCE hInstance = GetModuleHandle(NULL);
+  HINSTANCE hInstance = ::GetModuleHandle(NULL);
   LPCTSTR className = L"vgx screen";
   WNDCLASSEX wc;
   wc.cbSize = sizeof(WNDCLASSEX);
@@ -52,13 +52,13 @@ void drv_windows::worker_thread(void* arg)
   wc.cbWndExtra = 0;
   wc.hInstance = hInstance;
   wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-  wc.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
+  wc.hbrBackground = NULL;  // no background brush, suppress WM_ERASEBKGND
   wc.lpszMenuName = NULL;
   wc.lpszClassName = className;
   wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
   wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
   if (!RegisterClassEx(&wc)) {
-    MessageBox(NULL, L"Error registering class", L"Error", MB_OK | MB_ICONERROR);
+    ::MessageBox(NULL, L"Error registering class", L"Error", MB_OK | MB_ICONERROR);
     d->wnd_state_ = drv_windows::error;
     return;
   }
@@ -69,7 +69,7 @@ void drv_windows::worker_thread(void* arg)
   rect.top    = 0;
   rect.right  = d->xsize_ * d->xzoom_;
   rect.bottom = d->ysize_ * d->yzoom_;
-  AdjustWindowRect(&rect, WS_POPUP | WS_CAPTION, FALSE);
+  ::AdjustWindowRect(&rect, WS_POPUP | WS_CAPTION, FALSE);
 
   // finally create and display the window
   d->hwnd_ = CreateWindowEx(
@@ -86,25 +86,26 @@ void drv_windows::worker_thread(void* arg)
     NULL
   );
   if (!d->hwnd_) {
-    MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
+    ::MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
     d->wnd_state_ = drv_windows::error;
     return;
   }
-  SetWindowPos(d->hwnd_, HWND_TOP, d->xpos_, d->ypos_, 0, 0, SWP_NOSIZE |SWP_NOZORDER | SWP_SHOWWINDOW);
+  ::SetWindowPos(d->hwnd_, HWND_TOP, d->xpos_, d->ypos_, 0, 0, SWP_NOSIZE |SWP_NOZORDER | SWP_SHOWWINDOW);
 
   // create a bitmap for all drawing
-  HDC hDC = GetDC(d->hwnd_);
-  d->hmemdc_ = CreateCompatibleDC(hDC);
-  d->hbmp_   = CreateCompatibleBitmap(hDC, d->xsize_ * d->xzoom_, d->ysize_ * d->yzoom_);
-  SelectObject(d->hmemdc_, d->hbmp_);
-  ReleaseDC(d->hwnd_, hDC);
+  HDC hDC = ::GetDC(d->hwnd_);
+  d->hmemdc_ = ::CreateCompatibleDC(hDC);
+  d->hbmp_   = ::CreateCompatibleBitmap(hDC, d->xsize_ * d->xzoom_, d->ysize_ * d->yzoom_);
+  ::SelectObject(d->hmemdc_, d->hbmp_);
+  ::ReleaseDC(d->hwnd_, hDC);
   d->wnd_state_ = drv_windows::ready;
 
+  // process upon WM_QUIT or error
   ::MSG Msg;
-  while (GetMessage(&Msg, NULL, 0, 0) > 0)
+  while (::GetMessage(&Msg, NULL, 0, 0) > 0)
   {
     ::TranslateMessage(&Msg);
-    ::DispatchMessage(&Msg);
+    ::DispatchMessage(&Msg); 
   }
 }
 
@@ -156,8 +157,10 @@ void drv_windows::primitive_done()
 
 void drv_windows::cls()
 {
-  HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(BLACK_PEN));
-  ::SelectObject(hmemdc_, ::GetStockObject(BLACK_BRUSH));
+  ::HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
+  ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
+  ::SetDCPenColor(hmemdc_,   RGB(color_get_red(color_bg_), color_get_green(color_bg_), color_get_blue(color_bg_)));
+  ::SetDCBrushColor(hmemdc_, RGB(color_get_red(color_bg_), color_get_green(color_bg_), color_get_blue(color_bg_)));
   ::Rectangle(hmemdc_, 0, 0, xsize_ * xzoom_, ysize_ * yzoom_);  // needs to be 1 pixel bigger for Windows API
   ::SelectObject(hmemdc_, org);
 }
@@ -190,39 +193,5 @@ std::uint32_t drv_windows::pixel_get(int16_t x, int16_t y) const
   COLORREF clr = ::GetPixel(hmemdc_, x * xzoom_, y * yzoom_);
   return color_rgb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
 }
-
-/*
-void drv_windows::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
-{
-  HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
-  ::SetDCPenColor(hmemdc_, RGB(color_get_red(color_), color_get_green(color_), color_get_blue(color_)));
-  ::MoveToEx(hmemdc_, x0 * xzoom_, y0 * yzoom_, NULL);
-  ::LineTo(hmemdc_, (x1 + 1) * xzoom_, (y1 + 1) * yzoom_);  // needs to be 1 pixel bigger for Windows API
-  ::SelectObject(hmemdc_, org);
-}
-*/
-
-/*
-void drv_windows::rect(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
-{
-  HGDIOBJ org = SelectObject(hmemdc_, GetStockObject(DC_PEN));
-  SelectObject(hmemdc_, GetStockObject(DC_BRUSH));
-  SetDCPenColor(hmemdc_,   RGB(vgx_color_get_red(color_), vgx_color_get_green(color_), vgx_color_get_blue(color_)));
-  SetDCBrushColor(hmemdc_, RGB(vgx_color_get_red(color_), vgx_color_get_green(color_), vgx_color_get_blue(color_)));
-  Rectangle(hmemdc_, x0 * VGX_CFG_DRV_ZOOM_FACTOR, y0 * VGX_CFG_DRV_ZOOM_FACTOR, (x1 + 1) * VGX_CFG_DRV_ZOOM_FACTOR, (y1 + 1) * VGX_CFG_DRV_ZOOM_FACTOR);   // needs to be 1 pixel bigger for Windows API
-  SelectObject(hmemdc_, org);
-}
-
-
-void drv_windows::box(uint16_t x0, uint16_t y0, uint16_t x1, uint16_t y1)
-{
-  HGDIOBJ org = SelectObject(hmemdc_, GetStockObject(DC_PEN));
-  SelectObject(hmemdc_, GetStockObject(DC_BRUSH));
-  SetDCPenColor(hmemdc_,   RGB(vgx_color_get_red(color_), vgx_color_get_green(color_), vgx_color_get_blue(color_)));
-  SetDCBrushColor(hmemdc_, RGB(vgx_color_get_red(color_), vgx_color_get_green(color_), vgx_color_get_blue(color_)));
-  Rectangle(hmemdc_, x0 * VGX_CFG_DRV_ZOOM_FACTOR, y0 * VGX_CFG_DRV_ZOOM_FACTOR, (x1 + 1) * VGX_CFG_DRV_ZOOM_FACTOR, (y1 + 1) * VGX_CFG_DRV_ZOOM_FACTOR);   // needs to be 1 pixel bigger for Windows API
-  SelectObject(hmemdc_, org);
-}
-*/
 
 } // namespace vgx

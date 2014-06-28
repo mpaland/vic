@@ -37,9 +37,21 @@
 
 namespace vgx {
 
+// define 32bit 24bpp (no alpha channel) windows head
 class drv_windows : public drv_head<std::uint32_t, 24U>
 {
 public:
+  /**
+   * ctor
+   * \param xsize Screen width
+   * \param ysize Screen height
+   * \param xoffset X offset of the screen, relative to top/left corner
+   * \param yoffset Y offset of the screen, relative to top/left corner
+   * \param xpos X coordinate of the top/left window position
+   * \param ypos Y coordinate of the top/left window position
+   * \param xzoom X zoom factor
+   * \param yzoom Y zoom factor
+   */
   drv_windows(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
               std::int16_t xpos, std::int16_t ypos, std::uint8_t xzoom, std::uint8_t yzoom)
               : drv_head(xsize, ysize, xoffset, yoffset)
@@ -48,18 +60,25 @@ public:
               , xzoom_(xzoom)
               , yzoom_(yzoom)
               , wnd_state_(create) { }
+
+  /**
+   * dtor
+   * Deinit the driver
+   */
+  ~drv_windows()
+  { deinit(); }
+
+  // mandatory driver functions
   virtual void init();                                    // driver init
   virtual void deinit();                                  // driver deinit
   virtual void brightness_set(std::uint8_t level);        // set display brightness/backlight
   virtual const char* version() const;                    // get driver name and version
-  virtual void primitive_done();                          // redering done (copy RAM / frame buffer to screen)
+  virtual void primitive_done();                          // rendering done (copy RAM / frame buffer to screen)
   virtual void cls();                                     // clear display, all pixels off (black)
 
   virtual bool pixel_set(std::int16_t x, std::int16_t y);                               // set pixel with drawing color
   virtual bool pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color);    // set pixel in given color
   virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const;                // get pixel color
-
-  //virtual void drv_line(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1);
 
 public:
   // public for thread accessibility
@@ -71,8 +90,8 @@ public:
   } window_state_type;
 
   static void worker_thread(void* arg);   // worker thread
-  ::HANDLE            thread_handle_;     // worker thread handle
-  window_state_type   wnd_state_;         // window state
+  ::HANDLE thread_handle_;                // worker thread handle
+  volatile window_state_type wnd_state_;  // window state
 
   const std::int16_t  xpos_;              // x coordinate of output window
   const std::int16_t  ypos_;              // y coordinate of output window
