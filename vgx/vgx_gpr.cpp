@@ -62,7 +62,7 @@ bool clipping_clear()
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// D R A W I I G  F U N C T I O N S   - IF UNSUPPORTED BY THE DRIVER
+// N A T I V E   D R A W I N G   F U N C T I O N S
 
 // draw a line from x0/y0 to x1/y1
 void gpr::drv_line(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
@@ -283,7 +283,7 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
       err = er1 * 2;
       if (err + dy1 > 0) {
         er1 -= dy1;
-        xr += sx1;
+        xr  += sx1;
       }
     } while (dy1 && err >= dx1);
     er1 += dx1;
@@ -813,28 +813,28 @@ bool gpr::box_gradient(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::i
 
 
 // draw a polygon
-bool gpr::polygon(const point_type* points, std::uint16_t point_count)
+bool gpr::polygon(const vertex_type* vertexes, std::uint16_t vertex_count)
 {
-  if (!point_count || --point_count < 2U) {
+  if (!vertex_count || --vertex_count < 2U) {
     return false;
   }
 #if defined(VGX_CFG_ANTIALIASING)
   if (anti_aliasing_) {
-    drv_line_aa(points[0].x, points[0].y, points[point_count].x, points[point_count].y);
-    for (; point_count > 0U; --point_count) {
-      drv_line_aa(points[point_count].x, points[point_count].y, points[point_count - 1].x, points[point_count - 1].y);
+    drv_line_aa(vertexes[0].x, vertexes[0].y, vertexes[vertex_count].x, vertexes[vertex_count].y);
+    for (; vertex_count > 0U; --vertex_count) {
+      drv_line_aa(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
     }
   }
   else {
-    drv_line(points[0].x, points[0].y, points[point_count].x, points[point_count].y);
-    for (; point_count > 0U; --point_count) {
-      drv_line(points[point_count].x, points[point_count].y, points[point_count - 1].x, points[point_count - 1].y);
+    drv_line(vertexes[0].x, vertexes[0].y, vertexes[vertex_count].x, vertexes[vertex_count].y);
+    for (; vertex_count > 0U; --vertex_count) {
+      drv_line(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
     }
   }
 #else
-  drv_line(points[0].x, points[0].y, points[point_count].x, points[point_count].y);
-  for (; point_count > 0U; --point_count) {
-    drv_line(points[point_count].x, points[point_count].y, points[point_count - 1].x, points[point_count - 1].y);
+  drv_line(vertexes[0].x, vertexes[0].y, vertexes[vertex_count].x, vertexes[vertex_count].y);
+  for (; vertex_count > 0U; --vertex_count) {
+    drv_line(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
   }
 #endif
   primitive_done();
