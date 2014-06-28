@@ -9,15 +9,20 @@ DBG = gdb
 ##########################################
 # Files
 ##########################################
-SRCS = $(wildcard *.cpp)
-OBJS = $(SRCS:.cpp=.o) $(SRCS_SERIAL:.cpp=.o)
-INCLUDES = /vgx
+DIRS := $(wildcard */)
+SRCS := $(wildcard $(addsuffix *.cpp,$(DIRS)))
+OBJS := $(patsubst %.cpp,%.o,$(SRCS))
+
+##########################################
+# Includes
+##########################################
+INCLUDES = /vgx;/demo/windows
 LIBS =
 
 ##########################################
 # Flag Settings
 ##########################################
-CFLAGS = $(INCLUDES) -g -Wall -O0
+CFLAGS = -I$(INCLUDES) -g -Wall -O0
 LDFLAGS = -g $(LIBS) -o $(PROJ_NAME)
 
 ##########################################
