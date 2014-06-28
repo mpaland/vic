@@ -5,7 +5,7 @@ A lightweight but very powerful graphic and text rendering C++ library for graph
 
 ## What is vgx NOT?
 vgx is not meant to be a full bloated windowmanager, widgets, dialogs etc. rendering framework.
-If you need an advanced windowed GUI, there are many other cool libraries around, like µC/GUI, StWin etc.
+If you need an advanced windowed GUI, there are many other cool (but commercial) libraries around, like µC/GUI, StWin etc.
 
 So, what are the highlights?
 - Universal library for graphic and alpha numeric displays
@@ -20,6 +20,7 @@ So, what are the highlights?
 - Anti aliasing support for smooth primitive and text/font rendering
 - Framebuffer support (if the controller has native support)
 - Clipping region support
+- Doxygen commented code
 - MIT license
 
 To be done (and implemented):
@@ -31,38 +32,33 @@ To be done (and implemented):
 
 ## Design of vgx
 vgx usage should be as easy as possible and implementing drivers for new controllers as fast as possible.
-A graphic driver only needs to implement `pixel_set` and `pixel_get` operations. But most modern
-display controllers provide sophisticated functions like line, box rendering, block moving etc.
-If a controller can provide such special functions, the according function is implemented in the driver by 
-simply overriding the virtual function of the `gpr` base class.
+A graphic driver only needs to implement `pixel_set` and `pixel_get` operations. But most modern display controllers provide sophisticated functions like line, box rendering, block moving etc.
+If a controller can provide such special functions, the according function is implemented in the driver by simply overriding the virtual function of the `gpr` base class.
 All graphic functions which the controller/driver can't provide natively are handled by the `gpr`.
 Of cource, native rendering on a specialized video controller is always faster and should be prefered.
 
 
 ## Class design
-![](https://cdn.rawgit.com/mpaland/vgx/master/doc/vgxlib.svg?commit=249b33a6866d1c06830bfd56d55c2c5e5cccfd29)
+![](https://cdn.rawgit.com/mpaland/vgx/master/doc/vgxlib.svg?commit=c5160718bc6a15e75bda0d72968d786ad3140a87)
 
 ### gpr
-The Graphics Primitive Renderer is the base class of the whole rendering stack.
+The Graphic Primitive Renderer is the base class of the whole rendering stack.
 It provides fast rendering functions for graphic primitives and text fonts.
-All color calculations are done in ARGB 32 bit format. If a display has less colors like 15 bpp, the `drv_head`
+All color calculations are done in ARGB 32 bit format. If a display has less colors, like 15 bpp, the `drv_head`
 class is responsible for color reduction.
 The `gpr` doesn't use ANY floting point math, only fast integer operations.
 Furthermore the `gpr` should be a collection of reference implementations of the most modern, fast and reliable primitive rendering algorithms.
-So, if you find any errors, have speed improvements or even know a better algorithm for a primitive - PLEASE share and
-contribure!
+So, if you find any errors, have speed improvements or even know a better algorithm for a primitive - **please** share and contribure!
 
 ### drv
-Base class of the head to add some mandatory routines.
+Base class of the head. Adds some mandatory routines.
 Further this class is used for pointing to the head, cause `drv_head` is a templated class which can't be used without template parameters.
 
 ### drv_head
-The base class of every specific driver. `drv_head` is a templated class which takes the color type and format of the 
-display/controller as paramters.
+The base class of every specific driver. `drv_head` is a templated class which takes the color type and format of the display/controller as paramters.
 
 ### drv_xxxxx
-The specific driver for the according controller or platform. All virtual functions of the `gpr` which the the controller 
-can natively provide are overridden here.
+The specific driver for the according controller or platform. All virtual functions of the `gpr` which the the controller can natively provide are overridden here.
 The low level access interface is defined in the vgx_cfg.h config file.
 
 ### ctrl
@@ -74,7 +70,7 @@ Using vgx is pretty easy.
 In a single head design (just one display in the system) you create your head first by instancing the according driver.
 On a Windows (emulation/test) platform this would be:
 ```c++
-vgx::drv_windows head(240, 120, 0, 0, 50, 50, 2, 2);
+vgx::drv_windows head(240, 120, 0, 0, 50, 50, 2, 2);  // xy-zoom level of 2
 head.init();  // explicit head init
 ```
 
@@ -97,19 +93,16 @@ vgx::drv_windows head1(240, 120, 0, 0, 00, 200, 2, 2);
 head0.init();  // explicit head 0 init
 head1.init();  // explicit head 1 init
 ```
-
 Using head 0:
 ```c++
 head0.color_set(VGX_COLOR_BRIGHTBLUE);
 head0.line(10, 10, 40, 40);
 ```
-
 And using head 1 (eg. for system debug, status. etc):
 ```c++
 head1.color_set(VGX_COLOR_RED);
 head1.box(100, 100, 120, 120);
 ```
-
 
 ## License
 vgx is written under the MIT licence.
