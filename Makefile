@@ -3,7 +3,7 @@ PROJ_NAME = vgx
 ##########################################
 # Toolchain Settings
 ##########################################
-CC = g++
+CC  = g++
 DBG = gdb
 
 ##########################################
@@ -17,12 +17,12 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 # Includes
 ##########################################
 INCLUDES = /vgx;/demo/windows
-LIBS =
+LIBS     =
 
 ##########################################
 # Flag Settings
 ##########################################
-CFLAGS = -I$(INCLUDES) -g -Wall -O0
+CFLAGS  = -I$(INCLUDES) -g -Wall -O0
 LDFLAGS = -g $(LIBS) -o $(PROJ_NAME)
 
 ##########################################
@@ -31,16 +31,12 @@ LDFLAGS = -g $(LIBS) -o $(PROJ_NAME)
 all: $(PROJ_NAME)
 
 $(PROJ_NAME): $(OBJS)
-@$(CC) $(OBJS) $(LDFLAGS)
-@echo $@
-
-.cpp.o:
-@$(CC) $(CFLAGS) -c -o $@ $<
-@echo $@
+	@$(CC) $(OBJS) $(LDFLAGS)
+	@echo $@
 
 clean:
-rm -f $(OBJS)
-rm -f $(PROJ_NAME)
+	rm -f $(OBJS)
+	rm -f $(PROJ_NAME)
 
 debug:
-$(DBG) $(PROJ_NAME)
+	$(DBG) $(PROJ_NAME)
