@@ -16,13 +16,13 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 ##########################################
 # Includes
 ##########################################
-INCLUDES = /vgx;/demo/windows
+INCLUDES = vgx;demo/windows
 LIBS     =
 
 ##########################################
 # Flag Settings
 ##########################################
-CFLAGS  = -I$(INCLUDES) -g -Wall -O0
+CFLAGS  = -I$(INCLUDES) -g -Wall -O0 -std=c++0x
 LDFLAGS = -g $(LIBS) -o $(PROJ_NAME)
 
 ##########################################
