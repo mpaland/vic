@@ -1,4 +1,4 @@
-PROJ = vgx
+PROJ = vgx-demo
 
 ##########################################
 # Toolchain Settings
