@@ -43,5 +43,30 @@
 // library clipping support (slower)
 //#define VGX_CFG_CLIPPING
 
+// theme support for controls
+// Define this if you are using controls
+#define VGX_CFG_THEME
+
+
+//////////////////////////////////////////////////////////////////////////
+// H A R D W A R E   I N T E R F A C E
+
+// defines for your platform dependent hardware access
+
+// memory access
+#define VGX_MEM_8(address, data)      mcal::mem< 8U>(address, data)
+#define VGX_MEM_16(address, data)     mcal::mem<16U>(address, data)
+#define VGX_MEM_32(address, data)     mcal::mem<32U>(address, data)
+#define VGX_MEM_64(address, data)     mcal::mem<64U>(address, data)
+
+// SPI bus access
+#define VGX_SPI(bus, outdata, outlen, indata, inlen)
+
+// I²C bus access
+#define VGX_I2C(address, outdata, outlen, indata, inlen)
+
+// UART access
+#define VGX_UART_TX(port, outdata, outlen)
+#define VGX_UART_RX(port, indata, inlen)
 
 #endif  // _VGX_CFG_H_
