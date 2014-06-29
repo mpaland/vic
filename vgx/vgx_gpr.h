@@ -113,18 +113,16 @@ public:
    * Plot a point, implemented in driver
    * \param x X value
    * \param y Y value
-   * \return true if successful
    */
-  virtual bool pixel_set(std::int16_t x, std::int16_t y) = 0;
+  virtual void pixel_set(std::int16_t x, std::int16_t y) = 0;
 
   /**
    * Plot a point in the given color, implemented in driver
    * \param x X value
    * \param y Y value
    * \param color Color to plot
-   * \return true if successful
    */
-  virtual bool pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color) = 0;
+  virtual void pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color) = 0;
 
   /**
    * Get the color of a pixel, implemented in driver
@@ -149,7 +147,7 @@ public:
    * Set the drawing color
    * \param color New drawing color in ARGB format
    */
-  inline void color_set(std::uint32_t color)
+  virtual void color_set(std::uint32_t color)
   { color_ = color; }
 
   /**
@@ -163,7 +161,7 @@ public:
    * Set the background color (e.g. for cls)
    * \param color_background New background color in ARGB format
    */
-  inline std::uint32_t color_set_bg(std::uint32_t color_background)
+  virtual void color_set_bg(std::uint32_t color_background)
   { color_bg_ = color_background; }
 
 
