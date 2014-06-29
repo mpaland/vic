@@ -166,25 +166,23 @@ void drv_windows::cls()
 }
 
 
-bool drv_windows::pixel_set(int16_t x, int16_t y)
+void drv_windows::pixel_set(int16_t x, int16_t y)
 {
   for (int c = 0; c < xzoom_; ++c) {
     for (int r = 0; r < yzoom_; ++r) {
       (void)::SetPixel(hmemdc_, x * xzoom_ + c, y * yzoom_ + r, RGB(color_get_red(color_get()), color_get_green(color_get()), color_get_blue(color_get())));
     }
   }
-  return true;
 }
 
 
-bool drv_windows::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void drv_windows::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 {
   for (int c = 0; c < xzoom_; ++c) {
     for (int r = 0; r < yzoom_; ++r) {
       (void)::SetPixel(hmemdc_, x * xzoom_ + c, y * yzoom_ + r, RGB(color_get_red(color), color_get_green(color), color_get_blue(color)));
     }
   }
-  return true;
 }
 
 

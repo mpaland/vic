@@ -23,79 +23,70 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Skeleton driver, use this as a start for own drivers
+// \brief Linux driver, uses OpenGL for rendering
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "vgx_drv_skeleton.h"
+#include "vgx_drv_linux.h"
 
 // defines the driver name and version
-#define VGX_DRV_VERSION   "Skeleton driver 1.00"
+#define VGX_DRV_VERSION   "Linux driver 1.00"
 
 
 namespace vgx {
 
 
-void drv_skeleton::init()
+void drv_linux::init()
 {
 
 }
 
 
-void drv_skeleton::deinit()
+void drv_linux::deinit()
 {
 
 }
 
 
-void drv_skeleton::brightness_set(std::uint8_t)
+void drv_linux::brightness_set(std::uint8_t)
 {
 
 }
 
 
-const char* drv_skeleton::version() const
+const char* drv_linux::version() const
 {
   return (const char*)VGX_DRV_VERSION;
 }
 
 
-void drv_skeleton::primitive_done()
+void drv_linux::primitive_done()
 {
 
 }
 
 
-void drv_skeleton::cls()
+void drv_linux::cls()
 {
 
 }
 
 
-void drv_skeleton::pixel_set(int16_t x, int16_t y)
-{
-  return true;
-}
-
-
-void drv_skeleton::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void drv_linux::pixel_set(int16_t x, int16_t y)
 {
   return true;
 }
 
 
-std::uint32_t drv_skeleton::pixel_get(int16_t x, int16_t y) const
+void drv_linux::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+{
+  return true;
+}
+
+
+std::uint32_t drv_linux::pixel_get(int16_t x, int16_t y) const
 {
   return 0U;
 }
-
-
-/*
-// define all native supported primitives here
-void drv_skeleton::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
-{
-}
-
-*/
 
 } // namespace vgx

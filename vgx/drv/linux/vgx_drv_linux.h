@@ -23,24 +23,25 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Windows head driver
+// \brief Linux driver, uses OpenGL for rendering
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_WINDOWS_
-#define _VGX_DRV_WINDOWS_
+#ifndef _VGX_DRV_LINUX_
+#define _VGX_DRV_LINUX_
 
-#include "vgx_drv.h"
-
-#include <Windows.h>
+#include "vgx/vgx_drv.h"
 
 
 namespace vgx {
 
-// define 32bit 24bpp (no alpha channel) windows head
-class drv_windows : public drv_head<std::uint32_t, 24U>
+// define 32bit 24bpp (no alpha channel) linux head
+class drv_linux : public drv_head<std::uint32_t, 24U>
 {
 public:
+/////////////////////////////////////////////////////////////////////////////
+// M A N D A T O R Y   F U N C T I O N S
+
   /**
    * ctor
    * \param xsize Screen width
@@ -52,21 +53,20 @@ public:
    * \param xzoom X zoom factor
    * \param yzoom Y zoom factor
    */
-  drv_windows(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
-              std::int16_t xpos, std::int16_t ypos, std::uint8_t xzoom, std::uint8_t yzoom)
+  drv_linux(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
+            std::int16_t xpos, std::int16_t ypos, std::uint8_t xzoom, std::uint8_t yzoom)
     : drv_head(xsize, ysize, xoffset, yoffset)
     , xpos_(xpos)
     , ypos_(ypos)
     , xzoom_(xzoom)
     , yzoom_(yzoom)
-    , wnd_state_(create)
   { }
 
   /**
    * dtor
    * Deinit the driver
    */
-  ~drv_windows()
+  ~drv_linux()
   { deinit(); }
 
   // mandatory driver functions
@@ -102,29 +102,8 @@ public:
    * \return Color of pixel in ARGB format
    */
   virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const;
-
-public:
-  // public for thread accessibility
-  typedef enum enum_window_state_type {
-    create = 0,
-    ready,
-    error,
-    end
-  } window_state_type;
-
-  static void worker_thread(void* arg);   // worker thread
-  ::HANDLE thread_handle_;                // worker thread handle
-  volatile window_state_type wnd_state_;  // window state
-
-  const std::int16_t  xpos_;              // x coordinate of output window
-  const std::int16_t  ypos_;              // y coordinate of output window
-  const std::uint8_t  xzoom_;             // x zoom factor of output window
-  const std::uint8_t  yzoom_;             // y zoom factor of output window
-  ::HWND              hwnd_;
-  ::HDC               hmemdc_;
-  ::HBITMAP           hbmp_;
 };
 
 } // namespace vgx
 
-#endif  // _VGX_DRV_WINDOWS_H_
+#endif  // _VGX_DRV_SKELETON_H_

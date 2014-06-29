@@ -39,6 +39,28 @@
 
 namespace vgx {
 
+/**
+ * Display hardware interface
+ */
+typedef enum enum_interface_type
+{
+  interface_mem = 0,
+  interface_spi,
+  interface_i2c,
+  interface_uart
+} interface_type;
+
+/**
+ * Display orientation, the driver takes care of screen rotation
+ */
+typedef enum enum_orientation_type
+{
+  orientation_0 = 0,
+  orientation_90,
+  orientation_180,
+  orientation_270
+} orientation_type;
+
 
 class drv : public gpr
 {
@@ -97,8 +119,8 @@ public:
    * \param x X value
    * \param y Y value
    */
-  virtual bool pixel_set(std::int16_t x, std::int16_t y)
-  { (void)x; (void)y; return false; }
+  virtual void pixel_set(std::int16_t x, std::int16_t y)
+  { (void)x; (void)y; }
 
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
@@ -106,8 +128,8 @@ public:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual bool pixel_set_color(std::int16_t x, std::int16_t y, std::int32_t color)
-  { (void)x; (void)y; (void)color; return false; }
+  virtual void pixel_set_color(std::int16_t x, std::int16_t y, std::int32_t color)
+  { (void)x; (void)y; (void)color; }
 
   /**
    * Get pixel color

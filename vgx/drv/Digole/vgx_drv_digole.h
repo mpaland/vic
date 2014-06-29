@@ -23,19 +23,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Skeleton driver, use this as a start for own drivers
+// \brief Digole LCD driver for Digole (OLED) graphic displays
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_SKELETON_
-#define _VGX_DRV_SKELETON_
+#ifndef _VGX_DRV_DIGOLE_
+#define _VGX_DRV_DIGOLE_
 
-#include "vgx/vgx_drv.h"
+#include "vgx_drv.h"
 
 
 namespace vgx {
 
-class drv_skeleton : public drv_head<std::uint32_t, 24U>
+class drv_digole : public drv_head<std::uint32_t, 24U>
 {
 public:
 /////////////////////////////////////////////////////////////////////////////
@@ -47,16 +47,25 @@ public:
    * \param ysize Screen height
    * \param xoffset X offset of the screen, relative to top/left corner
    * \param yoffset Y offset of the screen, relative to top/left corner
+   * \param orientation Screen orientation
+   * \param interface Interface mode, SPI, I²C and UART are valid
+   * \param interface_port Interface port: SPI: channel id, I²C: address, UART: port
+   * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
-  drv_skeleton(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+  drv_digole(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
+             orientation_type orientation, interface_type interface, std::uint8_t interface_port, std::uint32_t uart_baudrate = 9600U)
     : drv_head(xsize, ysize, xoffset, yoffset)
+    , orientation_(orientation)
+    , interface_(interface)
+    , interface_port_(interface_port)
+    , uart_baudrate_(uart_baudrate)
   { }
 
   /**
    * dtor
    * Deinit the driver
    */
-  ~drv_skeleton()
+  ~drv_digole()
   { deinit(); }
 
   // mandatory driver functions
@@ -64,7 +73,6 @@ public:
   virtual void deinit();                                  // driver deinit
   virtual void brightness_set(std::uint8_t level);        // set display brightness/backlight
   virtual const char* version() const;                    // get driver name and version
-  virtual void primitive_done();                          // rendering done (copy RAM / frame buffer to screen)
   virtual void cls();                                     // clear display, all pixels off (black)
 
 /////////////////////////////////////////////////////////////////////////////
@@ -93,6 +101,9 @@ public:
    */
   virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const;
 
+
+  virtual void color_set(std::uint32_t color);
+
   /////////////////////////////////////////////////////////////////////////////
   // O P T I O N A L   D R A W I N G   F U N C T I O N S
   //
@@ -103,28 +114,10 @@ public:
   virtual void drv_line(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1);
   virtual void drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1);
   virtual void drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1);
-  virtual void drv_line_width(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width);
   virtual void drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1);
   virtual void drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1);
-  virtual void drv_triangle(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2);
-  virtual void drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2);
-  virtual void drv_arc(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2);
   virtual void drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r);
   virtual void drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r);
-  virtual void drv_disc_section(std::int16_t x, std::int16_t y, std::uint16_t r, std::uint8_t section);
-  virtual void drv_sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle);
-  virtual void drv_fill(std::int16_t x, std::int16_t y, std::uint32_t bounding_color);
-
-#if defined(VGX_CFG_ANTIALIASING)
-  virtual void drv_line_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1);
-  virtual void drv_triangle_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2);
-  virtual void drv_triangle_solid_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2);
-  virtual void drv_arc_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2);
-  virtual void drv_circle_aa(std::int16_t x, std::int16_t y, std::uint16_t r);
-  virtual void drv_disc_aa(std::int16_t x, std::int16_t y, std::uint16_t r);
-  virtual void drv_disc_section_aa(std::int16_t x, std::int16_t y, std::uint16_t r, std::uint8_t section);
-#endif  // VGX_CFG_ANTIALIASING
-
   virtual void drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height);
 
   virtual bool drv_text_set_font(const font_type& font);
@@ -132,6 +125,17 @@ public:
   virtual void drv_text_set_mode(text_mode_type mode);
   virtual void drv_text_char(std::uint16_t ch);
   virtual std::uint16_t drv_text_string(const std::uint8_t* string);
+
+private:
+  // send buffer to display
+  void send(const std::uint8_t* buffer, std::uint8_t length);
+
+private:
+  orientation_type  orientation_;       // screen orientation
+  interface_type    interface_;         // interface type
+  std::uint32_t     uart_baudrate_;     // baudrate for UART interface mode
+  std::uint8_t      interface_port_;    // interface port
+  std::uint8_t      cmd_[16U];          // command buffer
 };
 
 } // namespace vgx
