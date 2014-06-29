@@ -244,12 +244,10 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
   std::int16_t dx0 = x1 > x0 ? x1 - x0 : x0 - x1;
   std::int16_t dy0 = y1 > y0 ? y1 - y0 : y0 - y1;
   std::int16_t sx0 = x1 > x0 ? 1 : -1;
-  std::int16_t sy0 = y1 > y0 ? 1 : -1;
   std::int16_t er0 = dx0 - dy0;
   std::int16_t dx1 = x2 > x0 ? x2 - x0 : x0 - x2;
   std::int16_t dy1 = y2 > y0 ? y2 - y0 : y0 - y2;
   std::int16_t sx1 = x2 > x0 ? 1 : -1;
-  std::int16_t sy1 = y2 > y0 ? 1 : -1;
   std::int16_t er1 = dx1 - dy1;
   std::int16_t dx2 = x2 > x1 ? x2 - x1 : x1 - x2;
   std::int16_t dy2 = y2 > y1 ? y2 - y1 : y1 - y2;
@@ -263,10 +261,10 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
     if (y == ymin) {
       // exchange params
       if (y1 > y2) {
-        dx1 = dx2; dy1 = dy2; sx1 = s2; sy1 = s2; er1 = er2; xr = x2;
+        dx1 = dx2; dy1 = dy2; sx1 = s2; er1 = er2; xr = x2;
       }
       else {
-        dx0 = dx2; dy0 = dy2; sx0 = s2; sy0 = s2; er0 = er2; xl = x1;
+        dx0 = dx2; dy0 = dy2; sx0 = s2; er0 = er2; xl = x1;
       }
     }
 
