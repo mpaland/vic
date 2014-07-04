@@ -51,7 +51,7 @@ protected:
   drv& head_;
 
 private:
-  const ctrl& operator=(const ctrl&) {} // non copyable
+  const ctrl& operator=(const ctrl& rhs) { return rhs; }  // non copyable
 };
 
 } // namespace vgx
