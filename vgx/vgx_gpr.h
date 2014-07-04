@@ -752,7 +752,7 @@ protected:
 private:
   inline std::uint16_t sin(std::uint8_t angle) const;   // sin(x) helper function
 
-  const gpr& operator=(const gpr&) {}                   // non copyable
+  const gpr& operator=(const gpr& rhs) { return rhs; }  // non copyable
 };
 
 } // namespace vgx
