@@ -231,6 +231,18 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
   //
   // lines run from p0 to p1 and p2. When y reaches p1 or p2 (ymin), according line is exchanged
 
+  // check special cases
+  if ((y0 == y1) && (y0 == y2)) {
+    drv_line_horz(x0, y0, x1);
+    drv_line_horz(x0, y0, x2);
+    return;
+  }
+  if ((x0 == x1) && (x0 == x2)) {
+    drv_line_vert(x0, y0, y1);
+    drv_line_vert(x0, y0, y2);
+    return;
+  }
+
   // sort points
   std::int16_t tmp;
   if (y1 < y0) { tmp = y0; y0 = y1; y1 = tmp; tmp = x0; x0 = x1; x1 = tmp; }
@@ -274,7 +286,7 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
         er0 -= dy0;
         xl  += sx0;
       }
-    } while (dy0 && err >= dx0);
+    } while (dy0 && (err >= dx0));
     er0 += dx0;
 
     do {
@@ -283,7 +295,7 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
         er1 -= dy1;
         xr  += sx1;
       }
-    } while (dy1 && err >= dx1);
+    } while (dy1 && (err >= dx1));
     er1 += dx1;
   }
 }
