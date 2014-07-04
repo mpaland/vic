@@ -70,6 +70,20 @@ public:
   // Every driver MUST implement them - even if not supported
 
   /**
+   * ctor
+   * \param xsize Screen width
+   * \param ysize Screen height
+   * \param xoffset X offset of the screen, relative to top/left corner
+   * \param yoffset Y offset of the screen, relative to top/left corner
+   */
+  drv(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : xsize_(xsize)
+    , ysize_(ysize)
+    , xoffset_(xoffset)
+    , yoffset_(yoffset)
+  { }
+
+  /**
    * Driver init
    */
   virtual void init() = 0;
@@ -90,18 +104,6 @@ public:
    * \return Driver version and name
    */
   virtual const char* version() const = 0;
-
-  /**
-   * Get the screen width
-   * \return Screen width in pixel or chars
-   */
-  virtual std::uint16_t get_width() const = 0;
-
-  /**
-   * Get the screen height
-   * \return Screen height in pixel or chars
-   */
-  virtual std::uint16_t get_height() const = 0;
 
   /**
    * Clear screen, set all pixels off, delete all characters or fill screen with background color
@@ -143,6 +145,20 @@ public:
   /////////////////////////////////////////////////////////////////////////////
 
   /**
+   * Returns the screen width
+   * \return Screen width in pixel or chars
+   */
+  virtual std::uint16_t get_width()  const
+  { return xsize_; }
+
+  /**
+   * Returns the screen height
+   * \return Screen height in pixel or chars
+   */
+  virtual std::uint16_t get_height() const
+  { return ysize_; }
+
+  /**
    * Set alpha blending level of framebuffer/plane. If driver has no alpha support,
    * activate the according framebuffer/plane
    * \param index The index of the framebuffer/plane, 0 for 1st
@@ -157,6 +173,12 @@ public:
    */
   virtual std::uint8_t framebuffer_get_count()
   { return 0U; }
+
+protected:
+  const std::uint16_t xsize_;     // x screen size in pixel (graphic) or chars (alpha)
+  const std::uint16_t ysize_;     // y screen size in pixel (graphic) or chars (alpha)
+  const std::int16_t  xoffset_;   // x offset (left)
+  const std::int16_t  yoffset_;   // y offset (top)
 };
 
 
@@ -172,27 +194,12 @@ public:
    * \param yoffset Y offset of the screen, relative to top/left corner
    */
   drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
-    : xsize_(xsize)
-    , ysize_(ysize)
-    , xoffset_(xoffset)
-    , yoffset_(yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
   { }
-
-  /**
-   * Returns the screen width
-   * \return Width in pixel
-   */
-  virtual std::uint16_t get_width()  const { return xsize_; }
-
-  /**
-   * Returns the screen height
-   * \return Height in pixel
-   */
-  virtual std::uint16_t get_height() const { return ysize_; }
 
 protected:
   /*
-  RGB conversion macros to head color depth
+  RGB conversion to head color depth
   Color depths of 1, 2 or 4 are for monochrome and 2/4bit grayscale format
 
   COLOR_DEPTH     Format    Usage
@@ -207,51 +214,134 @@ protected:
   24              0-8-8-8    16M RGB display
   32              A-8-8-8    16M RGB display with alpha blending support
   */
-  template<std::uint8_t COLOR_DEPTH>
-  inline COLOR_TYPE head_color(std::uint32_t color) const
+
+  /*
+   * Convert color to native head color format
+   * \param color Internal ARGB 32 bpp color value
+   * \return Native head color value
+   */
+  inline COLOR_TYPE color_head(std::uint32_t color) const
   { return 0UL; }   // unsupported color depth
+};
 
-  template<>
-  inline COLOR_TYPE head_color<1U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>((color & 0x00FFFFFFUL) != std::uint32_t(0U) ? 1U : 0U); }
+///////////////////////////////////////////////////////////////////////////////
+// Template color depth specializations
 
-  template<>
-  inline COLOR_TYPE head_color<2U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>((((std::uint16_t)color_get_red(color) + (std::uint16_t)color_get_green(color) + (std::uint16_t)color_get_blue(color)) / 3U) >> 6U); }
-
-  template<>
-  inline COLOR_TYPE head_color<4U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>((((std::uint16_t)color_get_red(color) + (std::uint16_t)color_get_green(color) + (std::uint16_t)color_get_blue(color)) / 3U) >> 4U); }
-
-  template<>
-  inline COLOR_TYPE head_color<8U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>((color_get_red(color) & 0xE0U) | ((color_get_green(color) & 0xE0U) >> 3U) | ((color_get_blue(color)) >> 6U)); }
-
-  template<>
-  inline COLOR_TYPE head_color<15U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>(((COLOR_TYPE)(color_get_red(color) & 0xF8U) << 10U) | ((COLOR_TYPE)(color_get_green(color) & 0xF8U) << 5U) | (COLOR_TYPE)(color_get_blue(color) >> 3U)); }
-
-  template<>
-  inline COLOR_TYPE head_color<16U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>(((COLOR_TYPE)(color_get_red(color) & 0xF8U) << 11U) | ((COLOR_TYPE)(color_get_green(color) & 0xFCU) << 5U) | (COLOR_TYPE)(color_get_blue(color) >> 3U)); }
-
-  template<>
-  inline COLOR_TYPE head_color<18U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>(((COLOR_TYPE)(color_get_red(color) & 0xFCU) << 12U) | ((COLOR_TYPE)(color_get_green(color) & 0xFCU) << 6U) | (COLOR_TYPE)(color_get_blue(color) >> 2U)); }
-
-  template<>
-  inline COLOR_TYPE head_color<24U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>(color & 0x00FFFFFFUL); }
-
-  template<>
-  inline COLOR_TYPE head_color<32U>(std::uint32_t color) const
-  { return static_cast<COLOR_TYPE>(color); }
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 1U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
 
 protected:
-  const std::uint16_t xsize_;     // x screen size in pixel (graphic) or chars (alpha)
-  const std::uint16_t ysize_;     // y screen size in pixel (graphic) or chars (alpha)
-  const std::int16_t  xoffset_;   // x offset (left)
-  const std::int16_t  yoffset_;   // y offset (top)
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>((color & 0x00FFFFFFUL) != std::uint32_t(0U) ? 1U : 0U); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 2U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>((((std::uint16_t)color_get_red(color) + (std::uint16_t)color_get_green(color) + (std::uint16_t)color_get_blue(color)) / 3U) >> 6U); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 4U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>((((std::uint16_t)color_get_red(color) + (std::uint16_t)color_get_green(color) + (std::uint16_t)color_get_blue(color)) / 3U) >> 4U); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 8U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>((color_get_red(color) & 0xE0U) | ((color_get_green(color) & 0xE0U) >> 3U) | ((color_get_blue(color)) >> 6U)); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 15U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>(((COLOR_TYPE)(color_get_red(color) & 0xF8U) << 10U) | ((COLOR_TYPE)(color_get_green(color) & 0xF8U) << 5U) | (COLOR_TYPE)(color_get_blue(color) >> 3U)); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 16U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>(((COLOR_TYPE)(color_get_red(color) & 0xF8U) << 11U) | ((COLOR_TYPE)(color_get_green(color) & 0xFCU) << 5U) | (COLOR_TYPE)(color_get_blue(color) >> 3U)); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 18U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>(((COLOR_TYPE)(color_get_red(color) & 0xFCU) << 12U) | ((COLOR_TYPE)(color_get_green(color) & 0xFCU) << 6U) | (COLOR_TYPE)(color_get_blue(color) >> 2U)); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 24U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>(color & 0x00FFFFFFUL); }
+};
+
+template<typename COLOR_TYPE>
+class drv_head<COLOR_TYPE, 32U> : public drv
+{
+public:
+  drv_head(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
+  { }
+
+protected:
+  inline COLOR_TYPE color_head(std::uint32_t color) const
+  { return static_cast<COLOR_TYPE>(color); }
 };
 
 } // namespace vgx
