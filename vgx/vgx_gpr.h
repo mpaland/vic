@@ -63,7 +63,14 @@ typedef enum enum_text_mode_type {
 class gpr
 {
 public:
-  // color assembly
+  /**
+   * Color assembly, returns ARGB format out of color components
+   * \param red Red color
+   * \param green Green color
+   * \param blue Blue color
+   * \param alpha Alpha level, 0 = opaque, 255 = completely transparent
+   * \return ARGB color
+   */
   inline std::uint32_t color_rgb(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha = 0U) const
   { return static_cast<std::uint32_t>((((std::uint32_t)alpha) << 24U) | (((std::uint32_t)red) << 16U) | (((std::uint32_t)green) << 8U) | ((std::uint32_t)blue)); }
 
