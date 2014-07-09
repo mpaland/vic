@@ -462,7 +462,7 @@ void gpr::drv_sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius,
         int16_t xr = xp - x;
         int16_t yr = y - yp;   // * -1 for coords to screen conversion
         if ( ((xr * xr + yr * yr) >= inner_radius * inner_radius) &&
-             ((xr * xr + yr * yr) <= outer_radius * outer_radius) &&
+             ((xr * xr + yr * yr) <  outer_radius * outer_radius) &&
             !((yss * xr) >  (xss * yr)) &&
              ((yse * xr) >= (xse * yr))
            ) {
