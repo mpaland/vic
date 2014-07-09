@@ -47,6 +47,14 @@ public:
     : head_(head)
   { };
 
+  /**
+   * Check if the given coordinate is inside the control
+   * \param x X coordinate
+   * \param y Y coordinate
+   * \return true if coordinate is inside the control
+   */
+  virtual bool is_inside(std::int16_t x, std::int16_t y) = 0;
+
 protected:
   drv& head_;
 
