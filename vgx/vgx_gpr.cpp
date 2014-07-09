@@ -205,8 +205,7 @@ void gpr::drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_
   if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
   if (y0 > y1) { tmp = y0; y0 = y1; y1 = tmp; }
 
-  tmp = x0;
-  for (; y0 <= y1; ++y0) {
+  for (tmp = x0; y0 <= y1; ++y0) {
     for (x0 = tmp; x0 <= x1; ++x0) {
       pixel_set(x0, y0);
     }
@@ -303,17 +302,17 @@ void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, 
 
 void gpr::drv_arc(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
 {
-  std::int16_t sx = x2-x1, sy = y2-y1;
-  std::int32_t xx = x0-x1, yy = y0-y1, xy;           // relative values for checks
-  std::int32_t dx, dy, err, cur = xx * sy - yy *sx;  // curvature
+  std::int16_t sx = x2 - x1, sy = y2 - y1;
+  std::int32_t xx = x0 - x1, yy = y0 - y1, xy;        // relative values for checks
+  std::int32_t dx, dy, err, cur = xx * sy - yy * sx;  // curvature
 
   // sign of gradient must not change
   if (xx * sx > 0 || yy * sy > 0) {
     return;
   }
 
-  if (sx * (int32_t)sx + sy * (int32_t)sy > xx * xx + yy * yy) {  // begin with longer part
-    x2 = x0; x0 = sx + x1; y2 = y0; y0 = sy + y1; cur = -cur;     // swap
+  if (sx * (std::int32_t)sx + sy * (std::int32_t)sy > xx * xx + yy * yy) {  // begin with longer part
+    x2 = x0; x0 = sx + x1; y2 = y0; y0 = sy + y1; cur = -cur;               // swap
   }  
   if (cur != 0) {                                   // no straight line
     xx += sx; xx *= sx = x0 < x2 ? 1 : -1;          // x step direction
@@ -450,17 +449,16 @@ void gpr::drv_sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius,
     bool q24s = (start_angle >= 90U && start_angle < 180U) || (start_angle >= 270U);
     bool q24e = (end_angle   >= 90U && end_angle   < 180U) || (end_angle   >= 270U);
 
-    std::int16_t xss = (uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 8U : 0U)) * (int16_t)(q14s ? 1 : -1);
-    std::int16_t yss = (uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 0U : 8U)) * (int16_t)((start_angle < 180U) ? 1 : -1);
-    std::int16_t xse = (uint8_t)(sin((q24e ? end_angle   - 90U : end_angle)   % 90U) >> (q24e ? 8U : 0U)) * (int16_t)(q14e ? 1 : -1);
-    std::int16_t yse = (uint8_t)(sin((q24e ? end_angle   - 90U : end_angle)   % 90U) >> (q24e ? 0U : 8U)) * (int16_t)((end_angle   < 180U) ? 1 : -1);
+    std::int16_t xss = (std::uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 8U : 0U)) * (std::int16_t)(q14s ? 1 : -1);
+    std::int16_t yss = (std::uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 0U : 8U)) * (std::int16_t)((start_angle < 180U) ? 1 : -1);
+    std::int16_t xse = (std::uint8_t)(sin((q24e ? end_angle   - 90U : end_angle)   % 90U) >> (q24e ? 8U : 0U)) * (std::int16_t)(q14e ? 1 : -1);
+    std::int16_t yse = (std::uint8_t)(sin((q24e ? end_angle   - 90U : end_angle)   % 90U) >> (q24e ? 0U : 8U)) * (std::int16_t)((end_angle   < 180U) ? 1 : -1);
 
-    std::int16_t xp, yp;
-    for (yp = y - outer_radius; yp <= y + outer_radius; yp++) {
-      for (xp = x - outer_radius; xp <= x + outer_radius; xp++) {
+    for (std::int16_t yp = y - outer_radius; yp <= y + outer_radius; yp++) {
+      for (std::int16_t xp = x - outer_radius; xp <= x + outer_radius; xp++) {
         // check if xp/yp is within the sector
-        int16_t xr = xp - x;
-        int16_t yr = y - yp;   // * -1 for coords to screen conversion
+        std::int16_t xr = xp - x;
+        std::int16_t yr = y - yp;   // * -1 for coords to screen conversion
         if ( ((xr * xr + yr * yr) >= inner_radius * inner_radius) &&
              ((xr * xr + yr * yr) <  outer_radius * outer_radius) &&
             !((yss * xr) >  (xss * yr)) &&
