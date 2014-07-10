@@ -513,7 +513,7 @@ void gpr::drv_line_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::in
   // because they go right through the center of every pixel
   if ((DeltaY = y1 - y0) == 0) {
     // horizontal line
-    drv_line_horz(x0, x1, y0);
+    drv_line_horz(x0, y0, x1);
     return;
   }
   if (DeltaX == 0) {
