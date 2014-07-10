@@ -44,8 +44,8 @@ typedef enum enum_line_style_type {
 } line_style_type;
 
 typedef struct struct_vertex_type {
-  std::uint16_t x;
-  std::uint16_t y;
+  std::int16_t x;
+  std::int16_t y;
 } vertex_type;
 
 typedef struct struct_gradient_type {
@@ -316,7 +316,7 @@ public:
    * \param section Section number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
    * \return true if successful
    */
-  bool disc_section(std::int16_t x, std::int16_t y, std::int16_t radius, std::uint8_t section);
+  bool disc_section(std::int16_t x, std::int16_t y, std::uint16_t radius, std::uint8_t section);
 
   /**
    * Draw a sector (filled circle piece)

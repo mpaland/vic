@@ -53,10 +53,10 @@ public:
    * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
   drv_digole(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
-             orientation_type orientation, interface_type interface, std::uint8_t interface_port, std::uint32_t uart_baudrate = 9600U)
+             orientation_type orientation, interface_type iface, std::uint8_t interface_port, std::uint32_t uart_baudrate = 9600U)
     : drv_head(xsize, ysize, xoffset, yoffset)
     , orientation_(orientation)
-    , interface_(interface)
+    , interface_(iface)
     , interface_port_(interface_port)
     , uart_baudrate_(uart_baudrate)
   { }
@@ -120,15 +120,15 @@ public:
   virtual void drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r);
   virtual void drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height);
 
-  virtual bool drv_text_set_font(const font_type& font);
-  virtual bool drv_text_set_pos(std::int16_t x, std::int16_t y);
-  virtual void drv_text_set_mode(text_mode_type mode);
-  virtual void drv_text_char(std::uint16_t ch);
-  virtual std::uint16_t drv_text_string(const std::uint8_t* string);
+  //virtual bool drv_text_set_font(const font_type& font);
+  //virtual bool drv_text_set_pos(std::int16_t x, std::int16_t y);
+  //virtual void drv_text_set_mode(text_mode_type mode);
+  //virtual void drv_text_char(std::uint16_t ch);
+  //virtual std::uint16_t drv_text_string(const std::uint8_t* string);
 
 private:
   // send buffer to display
-  void send(const std::uint8_t* buffer, std::uint8_t length);
+  void send(std::uint8_t* buffer, std::uint8_t length);
 
 private:
   orientation_type  orientation_;       // screen orientation

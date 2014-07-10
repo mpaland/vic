@@ -283,7 +283,7 @@ void drv_digole::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std
 }
 
 
-void drv_digole::send(const std::uint8_t* buffer, std::uint8_t length)
+void drv_digole::send(std::uint8_t* buffer, std::uint8_t length)
 {
   switch (interface_) {
     case interface_spi :

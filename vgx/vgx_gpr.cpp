@@ -153,8 +153,8 @@ void gpr::drv_line_width(std::int16_t x0, std::int16_t y0, std::int16_t x1, std:
   std::int16_t er, er2;
 
 // TBD: calculate wd without using float
-  std::uint16_t wd, w;
-  wd = width;
+  std::int16_t wd, w;
+  wd = (int16_t)width;
 
   // start Bresenham line algorithm
   dx = x1 > x0 ? x1 - x0 : x0 - x1;
@@ -223,12 +223,12 @@ void gpr::drv_triangle(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::i
 
 void gpr::drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
 {
-  // draw a solid triangle using two Bresenham line algorithms in a y-value loop
-  // sort is:    p0
-  //            /  \
-  //           p1--p2
-  //
-  // lines run from p0 to p1 and p2. When y reaches p1 or p2 (ymin), according line is exchanged
+  /* draw a solid triangle using two Bresenham line algorithms in a y-value loop
+     sort is:    p0
+                /  \
+               p1--p2
+     lines run from p0 to p1 and p2. When y reaches p1 or p2 (ymin), according line is exchanged
+  */
 
   // check special cases
   if ((y0 == y1) && (y0 == y2)) {
@@ -789,7 +789,7 @@ bool gpr::box_gradient(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::i
   std::uint16_t s = 0U, c = 0U;
   if (gradient.horizontal) {
     // horizontal gradient
-    for (std::uint16_t x = x0; x <= x1; ++x) {
+    for (std::int16_t x = x0; x <= x1; ++x) {
       color_set(color_rgb((std::uint8_t)((((std::uint16_t)color_get_red  (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_red  (gradient.colors[c + 1U]) * s)) / seg),
                           (std::uint8_t)((((std::uint16_t)color_get_green(gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_green(gradient.colors[c + 1U]) * s)) / seg),
                           (std::uint8_t)((((std::uint16_t)color_get_blue (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_blue (gradient.colors[c + 1U]) * s)) / seg)
@@ -803,7 +803,7 @@ bool gpr::box_gradient(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::i
   }
   else {
     // vertical gradient
-    for (std::uint16_t y = y0; y <= y1; ++y) {
+    for (std::int16_t y = y0; y <= y1; ++y) {
       color_set(color_rgb((std::uint8_t)((((std::uint16_t)color_get_red  (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_red  (gradient.colors[c + 1U]) * s)) / seg),
                           (std::uint8_t)((((std::uint16_t)color_get_green(gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_green(gradient.colors[c + 1U]) * s)) / seg),
                           (std::uint8_t)((((std::uint16_t)color_get_blue (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_blue (gradient.colors[c + 1U]) * s)) / seg)
@@ -945,7 +945,7 @@ bool gpr::disc(std::int16_t x, std::int16_t y, std::uint16_t radius)
 
 
 // disc section
-bool gpr::disc_section(std::int16_t x, std::int16_t y, std::int16_t radius, std::uint8_t section)
+bool gpr::disc_section(std::int16_t x, std::int16_t y, std::uint16_t radius, std::uint8_t section)
 {
   drv_disc_section(x, y, radius, section);
   primitive_done();
@@ -1044,11 +1044,11 @@ void gpr::drv_text_char(std::uint16_t ch)
       if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
         // found char
         const font_charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
-        std::int16_t x, y, d = 0;
-        for (y = 0; y < info->ysize; ++y) {
+        std::uint16_t x, y, d = 0;
+        for (y = 0U; y < info->ysize; ++y) {
           d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
-          for (x = 0; x < info->xsize ; ++x) {
-            std::uint8_t intensity = (info->data[((x * color_depth) >> 3U) + d] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
+          for (x = 0U; x < info->xsize ; ++x) {
+            std::uint8_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
             if (intensity) {
               if (color_depth == VGX_FONT_AA_NONE) {
                 pixel_set(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y);
