@@ -23,7 +23,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Bar control
+// \brief Universal bar control
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -31,6 +31,7 @@
 #define _VGX_CTRL_BAR_H_
 
 #include "../vgx_ctrl.h"
+#include "../vgx_fonts.h"
 
 
 namespace vgx {
@@ -38,16 +39,103 @@ namespace vgx {
 class bar : public ctrl
 {
 public:
+  typedef enum enum_oriantation_type {
+    horizontal_top = 0,   // horizontal orientation, scale/frame on top
+    horizontal_bottom,    // horizontal orientation, scale/frame on bottom
+    vertical_left,        // vertical orientation, scale/frame on left side
+    vertical_right        // vertical orientation, scale/frame on right side
+  } orientation_type;
+
+  typedef struct struct_color_mark_type {
+    std::uint32_t color;                  // ARGB value, A = 255 doesn't draw the segment
+    std::int16_t  start;                  // start position, must be within valid range
+    std::int16_t  end;                    // end position, must be within valid range
+  } color_mark_type;
+
+  typedef struct struct_tick_mark_type {
+    bool          major;                  // true for major tick, false for minor tick mark
+    std::int16_t  pos;                    // position of the tick, must be within valid range
+    const std::uint8_t* label;            // label string in ASCII/UTF-8 format, nullptr if no label
+  } tick_mark_type;
+
+  typedef struct struct_config_type {
+    std::int16_t      x;                  // left coordinate
+    std::int16_t      y;                  // top  coordinate
+    std::uint16_t     width;              // width of the bar
+    std::uint16_t     height;             // height of the bar
+    orientation_type  orientation;        // orientation of the bar, see orientation_type
+    std::int16_t      range_lower;        // lower range
+    std::int16_t      range_upper;        // upper range
+    std::uint32_t     color_scale;        // scale bar (tick) color
+    std::uint32_t     color_marker;       // marker color
+    std::uint32_t     color_bg;           // background color
+    color_mark_type*  color_mark;         // array of color marks
+    std::uint16_t     color_mark_count;   // number of color marks
+    tick_mark_type*   tick_mark;          // array of tick marks
+    std::uint16_t     tick_mark_count;    // number of tick marks
+    const font_type*        font_tick;          // font for the ticks
+    const font_type*        font_marker;        // font for the marker
+  } config_type;
+
   /**
    * ctor
-   * \param driver Reference to driver
+   * \param head Reference to the head driver
+   * \param config Configuration params
    */
-  bar(drv& head)
+  bar(drv& head, config_type& config)
     : ctrl(head)
-  {
-    head_.box(50,50,100,100);
-  };
+    , config_(config)
+    , pos_(config.range_lower)
+  { render(config.range_lower, true); };
 
+  /**
+   * Set new marker color
+   * \param color New color for the marker, marker is redrawn
+   */
+  void set_marker_color(std::uint32_t color)
+  { config_.color_marker = color; redraw(); }
+
+  /**
+   * Set the new minimum and maximum range
+   * \param lower Lower range limit including 'lower' value
+   * \param upper Upper range limit including 'upper' value
+   */
+  void set_range(std::int16_t lower, std::int16_t upper)
+  { config_.range_lower = pos_ = lower; config_.range_upper = upper; redraw(); }
+
+  /**
+   * Set marker to position
+   * \param pos New position - must be within range
+   * \param ch Character on the marker
+   */
+  void set_marker(std::int16_t pos, char ch)
+  { if (pos >= config_.range_lower && pos <= config_.range_upper) render(pos); }
+
+  /**
+   * Returns the current position of the marker
+   * \return Current position
+   */
+  std::int16_t get_marker()
+  { return pos_; }
+
+  /**
+   * Redraw the control
+   */
+  void redraw()
+  { render(pos_, true); }
+
+  virtual bool is_inside(std::int16_t x, std::int16_t y)
+  { return config_.x <= x && x <= config_.x + config_.width &&
+           config_.y <= y && y <= config_.y + config_.height; }
+
+private:
+  void render(std::int16_t pos, bool refresh = false);
+  void render_color_marks(std::int16_t lower, std::int16_t upper);
+  void render_tick_marks();
+  void render_marker();
+
+  config_type   config_;  // configuration
+  std::int16_t  pos_;     // actual position, valid from range_lower to range_upper
 };
 
 } // namespace vgx
