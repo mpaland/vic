@@ -162,7 +162,7 @@ public:
    * Set alpha blending level of framebuffer/plane. If driver has no alpha support,
    * activate the according framebuffer/plane
    * \param index The index of the framebuffer/plane, 0 for 1st
-   * \param alpha Alpha level, 0 = disabled and complete transparent, 255 = opaque or activated
+   * \param alpha Alpha level, 0 = opaque/active, 255 = complete transparent/disabled
    */
   virtual bool framebuffer_set(std::uint8_t index, std::uint8_t alpha)
   { (void)index; (void)alpha; return false; }
