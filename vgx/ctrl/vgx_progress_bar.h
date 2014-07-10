@@ -82,7 +82,7 @@ public:
    * \param upper Upper range limit including 'upper' value
    */
   void set_range(std::int16_t lower, std::int16_t upper)
-  { config_.range_lower = lower; config_.range_upper = upper; }
+  { config_.range_lower = pos_ = lower; config_.range_upper = upper; redraw(); }
 
   /**
    * Set new position of the progress bar control
