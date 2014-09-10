@@ -176,6 +176,14 @@ public:
 // G R A P H I C   P R I M I T I V E   F U N C T I O N S
 
   /**
+   * Plot a point
+   * \param x X value
+   * \param y Y value
+   * \return true if successful
+   */
+  bool plot(std::int16_t x, std::int16_t y);
+
+  /**
    * Draw a line, width is one pixel
    * \param x0 X start value
    * \param y0 Y start value
