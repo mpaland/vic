@@ -86,6 +86,8 @@ public:
     : ctrl(head)
     , config_(config)
     , pos_(config.range_lower)
+    , marker_l_(0)
+    , marker_u_(0)
   { render(config.range_lower, true); };
 
   /**
@@ -108,8 +110,8 @@ public:
    * \param pos New position - must be within range
    * \param ch Character on the marker
    */
-  void set_marker(std::int16_t pos, char ch)
-  { if (pos >= config_.range_lower && pos <= config_.range_upper) render(pos); }
+  void set_marker(std::int16_t pos, char ch = 0)
+  { if (pos != pos_) render(pos); }
 
   /**
    * Returns the current position of the marker
@@ -130,12 +132,15 @@ public:
 
 private:
   void render(std::int16_t pos, bool refresh = false);
-  void render_color_marks(std::int16_t lower, std::int16_t upper);
+  void render_color_marks();
   void render_tick_marks();
   void render_marker();
+  void erase_marker();
 
-  config_type   config_;  // configuration
-  std::int16_t  pos_;     // actual position, valid from range_lower to range_upper
+  config_type   config_;    // configuration
+  std::int16_t  pos_;       // actual position, valid from range_lower to range_upper
+  std::int16_t  marker_l_;  // internal marker var
+  std::int16_t  marker_u_;  // internal marker var
 };
 
 } // namespace vgx
