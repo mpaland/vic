@@ -73,30 +73,34 @@ void gpr::drv_line(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16
 
   // check for straight lines
   if (x0 == x1 && y0 < y1) {
-    for (; y0 <= y1; ++y0)
+    for (; y0 <= y1; ++y0) {
       pixel_set(x0, y0);
+    }
     return;
   }
   if (x0 == x1 && y0 > y1) {
-    for (; y0 >= y1; --y0)
+    for (; y0 >= y1; --y0) {
       pixel_set(x0, y0);
+    }
     return;
   }
   if (y0 == y1 && x0 < x1) {
-    for (; x0 <= x1; ++x0)
+    for (; x0 <= x1; ++x0) {
       pixel_set(x0, y0);
+    }
     return;
   }
   if (y0 == y1 && x0 > x1) {
-    for (; x0 >= x1; --x0)
+    for (; x0 >= x1; --x0) {
       pixel_set(x0, y0);
+    }
     return;
   }
 
   // start Bresenham line algorithm
   dx = x1 > x0 ? x1 - x0 : x0 - x1;
-  dy = y1 > y0 ? y1 - y0 : y0 - y1;
   sx = x1 > x0 ? 1 : -1;
+  dy = y1 > y0 ? y1 - y0 : y0 - y1;
   sy = y1 > y0 ? 1 : -1;
   er = dx - dy;
 
@@ -126,8 +130,8 @@ void gpr::drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
       pixel_set(x0, y0);
   }
   else {
-    for (; x0 >= x1; --x0)
-      pixel_set(x0, y0);
+    for (; x1 <= x0; ++x1)
+      pixel_set(x1, y0);
   }
 }
 
@@ -140,8 +144,8 @@ void gpr::drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
       pixel_set(x0, y0);
   }
   else {
-    for (; y0 >= y1; --y0)
-      pixel_set(x0, y0);
+    for (; y1 <= y0; ++y1)
+      pixel_set(x0, y1);
   }
 }
 
@@ -698,32 +702,48 @@ void gpr::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16
 
   if (x0 < x1) {
     if (y0 < y1) {
-      for (h = height; h != 0U; --h)
-        for (w = width; w != 0U; --w)
+      for (h = height; h != 0U; --h) {
+        for (w = width; w != 0U; --w) {
           pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
     }
+      }
+    }
     else {
-      for (h = 0U; h < height; ++h)
-        for (w = width; w != 0U; --w)
+      for (h = 0U; h < height; ++h) {
+        for (w = width; w != 0U; --w) {
           pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
+    }
+  }
     }
   }
   else {
     if (y0 < y1) {
-      for (h = height; h != 0U; --h)
-        for (w = 0U; w < width; ++w)
+      for (h = height; h != 0U; --h) {
+        for (w = 0U; w < width; ++w) {
           pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
+    }
+      }
     }
     else {
-      for (h = 0U; h < height; ++h)
-        for (w = 0U; w < width; ++w)
+      for (h = 0U; h < height; ++h) {
+        for (w = 0U; w < width; ++w) {
           pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
     }
+  }
+}
   }
 }
 
 
 ///////////////////////////////////////////////////////////////////////////////
+
+// draw a point
+bool gpr::plot(std::int16_t x, std::int16_t y)
+{
+  pixel_set(x, y);
+  primitive_done();
+  return true;
+}
 
 
 // draw a solid line from x0/y0 to x1/y1
