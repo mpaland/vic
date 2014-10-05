@@ -27,15 +27,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_SKELETON_
-#define _VGX_DRV_SKELETON_
+#ifndef _VGX_DRV_SKELETON_H_
+#define _VGX_DRV_SKELETON_H_
 
-#include "vgx/vgx_drv.h"
+#include "vgx_drv.h"
 
 
 namespace vgx {
+namespace head {
 
-class drv_skeleton : public drv_head<std::uint32_t, 24U>
+
+class skeleton : public drv
 {
 public:
 /////////////////////////////////////////////////////////////////////////////
@@ -48,15 +50,15 @@ public:
    * \param xoffset X offset of the screen, relative to top/left corner
    * \param yoffset Y offset of the screen, relative to top/left corner
    */
-  drv_skeleton(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
-    : drv_head(xsize, ysize, xoffset, yoffset)
+  skeleton(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
   { }
 
   /**
    * dtor
    * Deinit the driver
    */
-  ~drv_skeleton()
+  ~skeleton()
   { deinit(); }
 
   // mandatory driver functions
@@ -134,6 +136,7 @@ public:
   virtual std::uint16_t drv_text_string(const std::uint8_t* string);
 };
 
+} // namespace head
 } // namespace vgx
 
 #endif  // _VGX_DRV_SKELETON_H_

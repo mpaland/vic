@@ -34,59 +34,61 @@
 
 
 namespace vgx {
+namespace head {
 
 
-void drv_linux::init()
+void linux::init()
 {
 
 }
 
 
-void drv_linux::deinit()
+void linux::deinit()
 {
 
 }
 
 
-void drv_linux::brightness_set(std::uint8_t)
+void linux::brightness_set(std::uint8_t)
 {
 
 }
 
 
-const char* drv_linux::version() const
+const char* linux::version() const
 {
   return (const char*)VGX_DRV_VERSION;
 }
 
 
-void drv_linux::primitive_done()
+void linux::primitive_done()
 {
 
 }
 
 
-void drv_linux::cls()
+void linux::cls()
 {
 
 }
 
 
-void drv_linux::pixel_set(int16_t x, int16_t y)
-{
-  return true;
-}
-
-
-void drv_linux::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void linux::pixel_set(int16_t x, int16_t y)
 {
   return true;
 }
 
 
-std::uint32_t drv_linux::pixel_get(int16_t x, int16_t y) const
+void linux::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+{
+  return true;
+}
+
+
+std::uint32_t linux::pixel_get(int16_t x, int16_t y) const
 {
   return 0U;
 }
 
+} // namespace head
 } // namespace vgx

@@ -27,15 +27,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_DIGOLE_
-#define _VGX_DRV_DIGOLE_
+#ifndef _VGX_DRV_DIGOLE_H_
+#define _VGX_DRV_DIGOLE_H_
 
 #include "vgx_drv.h"
 
 
 namespace vgx {
+namespace head {
 
-class drv_digole : public drv_head<std::uint32_t, 24U>
+
+class digole : public drv
 {
 public:
 /////////////////////////////////////////////////////////////////////////////
@@ -49,12 +51,12 @@ public:
    * \param yoffset Y offset of the screen, relative to top/left corner
    * \param orientation Screen orientation
    * \param interface Interface mode, SPI, I²C and UART are valid
-   * \param interface_port Interface port: SPI: channel id, I²C: address, UART: port
+   * \param interface_port Interface port: SPI: device id, I²C: address, UART: port
    * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
-  drv_digole(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
-             orientation_type orientation, interface_type iface, std::uint8_t interface_port, std::uint32_t uart_baudrate = 9600U)
-    : drv_head(xsize, ysize, xoffset, yoffset)
+  digole(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
+             orientation_type orientation, interface_type iface, std::uint16_t interface_port, std::uint32_t uart_baudrate = 9600U)
+    : drv(xsize, ysize, xoffset, yoffset)
     , orientation_(orientation)
     , interface_(iface)
     , interface_port_(interface_port)
@@ -65,7 +67,7 @@ public:
    * dtor
    * Deinit the driver
    */
-  ~drv_digole()
+  ~digole()
   { deinit(); }
 
   // mandatory driver functions
@@ -128,16 +130,17 @@ public:
 
 private:
   // send buffer to display
-  void send(std::uint8_t* buffer, std::uint8_t length);
+  bool write(std::uint8_t* buffer, std::uint8_t length);
 
 private:
   orientation_type  orientation_;       // screen orientation
   interface_type    interface_;         // interface type
   std::uint32_t     uart_baudrate_;     // baudrate for UART interface mode
-  std::uint8_t      interface_port_;    // interface port
+  std::uint16_t     interface_port_;    // interface port
   std::uint8_t      cmd_[16U];          // command buffer
 };
 
+} // namespace head
 } // namespace vgx
 
-#endif  // _VGX_DRV_SKELETON_H_
+#endif  // _VGX_DRV_DIGOLE_H_

@@ -34,57 +34,58 @@
 
 
 namespace vgx {
+namespace head {
 
 
-void drv_skeleton::init()
+void skeleton::init()
 {
 
 }
 
 
-void drv_skeleton::deinit()
+void skeleton::deinit()
 {
 
 }
 
 
-void drv_skeleton::brightness_set(std::uint8_t)
+void skeleton::brightness_set(std::uint8_t)
 {
 
 }
 
 
-const char* drv_skeleton::version() const
+const char* skeleton::version() const
 {
   return (const char*)VGX_DRV_VERSION;
 }
 
 
-void drv_skeleton::primitive_done()
+void skeleton::primitive_done()
 {
 
 }
 
 
-void drv_skeleton::cls()
+void skeleton::cls()
 {
 
 }
 
 
-void drv_skeleton::pixel_set(int16_t x, int16_t y)
-{
-  return true;
-}
-
-
-void drv_skeleton::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void skeleton::pixel_set(std::int16_t x, std::int16_t y)
 {
   return true;
 }
 
 
-std::uint32_t drv_skeleton::pixel_get(int16_t x, int16_t y) const
+void skeleton::pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color)
+{
+  return true;
+}
+
+
+std::uint32_t skeleton::pixel_get(std::int16_t x, std::int16_t y) const
 {
   return 0U;
 }
@@ -98,4 +99,5 @@ void drv_skeleton::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 
 */
 
+} // namespace head
 } // namespace vgx

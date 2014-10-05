@@ -35,11 +35,11 @@
 
 
 namespace vgx {
+namespace head {
 
-
-void drv_windows::worker_thread(void* arg)
+void windows::worker_thread(void* arg)
 {
-  drv_windows* d = static_cast<drv_windows*>(arg);
+  windows* d = static_cast<windows*>(arg);
 
   // create a window with emulated screen size
   HINSTANCE hInstance = ::GetModuleHandle(NULL);
@@ -59,7 +59,7 @@ void drv_windows::worker_thread(void* arg)
   wc.hIconSm = LoadIcon(NULL, IDI_APPLICATION);
   if (!RegisterClassEx(&wc)) {
     ::MessageBox(NULL, L"Error registering class", L"Error", MB_OK | MB_ICONERROR);
-    d->wnd_state_ = drv_windows::error;
+    d->wnd_state_ = windows::error;
     return;
   }
 
@@ -87,7 +87,7 @@ void drv_windows::worker_thread(void* arg)
   );
   if (!d->hwnd_) {
     ::MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
-    d->wnd_state_ = drv_windows::error;
+    d->wnd_state_ = windows::error;
     return;
   }
   ::SetWindowPos(d->hwnd_, HWND_TOP, d->xpos_, d->ypos_, 0, 0, SWP_NOSIZE |SWP_NOZORDER | SWP_SHOWWINDOW);
@@ -98,7 +98,7 @@ void drv_windows::worker_thread(void* arg)
   d->hbmp_   = ::CreateCompatibleBitmap(hDC, d->xsize_ * d->xzoom_, d->ysize_ * d->yzoom_);
   ::SelectObject(d->hmemdc_, d->hbmp_);
   ::ReleaseDC(d->hwnd_, hDC);
-  d->wnd_state_ = drv_windows::ready;
+  d->wnd_state_ = windows::ready;
 
   // process upon WM_QUIT or error
   ::MSG Msg;
@@ -110,13 +110,13 @@ void drv_windows::worker_thread(void* arg)
 }
 
 
-void drv_windows::init()
+void windows::init()
 {
   // create window thread
   thread_handle_ = reinterpret_cast<HANDLE>(::_beginthreadex(
     NULL,
     0U,
-    reinterpret_cast<unsigned(__stdcall *)(void*)>(&drv_windows::worker_thread),
+    reinterpret_cast<unsigned(__stdcall *)(void*)>(&windows::worker_thread),
     reinterpret_cast<void*>(this),
     0U,
     NULL
@@ -127,7 +127,7 @@ void drv_windows::init()
 }
 
 
-void drv_windows::deinit()
+void windows::deinit()
 {
   ::CloseWindow(hwnd_);
   ::DeleteObject(hbmp_);
@@ -135,18 +135,18 @@ void drv_windows::deinit()
 }
 
 
-void drv_windows::brightness_set(std::uint8_t)
+void windows::brightness_set(std::uint8_t)
 {
 }
 
 
-const char* drv_windows::version() const
+const char* windows::version() const
 {
   return (const char*)VGX_DRV_VERSION;
 }
 
 
-void drv_windows::primitive_done()
+void windows::primitive_done()
 {
   // copy memory bitmap to screen
   ::HDC hDC = ::GetDC(hwnd_);
@@ -155,7 +155,7 @@ void drv_windows::primitive_done()
 }
 
 
-void drv_windows::cls()
+void windows::cls()
 {
   ::HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
   ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
@@ -166,17 +166,13 @@ void drv_windows::cls()
 }
 
 
-void drv_windows::pixel_set(int16_t x, int16_t y)
+void windows::pixel_set(int16_t x, int16_t y)
 {
-  for (int c = 0; c < xzoom_; ++c) {
-    for (int r = 0; r < yzoom_; ++r) {
-      (void)::SetPixel(hmemdc_, x * xzoom_ + c, y * yzoom_ + r, RGB(color_get_red(color_get()), color_get_green(color_get()), color_get_blue(color_get())));
-    }
-  }
+  pixel_set_color(x, y, color_get());
 }
 
 
-void drv_windows::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void windows::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 {
   for (int c = 0; c < xzoom_; ++c) {
     for (int r = 0; r < yzoom_; ++r) {
@@ -186,10 +182,11 @@ void drv_windows::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 }
 
 
-std::uint32_t drv_windows::pixel_get(int16_t x, int16_t y) const
+std::uint32_t windows::pixel_get(int16_t x, int16_t y) const
 {
   COLORREF clr = ::GetPixel(hmemdc_, x * xzoom_, y * yzoom_);
   return color_rgb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
 }
 
+} // namespace head
 } // namespace vgx

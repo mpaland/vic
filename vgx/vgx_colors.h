@@ -36,8 +36,8 @@
 namespace vgx {
 
 // color assembly
-#define VGX_COLOR_RGB(red, green, blue) \
-  static_cast<std::uint32_t>((((std::uint32_t)red) << 16U) | (((std::uint32_t)green) << 8U) | ((std::uint32_t)blue))
+#define VGX_COLOR_RGB(RED, GREEN, BLUE) \
+  static_cast<std::uint32_t>((((std::uint32_t)RED) << 16U) | (((std::uint32_t)GREEN) << 8U) | ((std::uint32_t)BLUE))
 
 
 #ifndef VGX_COLOR_BLACK

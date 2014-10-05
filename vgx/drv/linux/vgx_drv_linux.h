@@ -27,16 +27,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_LINUX_
-#define _VGX_DRV_LINUX_
+#ifndef _VGX_DRV_LINUX_H_
+#define _VGX_DRV_LINUX_H_
 
-#include "vgx/vgx_drv.h"
+#include "vgx_drv.h"
 
 
 namespace vgx {
+namespace head {
 
-// define 32bit 24bpp (no alpha channel) linux head
-class drv_linux : public drv_head<std::uint32_t, 24U>
+
+class linux : public drv
 {
 public:
 /////////////////////////////////////////////////////////////////////////////
@@ -53,9 +54,9 @@ public:
    * \param xzoom X zoom factor
    * \param yzoom Y zoom factor
    */
-  drv_linux(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
+  linux(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
             std::int16_t xpos, std::int16_t ypos, std::uint8_t xzoom, std::uint8_t yzoom)
-    : drv_head(xsize, ysize, xoffset, yoffset)
+    : drv(xsize, ysize, xoffset, yoffset)
     , xpos_(xpos)
     , ypos_(ypos)
     , xzoom_(xzoom)
@@ -66,7 +67,7 @@ public:
    * dtor
    * Deinit the driver
    */
-  ~drv_linux()
+  ~linux()
   { deinit(); }
 
   // mandatory driver functions
@@ -104,6 +105,7 @@ public:
   virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const;
 };
 
+} // namesapce head
 } // namespace vgx
 
-#endif  // _VGX_DRV_SKELETON_H_
+#endif  // _VGX_DRV_LINUX_H_

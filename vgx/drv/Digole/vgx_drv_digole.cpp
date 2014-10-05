@@ -34,13 +34,14 @@
 
 
 namespace vgx {
+namespace head {
 
 
-void drv_digole::init()
+void digole::init()
 {
   if (interface_ == interface_i2c) {
     // set I²C address
-    std::uint8_t i2c_adr = interface_port_;
+    std::uint8_t i2c_adr = static_cast<std::uint8_t>(interface_port_);
     interface_port_ = 0x27;   // use default I²C address for init
     cmd_[0] = 'S';
     cmd_[1] = 'I';
@@ -48,7 +49,7 @@ void drv_digole::init()
     cmd_[3] = 'C';
     cmd_[4] = 'A';
     cmd_[5] =  i2c_adr;
-    send(cmd_, 6U);
+    write(cmd_, 6U);
     interface_port_ = i2c_adr;  // use new address now
   }
 
@@ -56,7 +57,7 @@ void drv_digole::init()
   cmd_[0] = 'S';
   cmd_[1] = 'D';
   cmd_[2] =  static_cast<std::uint8_t>(orientation_);
-  send(cmd_, 3U);
+  write(cmd_, 3U);
 
   // clear screen
   cls();
@@ -69,16 +70,16 @@ void drv_digole::init()
     cmd_[0] = 'S';
     cmd_[1] = 'B';
     switch (uart_baudrate_) {
-      case    300 : cmd_[2] = '3'; cmd_[3] = '0'; cmd_[4] = '0'; send(cmd_, 5U); break;
-      case   1200 : cmd_[2] = '1'; cmd_[3] = '2'; cmd_[4] = '0'; cmd_[5] = '0'; send(cmd_, 6U); break;
-      case   2400 : cmd_[2] = '2'; cmd_[3] = '4'; cmd_[4] = '0'; cmd_[5] = '0'; send(cmd_, 6U); break;
-      case   4800 : cmd_[2] = '4'; cmd_[3] = '8'; cmd_[4] = '0'; cmd_[5] = '0'; send(cmd_, 6U); break;
-      case   9600 : cmd_[2] = '9'; cmd_[3] = '6'; cmd_[4] = '0'; cmd_[5] = '0'; send(cmd_, 6U); break;
-      case  19200 : cmd_[2] = '1'; cmd_[3] = '9'; cmd_[4] = '2'; cmd_[5] = '0'; cmd_[6] = '0'; send(cmd_, 7U); break;
-      case  28800 : cmd_[2] = '2'; cmd_[3] = '8'; cmd_[4] = '8'; cmd_[5] = '0'; cmd_[6] = '0'; send(cmd_, 7U); break;
-      case  38400 : cmd_[2] = '3'; cmd_[3] = '8'; cmd_[4] = '4'; cmd_[5] = '0'; cmd_[6] = '0'; send(cmd_, 7U); break;
-      case  57600 : cmd_[2] = '5'; cmd_[3] = '7'; cmd_[4] = '6'; cmd_[5] = '0'; cmd_[6] = '0'; send(cmd_, 7U); break;
-      case 115200 : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; send(cmd_, 8U); break;
+      case    300 : cmd_[2] = '3'; cmd_[3] = '0'; cmd_[4] = '0'; write(cmd_, 5U); break;
+      case   1200 : cmd_[2] = '1'; cmd_[3] = '2'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
+      case   2400 : cmd_[2] = '2'; cmd_[3] = '4'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
+      case   4800 : cmd_[2] = '4'; cmd_[3] = '8'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
+      case   9600 : cmd_[2] = '9'; cmd_[3] = '6'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
+      case  19200 : cmd_[2] = '1'; cmd_[3] = '9'; cmd_[4] = '2'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
+      case  28800 : cmd_[2] = '2'; cmd_[3] = '8'; cmd_[4] = '8'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
+      case  38400 : cmd_[2] = '3'; cmd_[3] = '8'; cmd_[4] = '4'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
+      case  57600 : cmd_[2] = '5'; cmd_[3] = '7'; cmd_[4] = '6'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
+      case 115200 : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; write(cmd_, 8U); break;
       default:
         break;
     }
@@ -86,13 +87,13 @@ void drv_digole::init()
 }
 
 
-void drv_digole::deinit()
+void digole::deinit()
 {
   brightness_set(0U);     // display off
 }
 
 
-void drv_digole::brightness_set(std::uint8_t level)
+void digole::brightness_set(std::uint8_t level)
 {
   cmd_[0] = 'B';
   cmd_[1] = 'L';
@@ -101,17 +102,17 @@ void drv_digole::brightness_set(std::uint8_t level)
   cmd_[4] = 'O';
   cmd_[5] = 'O';
   cmd_[6] = level == 0U ? 0U : 1U;
-  send(cmd_, 7U);
+  write(cmd_, 7U);
 }
 
 
-const char* drv_digole::version() const
+const char* digole::version() const
 {
   return (const char*)VGX_DRV_VERSION;
 }
 
 
-void drv_digole::cls()
+void digole::cls()
 {
   cmd_[0] = 'C';
   cmd_[1] = 'L';
@@ -119,21 +120,21 @@ void drv_digole::cls()
   cmd_[3] = 'P';
   cmd_[4] = static_cast<std::uint8_t>(0);
   cmd_[5] = static_cast<std::uint8_t>(0);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::pixel_set(int16_t x, int16_t y)
+void digole::pixel_set(int16_t x, int16_t y)
 {
   cmd_[0] = 'D';
   cmd_[1] = 'P';
   cmd_[2] = static_cast<std::uint8_t>(x);
   cmd_[3] = static_cast<std::uint8_t>(y);
-  send(cmd_, 4U);
+  write(cmd_, 4U);
 }
 
 
-void drv_digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 {
   cmd_[ 0] = 'E';
   cmd_[ 1] = 'S';
@@ -151,20 +152,20 @@ void drv_digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
   cmd_[13] = color_get_red(color_);
   cmd_[14] = color_get_green(color_);
   cmd_[15] = color_get_blue(color_);
-  send(cmd_, 16U);
+  write(cmd_, 16U);
 }
 
 
-// The problem f the Digole displays is that they communicate unidirectional - you can't read anything back.
+// The problem of the Digole displays is that they communicate unidirectional - you can't read anything back.
 // To get the pixel color, a buffer would be necessary to store a display content copy locally, about 60k for 160x128 RGB
 // Therefore this function is not implemented, (font) anti aliasing and fill function don't work correctly.
-std::uint32_t drv_digole::pixel_get(int16_t, int16_t) const
+std::uint32_t digole::pixel_get(int16_t, int16_t) const
 {
   return color_bg_;
 }
 
 
-void drv_digole::color_set(std::uint32_t color)
+void digole::color_set(std::uint32_t color)
 {
   color_ = color;
   cmd_[0] = 'E';
@@ -173,11 +174,11 @@ void drv_digole::color_set(std::uint32_t color)
   cmd_[3] = color_get_red(color);
   cmd_[4] = color_get_green(color);
   cmd_[5] = color_get_blue(color);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+void digole::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
 {
   cmd_[0] = 'L';
   cmd_[1] = 'N';
@@ -185,11 +186,11 @@ void drv_digole::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
+void digole::drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
 {
   cmd_[0] = 'L';
   cmd_[1] = 'N';
@@ -197,11 +198,11 @@ void drv_digole::drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y0);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
+void digole::drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
 {
   cmd_[0] = 'L';
   cmd_[1] = 'N';
@@ -209,11 +210,11 @@ void drv_digole::drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x0);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
+void digole::drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
 {
   std::int16_t tmp;
   if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
@@ -225,11 +226,11 @@ void drv_digole::drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
+void digole::drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
 {
   std::int16_t tmp;
   if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
@@ -241,11 +242,11 @@ void drv_digole::drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std:
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
+void digole::drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
 {
   cmd_[0] = 'C';
   cmd_[1] = 'C';
@@ -253,11 +254,11 @@ void drv_digole::drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
   cmd_[3] = static_cast<std::uint8_t>(y);
   cmd_[4] = static_cast<std::uint8_t>(r);
   cmd_[5] = static_cast<std::uint8_t>(0);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
+void digole::drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
 {
   cmd_[0] = 'C';
   cmd_[1] = 'C';
@@ -265,11 +266,11 @@ void drv_digole::drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
   cmd_[3] = static_cast<std::uint8_t>(y);
   cmd_[4] = static_cast<std::uint8_t>(r);
   cmd_[5] = static_cast<std::uint8_t>(1);
-  send(cmd_, 6U);
+  write(cmd_, 6U);
 }
 
 
-void drv_digole::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
+void digole::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
 {
   cmd_[0] = 'M';
   cmd_[1] = 'A';
@@ -279,25 +280,23 @@ void drv_digole::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std
   cmd_[5] = static_cast<std::uint8_t>(height);
   cmd_[6] = static_cast<std::uint8_t>(x1);
   cmd_[7] = static_cast<std::uint8_t>(y1);
-  send(cmd_, 8U);
+  write(cmd_, 8U);
 }
 
 
-void drv_digole::send(std::uint8_t* buffer, std::uint8_t length)
+bool digole::write(std::uint8_t* buffer, std::uint8_t length)
 {
   switch (interface_) {
     case interface_spi :
-      VGX_SPI(interface_port_, buffer, length, nullptr, 0);
-      break;
+      return out_spi(interface_port_, buffer, length, nullptr, 0);
     case interface_i2c :
-      VGX_I2C(interface_port_, buffer, length, nullptr, 0);
-      break;
+      return out_i2c(static_cast<std::uint8_t>(interface_port_), buffer, length, nullptr, 0);
     case interface_uart :
-      VGX_UART_TX(interface_port_, buffer, length);
-      break;
+      return out_uart_tx(static_cast<std::uint8_t>(interface_port_), buffer, length);
     default:
-      break;
+      return false;
   }
 }
 
+} // namespace head
 } // namespace vgx
