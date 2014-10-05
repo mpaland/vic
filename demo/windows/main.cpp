@@ -3,13 +3,17 @@
 #include <Windows.h>
 
 #include "drv/windows/vgx_drv_windows.h"
+#include "vgx_theme.h"
+#include "ctrl/vgx_progress_bar.h"
+#include "ctrl/vgx_bar.h"
+#include "ctrl/vgx_radio.h"
 
 
 // create a single windows head
-static vgx::drv_windows& get_head_drv()
+static vgx::head::windows& get_head_drv()
 {
   // create a windows head with 240x120 pixel, zero offset, screen pos at 50,50, zoom factor 2
-  static vgx::drv_windows _head_drv(240, 120, 0, 0, 50, 50, 2, 2);
+  static vgx::head::windows _head_drv(240, 120, 0, 0, 50, 50, 4, 4);
   return _head_drv;
 }
 
