@@ -122,7 +122,79 @@ public:
            config_.y <= y && y <= config_.y + config_.height; }
 
 private:
-  void render(std::int16_t pos, bool refresh = false);
+  void render(std::int16_t pos, bool refresh = false)
+  {
+    std::int16_t offset_new = static_cast<std::int16_t>((std::int32_t)(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? config_.width : config_.height) *
+                              (pos - config_.range_lower)) / (config_.range_upper - config_.range_lower));
+    std::int16_t offset_old = static_cast<std::int16_t>((std::int32_t)(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? config_.width : config_.height) *
+                              (pos_ - config_.range_lower)) / (config_.range_upper - config_.range_lower));
+    std::uint32_t color_old = head_.color_get();
+
+    if (!refresh) {
+      // incremental drawing
+      if (pos == pos_) {
+        // nothing to do
+        return;
+      }
+      head_.color_set(pos > pos_ ? config_.color : config_.bg_color);
+      switch (config_.orientation) {
+        case left_to_right :
+          head_.box(config_.x + offset_old, config_.y, config_.x + offset_new, config_.y + config_.height);
+          break;
+        case right_to_left :
+          head_.box(config_.x + config_.width - offset_old, config_.y, config_.x + config_.width - offset_new, config_.y + config_.height);
+          break;
+        case bottom_to_top :
+          head_.box(config_.x, config_.y + config_.height - offset_old, config_.x + config_.width, config_.y +  config_.height - offset_new);
+          break;
+        case top_to_bottom :
+          head_.box(config_.x, config_.y + offset_old, config_.x + config_.width, config_.y + offset_new);
+          break;
+        default:
+          break;
+      }
+    }
+    else {
+      // full refresh
+      head_.color_set(config_.bg_color);
+      switch (config_.orientation) {
+        case left_to_right :
+          head_.box(config_.x + offset_new, config_.y, config_.x + config_.width, config_.y + config_.height);
+          if (offset_new) {
+            head_.color_set(config_.color);
+            head_.box(config_.x, config_.y, config_.x + offset_new, config_.y + config_.height);
+          }
+          break;
+        case right_to_left :
+          head_.box(config_.x, config_.y, config_.x + config_.width - offset_new, config_.y + config_.height);
+          if (offset_new) {
+            head_.color_set(config_.color);
+            head_.box(config_.x + config_.width - offset_new, config_.y, config_.x + config_.width, config_.y + config_.height);
+          }
+          break;
+        case bottom_to_top :
+          head_.box(config_.x, config_.y, config_.x + config_.width, config_.y + config_.height - offset_new);
+          if (offset_new) {
+            head_.color_set(config_.color);
+            head_.box(config_.x, config_.y + config_.height - offset_new, config_.x + config_.width, config_.y + config_.height);
+          }
+          break;
+        case top_to_bottom :
+          head_.box(config_.x, config_.y + offset_new, config_.x + config_.width, config_.y + config_.height);
+          if (offset_new) {
+            head_.color_set(config_.color);
+            head_.box(config_.x, config_.y, config_.x + config_.width, config_.y + offset_new);
+          }
+          break;
+        default:
+          break;
+      }
+    }
+    head_.color_set(color_old);
+
+    // set new position
+    pos_ = pos;
+  }
 
   config_type   config_;  // configuration
   std::int16_t  pos_;     // actual position, valid from range_lower to range_upper
