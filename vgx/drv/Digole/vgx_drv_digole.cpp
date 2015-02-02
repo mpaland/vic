@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2015, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -49,7 +49,7 @@ void digole::init()
     cmd_[3] = 'C';
     cmd_[4] = 'A';
     cmd_[5] =  i2c_adr;
-    write(cmd_, 6U);
+    (void)write(cmd_, 6U);
     interface_port_ = i2c_adr;  // use new address now
   }
 
@@ -57,7 +57,7 @@ void digole::init()
   cmd_[0] = 'S';
   cmd_[1] = 'D';
   cmd_[2] =  static_cast<std::uint8_t>(orientation_);
-  write(cmd_, 3U);
+  (void)write(cmd_, 3U);
 
   // clear screen
   cls();
@@ -67,22 +67,23 @@ void digole::init()
 
   if (interface_ == interface_uart) {
   // set UART baudrate
+    std::uint8_t len = 0U;
     cmd_[0] = 'S';
     cmd_[1] = 'B';
     switch (uart_baudrate_) {
-      case    300 : cmd_[2] = '3'; cmd_[3] = '0'; cmd_[4] = '0'; write(cmd_, 5U); break;
-      case   1200 : cmd_[2] = '1'; cmd_[3] = '2'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
-      case   2400 : cmd_[2] = '2'; cmd_[3] = '4'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
-      case   4800 : cmd_[2] = '4'; cmd_[3] = '8'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
-      case   9600 : cmd_[2] = '9'; cmd_[3] = '6'; cmd_[4] = '0'; cmd_[5] = '0'; write(cmd_, 6U); break;
-      case  19200 : cmd_[2] = '1'; cmd_[3] = '9'; cmd_[4] = '2'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
-      case  28800 : cmd_[2] = '2'; cmd_[3] = '8'; cmd_[4] = '8'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
-      case  38400 : cmd_[2] = '3'; cmd_[3] = '8'; cmd_[4] = '4'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
-      case  57600 : cmd_[2] = '5'; cmd_[3] = '7'; cmd_[4] = '6'; cmd_[5] = '0'; cmd_[6] = '0'; write(cmd_, 7U); break;
-      case 115200 : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; write(cmd_, 8U); break;
-      default:
-        break;
+      case    300 : cmd_[2] = '3'; cmd_[3] = '0'; cmd_[4] = '0';                                              len = 5U; break;
+      case   1200 : cmd_[2] = '1'; cmd_[3] = '2'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+      case   2400 : cmd_[2] = '2'; cmd_[3] = '4'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+      case   4800 : cmd_[2] = '4'; cmd_[3] = '8'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+      case   9600 : cmd_[2] = '9'; cmd_[3] = '6'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+      case  19200 : cmd_[2] = '1'; cmd_[3] = '9'; cmd_[4] = '2'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+      case  28800 : cmd_[2] = '2'; cmd_[3] = '8'; cmd_[4] = '8'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+      case  38400 : cmd_[2] = '3'; cmd_[3] = '8'; cmd_[4] = '4'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+      case  57600 : cmd_[2] = '5'; cmd_[3] = '7'; cmd_[4] = '6'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+      case 115200 : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; len = 8U; break;
+      default: break;
     }
+    (void)write(cmd_, len);
   }
 }
 
@@ -102,7 +103,7 @@ void digole::brightness_set(std::uint8_t level)
   cmd_[4] = 'O';
   cmd_[5] = 'O';
   cmd_[6] = level == 0U ? 0U : 1U;
-  write(cmd_, 7U);
+  (void)write(cmd_, 7U);
 }
 
 
@@ -120,7 +121,7 @@ void digole::cls()
   cmd_[3] = 'P';
   cmd_[4] = static_cast<std::uint8_t>(0);
   cmd_[5] = static_cast<std::uint8_t>(0);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -130,7 +131,7 @@ void digole::pixel_set(int16_t x, int16_t y)
   cmd_[1] = 'P';
   cmd_[2] = static_cast<std::uint8_t>(x);
   cmd_[3] = static_cast<std::uint8_t>(y);
-  write(cmd_, 4U);
+  (void)write(cmd_, 4U);
 }
 
 
@@ -152,7 +153,7 @@ void digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
   cmd_[13] = color_get_red(color_);
   cmd_[14] = color_get_green(color_);
   cmd_[15] = color_get_blue(color_);
-  write(cmd_, 16U);
+  (void)write(cmd_, 16U);
 }
 
 
@@ -174,7 +175,7 @@ void digole::color_set(std::uint32_t color)
   cmd_[3] = color_get_red(color);
   cmd_[4] = color_get_green(color);
   cmd_[5] = color_get_blue(color);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -186,7 +187,7 @@ void digole::drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -198,7 +199,7 @@ void digole::drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y0);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -210,7 +211,7 @@ void digole::drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x0);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -226,7 +227,7 @@ void digole::drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::in
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -242,7 +243,7 @@ void digole::drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int
   cmd_[3] = static_cast<std::uint8_t>(y0);
   cmd_[4] = static_cast<std::uint8_t>(x1);
   cmd_[5] = static_cast<std::uint8_t>(y1);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -254,7 +255,7 @@ void digole::drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
   cmd_[3] = static_cast<std::uint8_t>(y);
   cmd_[4] = static_cast<std::uint8_t>(r);
   cmd_[5] = static_cast<std::uint8_t>(0);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -266,7 +267,7 @@ void digole::drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
   cmd_[3] = static_cast<std::uint8_t>(y);
   cmd_[4] = static_cast<std::uint8_t>(r);
   cmd_[5] = static_cast<std::uint8_t>(1);
-  write(cmd_, 6U);
+  (void)write(cmd_, 6U);
 }
 
 
@@ -280,7 +281,7 @@ void digole::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::in
   cmd_[5] = static_cast<std::uint8_t>(height);
   cmd_[6] = static_cast<std::uint8_t>(x1);
   cmd_[7] = static_cast<std::uint8_t>(y1);
-  write(cmd_, 8U);
+  (void)write(cmd_, 8U);
 }
 
 
@@ -288,11 +289,11 @@ bool digole::write(std::uint8_t* buffer, std::uint8_t length)
 {
   switch (interface_) {
     case interface_spi :
-      return out_spi(interface_port_, buffer, length, nullptr, 0);
+      return out::spi(interface_port_, buffer, length, nullptr, 0U);
     case interface_i2c :
-      return out_i2c(static_cast<std::uint8_t>(interface_port_), buffer, length, nullptr, 0);
+      return out::i2c(static_cast<std::uint8_t>(interface_port_), buffer, length, nullptr, 0U);
     case interface_uart :
-      return out_uart_tx(static_cast<std::uint8_t>(interface_port_), buffer, length);
+      return out::uart_tx(static_cast<std::uint8_t>(interface_port_), buffer, length);
     default:
       return false;
   }

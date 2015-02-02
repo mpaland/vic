@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2015, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -54,7 +54,7 @@ public:
    * \param yzoom Y zoom factor
    */
   windows(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset,
-              std::int16_t xpos, std::int16_t ypos, std::uint8_t xzoom, std::uint8_t yzoom)
+          std::int16_t xpos, std::int16_t ypos, std::uint8_t xzoom, std::uint8_t yzoom)
     : drv(xsize, ysize, xoffset, yoffset)
     , xpos_(xpos)
     , ypos_(ypos)
