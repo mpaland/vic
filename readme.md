@@ -11,7 +11,8 @@ A lightweight but very fast and powerful primitive and text rendering C++ librar
 - Platform and CPU independent code, NO dependencies, NO STL, NO new/delete, just clean C++
 - Header only implementation of the core parts
 - VERY clean and stable C++ code, LINT and L4 warning free
-- Multi head support, as many displays as you may like in one system
+- Multiple heads support, as many displays as you may like in one system
+- Multi-head driver to combine multiple single displays to a bigger one
 - Support of various color formats from 1 to 32 bpp displays
 - Support for different font formats (proportional, monospace), ASCII/UTF-8 support
 - Antialiasing support for primitive and text/font rendering
@@ -23,7 +24,7 @@ A lightweight but very fast and powerful primitive and text rendering C++ librar
 
 ## What is vgx NOT?
 VGX is not meant to be a full bloated windowmanager, widgets, dialogs, theme rendering framework.
-If you need an advanced windowed GUI, there are many other cool libraries around, like µC/GUI, StWin etc.
+If you need an advanced windowed GUI, there are many other cool libraries around, like ÂµC/GUI, StWin etc.
 
 ## To be done (and implemented)
 - Improve anti aliasing support for primitives
@@ -45,7 +46,7 @@ Of cource, native rendering on a specialized LCD controller is always faster and
 
 
 ## Class design
-![](https://cdn.rawgit.com/mpaland/vgx/master/doc/vgxlib.svg?commit=c5160718bc6a15e75bda0d72968d786ad3140a87)
+![](https://cdn.rawgit.com/mpaland/vgx/master/vgx/doc/vgxlib.svg)
 
 ### gpr
 The Graphic Primitive Renderer is the base class of the whole rendering stack.
