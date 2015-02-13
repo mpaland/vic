@@ -146,8 +146,12 @@ const char* windows::version() const
 }
 
 
-void windows::primitive_done()
+void windows::drv_primitive_done()
 {
+  if (primitive_lock_) {
+    return;
+  }
+
   // copy memory bitmap to screen
   ::HDC hDC = ::GetDC(hwnd_);
   ::BitBlt(hDC, 0, 0, xsize_ * xzoom_, ysize_ * yzoom_, hmemdc_, 0, 0, SRCCOPY);
@@ -159,33 +163,33 @@ void windows::cls()
 {
   ::HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
   ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-  ::SetDCPenColor(hmemdc_,   RGB(color_get_red(color_bg_), color_get_green(color_bg_), color_get_blue(color_bg_)));
-  ::SetDCBrushColor(hmemdc_, RGB(color_get_red(color_bg_), color_get_green(color_bg_), color_get_blue(color_bg_)));
+  ::SetDCPenColor(hmemdc_,   RGB(color::get_red(color_bg_), color::get_green(color_bg_), color::get_blue(color_bg_)));
+  ::SetDCBrushColor(hmemdc_, RGB(color::get_red(color_bg_), color::get_green(color_bg_), color::get_blue(color_bg_)));
   ::Rectangle(hmemdc_, 0, 0, xsize_ * xzoom_, ysize_ * yzoom_);  // needs to be 1 pixel bigger for Windows API
   ::SelectObject(hmemdc_, org);
 }
 
 
-void windows::pixel_set(int16_t x, int16_t y)
+void windows::drv_pixel_set(int16_t x, int16_t y)
 {
-  pixel_set_color(x, y, color_get());
+  drv_pixel_set_color(x, y, color_get());
 }
 
 
-void windows::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void windows::drv_pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 {
   for (int c = 0; c < xzoom_; ++c) {
     for (int r = 0; r < yzoom_; ++r) {
-      (void)::SetPixel(hmemdc_, x * xzoom_ + c, y * yzoom_ + r, RGB(color_get_red(color), color_get_green(color), color_get_blue(color)));
+      (void)::SetPixel(hmemdc_, x * xzoom_ + c, y * yzoom_ + r, RGB(color::get_red(color), color::get_green(color), color::get_blue(color)));
     }
   }
 }
 
 
-std::uint32_t windows::pixel_get(int16_t x, int16_t y) const
+std::uint32_t windows::drv_pixel_get(int16_t x, int16_t y) const
 {
   COLORREF clr = ::GetPixel(hmemdc_, x * xzoom_, y * yzoom_);
-  return color_rgb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
+  return color::rgb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
 }
 
 } // namespace head

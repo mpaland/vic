@@ -125,7 +125,7 @@ void digole::cls()
 }
 
 
-void digole::pixel_set(int16_t x, int16_t y)
+void digole::drv_pixel_set(int16_t x, int16_t y)
 {
   cmd_[0] = 'D';
   cmd_[1] = 'P';
@@ -135,14 +135,14 @@ void digole::pixel_set(int16_t x, int16_t y)
 }
 
 
-void digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
+void digole::drv_pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 {
   cmd_[ 0] = 'E';
   cmd_[ 1] = 'S';
   cmd_[ 2] = 'C';
-  cmd_[ 3] = color_get_red(color);
-  cmd_[ 4] = color_get_green(color);
-  cmd_[ 5] = color_get_blue(color);
+  cmd_[ 3] = color::get_red(color);
+  cmd_[ 4] = color::get_green(color);
+  cmd_[ 5] = color::get_blue(color);
   cmd_[ 6] = 'D';
   cmd_[ 7] = 'P';
   cmd_[ 8] = static_cast<std::uint8_t>(x);
@@ -150,9 +150,9 @@ void digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
   cmd_[10] = 'E';
   cmd_[11] = 'S';
   cmd_[12] = 'C';
-  cmd_[13] = color_get_red(color_);
-  cmd_[14] = color_get_green(color_);
-  cmd_[15] = color_get_blue(color_);
+  cmd_[13] = color::get_red(color_);
+  cmd_[14] = color::get_green(color_);
+  cmd_[15] = color::get_blue(color_);
   (void)write(cmd_, 16U);
 }
 
@@ -160,7 +160,7 @@ void digole::pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
 // The problem of the Digole displays is that they communicate unidirectional - you can't read anything back.
 // To get the pixel color, a buffer would be necessary to store a display content copy locally, about 60k for 160x128 RGB
 // Therefore this function is not implemented, (font) anti aliasing and fill function don't work correctly.
-std::uint32_t digole::pixel_get(int16_t, int16_t) const
+std::uint32_t digole::drv_pixel_get(int16_t, int16_t) const
 {
   return color_bg_;
 }
@@ -172,9 +172,9 @@ void digole::color_set(std::uint32_t color)
   cmd_[0] = 'E';
   cmd_[1] = 'S';
   cmd_[2] = 'C';
-  cmd_[3] = color_get_red(color);
-  cmd_[4] = color_get_green(color);
-  cmd_[5] = color_get_blue(color);
+  cmd_[3] = color::get_red(color);
+  cmd_[4] = color::get_green(color);
+  cmd_[5] = color::get_blue(color);
   (void)write(cmd_, 6U);
 }
 
@@ -287,16 +287,7 @@ void digole::drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::in
 
 bool digole::write(std::uint8_t* buffer, std::uint8_t length)
 {
-  switch (interface_) {
-    case interface_spi :
-      return out::spi(interface_port_, buffer, length, nullptr, 0U);
-    case interface_i2c :
-      return out::i2c(static_cast<std::uint8_t>(interface_port_), buffer, length, nullptr, 0U);
-    case interface_uart :
-      return out::uart_tx(static_cast<std::uint8_t>(interface_port_), buffer, length);
-    default:
-      return false;
-  }
+  return io::dev_set(interface_, interface_port_, buffer, length, nullptr, 0U);
 }
 
 } // namespace head

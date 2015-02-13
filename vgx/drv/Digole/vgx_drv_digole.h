@@ -85,7 +85,7 @@ public:
    * \param x X value
    * \param y Y value
    */
-  virtual void pixel_set(std::int16_t x, std::int16_t y);
+  virtual void drv_pixel_set(std::int16_t x, std::int16_t y);
 
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
@@ -93,7 +93,7 @@ public:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual void pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color);
+  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color);
 
   /**
    * Get pixel color
@@ -101,7 +101,7 @@ public:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const;
+  virtual std::uint32_t drv_pixel_get(std::int16_t x, std::int16_t y) const;
 
 
   virtual void color_set(std::uint32_t color);

@@ -75,7 +75,6 @@ public:
   virtual void deinit();                                  // driver deinit
   virtual void brightness_set(std::uint8_t level);        // set display or backlight brightness
   virtual const char* version() const;                    // get driver name and version
-  virtual void primitive_done();                          // rendering done (copy RAM / frame buffer to screen)
   virtual void cls();                                     // clear display, all pixels off (black)
 
 /////////////////////////////////////////////////////////////////////////////
@@ -86,7 +85,7 @@ public:
    * \param x X value
    * \param y Y value
    */
-  virtual void pixel_set(std::int16_t x, std::int16_t y);
+  virtual void drv_pixel_set(std::int16_t x, std::int16_t y);
 
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
@@ -94,7 +93,7 @@ public:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual void pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color);
+  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color);
 
   /**
    * Get pixel color
@@ -102,7 +101,14 @@ public:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const;
+  virtual std::uint32_t drv_pixel_get(std::int16_t x, std::int16_t y) const;
+
+
+  /**
+   * Rendering is done (copy RAM / frame buffer to screen)
+   */
+  virtual void drv_primitive_done();
+
 
 public:
   // public for thread accessibility

@@ -43,11 +43,8 @@
 
 namespace vgx {
 
-void bar::render(std::int16_t pos, bool refresh)
+void bar::render(bool refresh)
 {
-  // set new position
-  pos_ = pos;
-
   erase_marker();
   render_color_marks();
   render_tick_marks();
@@ -57,6 +54,26 @@ void bar::render(std::int16_t pos, bool refresh)
 
 void bar::render_color_marks()
 {
+  head_.primitive_lock(true);
+  switch (config_.orientation) {
+    case horizontal_top :
+      for (std::int16_t x = config_.x; x < config_.x + config_.width; ++x) {
+        head_.color_set(config_.color_mark->solid(coord_to_pos(x)));
+        head_.line_vert(x, config_.y + 1, config_.y + config_.height * COLOR_MARK_SCALE);
+      }
+      break;
+    case horizontal_bottom :
+      break;
+    case vertical_left :
+      break;
+    case vertical_right :
+      break;
+    default :
+      break;
+  }
+  head_.primitive_lock(false);
+
+/*
   for (std::uint16_t i = 0; i < config_.color_mark_count; i++) {
     std::int16_t start = static_cast<std::int16_t>((std::int32_t)(((config_.orientation == horizontal_top || config_.orientation == horizontal_bottom) ? config_.width : config_.height) *
                                                    (config_.color_mark[i].start - config_.range_lower)) / (config_.range_upper - config_.range_lower));
@@ -80,6 +97,7 @@ void bar::render_color_marks()
         break;
     }
   }
+*/
 }
 
 
@@ -128,7 +146,7 @@ void bar::erase_marker()
   head_.color_set(config_.color_bg);
   switch (config_.orientation) {
     case horizontal_top :
-      head_.box(marker_l_, config_.y + 1,
+      head_.box(marker_l_, config_.y + 1 + config_.height * COLOR_MARK_SCALE,
                 marker_u_, config_.y + 1 + config_.height * MARKER_SCALE);
       break;
     case horizontal_bottom :
@@ -142,25 +160,24 @@ void bar::erase_marker()
 
 void bar::render_marker()
 {
-  // convert range to screen
-  std::int16_t pos = static_cast<std::int16_t>((std::int32_t)(((config_.orientation == horizontal_top || config_.orientation == horizontal_bottom) ? config_.width : config_.height) *
-                                               (pos_ - config_.range_lower)) / (config_.range_upper - config_.range_lower));
+  // convert pos to screen
+  std::int16_t pos = pos_to_coord(marker_pos_);
 
   head_.color_set(config_.color_marker);
   switch (config_.orientation) {
     case horizontal_top :
-      marker_l_ = config_.x + pos - ((config_.height * MARKER_SCALE) / 2);
-      marker_u_ = config_.x + pos + ((config_.height * MARKER_SCALE) / 2);
-      head_.triangle_solid(config_.x + pos, config_.y + 1,
-                            marker_l_, config_.y + 1 + config_.height * MARKER_SCALE,
-                            marker_u_, config_.y + 1 + config_.height * MARKER_SCALE);
+      marker_l_ = pos - ((config_.height * MARKER_SCALE) / 2);
+      marker_u_ = pos + ((config_.height * MARKER_SCALE) / 2);
+      head_.triangle_solid(pos, config_.y + 1,
+                           marker_l_, config_.y + 1 + config_.height * MARKER_SCALE,
+                           marker_u_, config_.y + 1 + config_.height * MARKER_SCALE);
       break;
     case horizontal_bottom :
-      marker_l_ = config_.x + pos - ((config_.height * MARKER_SCALE) / 2);
-      marker_u_ = config_.x + pos + ((config_.height * MARKER_SCALE) / 2);
-      head_.triangle_solid(config_.x + pos, config_.y - 1 + config_.height,
-                            marker_l_, config_.y - 1 + config_.height - config_.height * MARKER_SCALE,
-                            marker_u_, config_.y - 1 + config_.height - config_.height * MARKER_SCALE);
+      marker_l_ = pos - ((config_.height * MARKER_SCALE) / 2);
+      marker_u_ = pos + ((config_.height * MARKER_SCALE) / 2);
+      head_.triangle_solid(pos, config_.y - 1 + config_.height,
+                           marker_l_, config_.y - 1 + config_.height - config_.height * MARKER_SCALE,
+                           marker_u_, config_.y - 1 + config_.height - config_.height * MARKER_SCALE);
       break;
     default :
       break;
