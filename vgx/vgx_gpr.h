@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2014, PALANDesign Hannover, Germany
+//             2001-2015, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -23,7 +23,9 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Graphic Primitive Renderer of the vgxlib to render lines, arcs, boxes etc.
+// \brief Graphic Primitive Renderer to render lines, arcs, boxes etc.
+// This is the base class of any driver. If a driver can't provide drawing functions
+// on its own, this routines are taken.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -31,24 +33,21 @@
 #define _VGX_GPR_H_
 
 #include <cstdint>
+#include <initializer_list>
 
 #include <vgx_cfg.h>      // use < > here, cause vgx_cfg.h may be in some platform folder
 #include "vgx_fonts.h"
-#include "vgx_colors.h"
+#include "vgx_color.h"
 
 
 namespace vgx {
+
 
 typedef struct struct_vertex_type {
   std::int16_t x;
   std::int16_t y;
 } vertex_type;
 
-typedef struct struct_gradient_type {
-  bool                 horizontal;    // gradient orientation
-  std::uint16_t        color_count;   // total colors
-  const std::uint32_t* colors;        // pointer to array of colors
-} gradient_type;
 
 typedef enum enum_line_style_type {
   vgx_line_style_solid = 0,
@@ -56,12 +55,16 @@ typedef enum enum_line_style_type {
   vgx_line_style_dashed
 } line_style_type;
 
+
 typedef enum enum_text_mode_type {
   text_mode_normal = 0,
   text_mode_inverse
 } text_mode_type;
 
 
+/**
+ * Graphic Primitive Renderer
+ */
 class gpr
 {
 public:
@@ -71,8 +74,9 @@ public:
    * Init vars
    */
   gpr()
-    : color_(VGX_COLOR_WHITE)
-    , color_bg_(VGX_COLOR_BLACK)
+    : color_(color::white)
+    , color_bg_(color::black)
+    , primitive_lock_(false)
     , text_font_(nullptr)
     , text_x_set_(0)
     , text_x_act_(0)
@@ -90,78 +94,29 @@ public:
    * Set the drawing color
    * \param color New drawing color in ARGB format
    */
-  virtual void color_set(std::uint32_t color)
+  virtual inline void color_set(color::value_type color)
   { color_ = color; }
 
   /**
    * Get the actual drawing color
    * \return Actual drawing color in ARGB format
    */
-  virtual std::uint32_t color_get() const
+  virtual inline color::value_type color_get() const
   { return color_; }
 
   /**
    * Set the background color (e.g. for cls)
    * \param color_background New background color in ARGB format
    */
-  virtual void color_set_bg(std::uint32_t color_background)
+  virtual inline void color_set_bg(color::value_type color_background)
   { color_bg_ = color_background; }
 
   /**
    * Get the actual background color
    * \return Actual background color in ARGB format
    */
-  virtual std::uint32_t color_get_bg() const
+  virtual inline color::value_type color_get_bg() const
   { return color_bg_; }
-
-  /**
-   * Color assembly, returns ARGB format out of color components
-   * \param red Red color
-   * \param green Green color
-   * \param blue Blue color
-   * \param alpha Alpha level, 0 = opaque, 255 = completely transparent
-   * \return ARGB color
-   */
-  inline std::uint32_t color_rgb(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha = 0U) const
-  { return static_cast<std::uint32_t>((((std::uint32_t)alpha) << 24U) | (((std::uint32_t)red) << 16U) | (((std::uint32_t)green) << 8U) | ((std::uint32_t)blue)); }
-
-  // color channel values out of 32BBP color
-  inline std::uint8_t color_get_red  (std::uint32_t color) const { return static_cast<std::uint8_t>((color & 0x00FF0000UL) >> 16U); }
-  inline std::uint8_t color_get_green(std::uint32_t color) const { return static_cast<std::uint8_t>((color & 0x0000FF00UL) >>  8U); }
-  inline std::uint8_t color_get_blue (std::uint32_t color) const { return static_cast<std::uint8_t>((color & 0x000000FFUL));        }
-  inline std::uint8_t color_get_alpha(std::uint32_t color) const { return static_cast<std::uint8_t>((color & 0xFF000000UL) >> 24U); }
-
-  // generic color dimming, alpha channel is unaffected
-  inline std::uint32_t color_dim_25(std::uint32_t color) const
-  { return ((color & (0x00FCFCFCUL)) >> 2U); }
-
-  inline std::uint32_t color_dim_50(std::uint32_t color) const
-  { return ((color & (0x00FEFEFEUL)) >> 1U); }
-
-  inline std::uint32_t color_dim_75(std::uint32_t color) const
-  { return (color_dim_25(color) + color_dim_50(color)); }
-
-  /**
-   * Dim the given color, alpha channel is unaffected
-   * \param color Color in ARGB format
-   * \param lum Luminance, 0: dark, 255: bright (original color unchanged)
-   * \return dimmed color in ARGB format
-   */
-  inline std::uint32_t color_dim(std::uint32_t color, std::uint8_t lum) const
-  { return ((color & 0xFF000000UL) | ((((color & 0x00FF0000UL) * (lum + 1U)) >> 8U) & 0x00FF0000UL) | ((((color & 0x0000FF00UL) * (lum + 1U)) >> 8U) & 0x0000FF00UL) | ((((color & 0x000000FFUL) * (lum + 1U)) >> 8U) & 0x000000FFUL)); }
-
-  // generic color mixing, alpha channel is unaffected
-  inline std::uint32_t color_mix_25(std::uint32_t fore, std::uint32_t back) const
-  { return (color_dim_25(fore) + color_dim_75(back)); }
-
-  inline std::uint32_t color_mix_50(std::uint32_t fore, std::uint32_t back) const
-  { return (color_dim_50(fore) + color_dim_50(back)); }
-
-  inline std::uint32_t color_mix_75(std::uint32_t fore, std::uint32_t back) const
-  { return (color_dim_75(fore) + color_dim_25(back)); }
-
-  inline std::uint32_t color_mix(std::uint32_t fore, std::uint32_t back, std::uint8_t lum) const
-  { return (color_dim(fore, lum) + color_dim(back, 0xFFU - lum)); }
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -175,8 +130,23 @@ public:
    */
   bool plot(std::int16_t x, std::int16_t y)
   {
-    pixel_set(x, y);
-    primitive_done();
+    drv_pixel_set(x, y);
+    drv_primitive_done();
+    return true;
+  }
+
+
+  /**
+   * Plot a point with a given color, drawing color is not affected
+   * \param x X value
+   * \param y Y value
+   * \param color Color of the pixel
+   * \return true if successful
+   */
+  bool plot(std::int16_t x, std::int16_t y, color::value_type color)
+  {
+    drv_pixel_set_color(x, y, color);
+    drv_primitive_done();
     return true;
   }
 
@@ -201,7 +171,7 @@ public:
   #else
     drv_line(x0, y0, x1, y1);
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -216,7 +186,7 @@ public:
   bool line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
   {
     drv_line_horz(x0, y0, x1);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -231,7 +201,7 @@ public:
   bool line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
   {
     drv_line_vert(x0, y0, y1);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -248,7 +218,7 @@ public:
   bool line_width(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width)
   {
     drv_line_width(x0, y0, x1, y1, width);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -264,7 +234,7 @@ public:
   bool rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
   {
     drv_rect(x0, y0, x1, y1);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -280,7 +250,7 @@ public:
   bool box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
   {
     drv_box(x0, y0, x1, y1);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -291,46 +261,31 @@ public:
    * \param y0 Y start value
    * \param x1 X end value, included in line
    * \param y1 Y end value, included in line
-   * \param colors Pointer to array of gradient colors
-   * \param color_count Number of colors in the array
+   * \param horizontal True for horizontal gradient
+   * \param gr Gradient
    * \return true if successful
    */
-  bool box_gradient(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, const gradient_type& gradient)
+  bool box_gradient(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool horizontal, const color::gradient_base& gr)
   {
-    std::uint16_t seg;
-    seg = gradient.horizontal ? x1 - x0 : y1 - y0;
-    seg = seg / (gradient.color_count - 1U);
-
-    std::uint16_t s = 0U, c = 0U;
-    if (gradient.horizontal) {
+    if (horizontal) {
       // horizontal gradient
+      if (x1 < x0) { std::int16_t t = x0; x0 = x1; x1 = t; }
+      std::uint16_t seg = x1 - x0;
       for (std::int16_t x = x0; x <= x1; ++x) {
-        color_set(color_rgb((std::uint8_t)((((std::uint16_t)color_get_red  (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_red  (gradient.colors[c + 1U]) * s)) / seg),
-                            (std::uint8_t)((((std::uint16_t)color_get_green(gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_green(gradient.colors[c + 1U]) * s)) / seg),
-                            (std::uint8_t)((((std::uint16_t)color_get_blue (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_blue (gradient.colors[c + 1U]) * s)) / seg)
-                           ));
+        color_set(gr.mix((std::uint32_t)(x - x0) * 1000UL / seg));
         drv_line_vert(x, y0, y1);
-        if (s++ >= seg) {
-          s = 0U;
-          c++;
-        }
       }
     }
     else {
       // vertical gradient
+      if (y1 < y0) { std::int16_t t = y0; y0 = y1; y1 = t; }
+      std::uint16_t seg = y1 - y0;
       for (std::int16_t y = y0; y <= y1; ++y) {
-        color_set(color_rgb((std::uint8_t)((((std::uint16_t)color_get_red  (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_red  (gradient.colors[c + 1U]) * s)) / seg),
-                            (std::uint8_t)((((std::uint16_t)color_get_green(gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_green(gradient.colors[c + 1U]) * s)) / seg),
-                            (std::uint8_t)((((std::uint16_t)color_get_blue (gradient.colors[c]) * (seg - s)) + ((std::uint16_t)color_get_blue (gradient.colors[c + 1U]) * s)) / seg)
-                           ));
+        color_set(gr.mix((std::uint32_t)(y - y0) * 1000UL / seg));
         drv_line_horz(x0, y, x1);
-        if (s++ >= seg) {
-          s = 0U;
-          c++;
-        }
       }
     }
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -365,7 +320,7 @@ public:
       drv_line(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
     }
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -392,7 +347,7 @@ public:
   #else
       drv_triangle(x0, y0, x1, y1, x2, y2);
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -419,7 +374,7 @@ public:
   #else
       drv_triangle_solid(x0, y0, x1, y1, x2, y2);
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -451,7 +406,7 @@ public:
   #else
     drv_arc(x0, y0, x1, y1, x2, y2);
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -475,7 +430,7 @@ public:
   #else
     drv_circle(x, y, radius);
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -499,7 +454,7 @@ public:
   #else
     drv_disc(x, y, radius);
   #endif
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -515,7 +470,7 @@ public:
   bool disc_section(std::int16_t x, std::int16_t y, std::uint16_t radius, std::uint8_t section)
   {
     drv_disc_section(x, y, radius, section);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -533,7 +488,7 @@ public:
   bool sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
   {
     drv_sector(x, y, inner_radius, outer_radius, start_angle, end_angle);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -546,10 +501,10 @@ public:
    * \param bounding_color Color of the surrounding bound
    * \return true if successful
    */
-  bool fill(std::int16_t x, std::int16_t y, std::uint32_t bounding_color)
+  bool fill(std::int16_t x, std::int16_t y, color::value_type bounding_color)
   {
     drv_fill(x, y, bounding_color);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -560,16 +515,16 @@ public:
    * Transfer image to display
    * \param x X destination value
    * \param y Y destination value
-   * \param width Width of the image
-   * \param height Height of the image
-   * \param color_depth Color depth of the image (BBP)
-   * \param data Image data
+   * \param image_width Width of the image
+   * \param image_height Height of the image
+   * \param image_format Color format of the image
+   * \param image_data Image data
    * \return true if successful
    */
-  bool blitter(std::int16_t x, std::int16_t y, std::uint16_t width, std::uint16_t height, std::uint8_t color_depth, std::uint8_t* data)
+  bool blitter(std::int16_t x, std::int16_t y, std::uint16_t image_width, std::uint16_t image_height, color::format_type image_format, std::uint8_t* image_data)
   {
     // TBD: blittering
-    (void)x; (void)y; (void)width; (void)height; (void)color_depth; (void)data;
+    (void)x; (void)y; (void)image_width; (void)image_height; (void)image_format; (void)image_data;
     return false;
   }
 
@@ -587,7 +542,7 @@ public:
   bool move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
   {
     drv_move(x0, y0, x1, y1, width, height);
-    primitive_done();
+    drv_primitive_done();
     return true;
   }
 
@@ -687,7 +642,7 @@ public:
   void text_char(std::uint16_t ch)
   {
     drv_text_char(ch);
-    primitive_done();
+    drv_primitive_done();
   }
 
 
@@ -699,7 +654,7 @@ public:
   std::uint16_t text_string(const std::uint8_t* string)
   {
     std::uint16_t cnt = drv_text_string(string);
-    primitive_done();
+    drv_primitive_done();
     return cnt;
   }
 
@@ -715,7 +670,7 @@ public:
   {
     text_set_pos(x, y);
     std::uint16_t cnt = drv_text_string(string);
-    primitive_done();
+    drv_primitive_done();
     return cnt;
   }
 
@@ -732,7 +687,7 @@ public:
   {
     text_set_pos(x, y);
     std::uint16_t cnt = drv_text_string_rotate(angle, string);
-    primitive_done();
+    drv_primitive_done();
     return cnt;
   }
 
@@ -752,45 +707,56 @@ public:
     return 0U;
   }
 
+///////////////////////////////////////////////////////////////////////////////
+
+  void primitive_lock(bool lock = true)
+  {
+    primitive_lock_ = lock;
+    if (!lock) {
+      // primitive is done when lock is released
+      drv_primitive_done();
+    }
+  }
 
 ///////////////////////////////////////////////////////////////////////////////
 // D R I V E R   F U N C T I O N S
+//
+protected:
 
   /**
-   * Set a pixel in the actual drawing color, implemented in driver
-   * \param x X value
-   * \param y Y value
-   */
-  virtual void pixel_set(std::int16_t x, std::int16_t y) = 0;
+  * Set pixel (in actual drawing color)
+  * \param x X value
+  * \param y Y value
+  */
+  virtual void drv_pixel_set(std::int16_t x, std::int16_t y) = 0;
 
   /**
-   * Set a pixel in the given color, implemented in driver
-   * \param x X value
-   * \param y Y value
-   * \param color Color to plot
-   */
-  virtual void pixel_set_color(std::int16_t x, std::int16_t y, std::uint32_t color) = 0;
+  * Set pixel in given color, the color doesn't change the actual drawing color
+  * \param x X value
+  * \param y Y value
+  * \param color Color of pixel in ARGB format
+  */
+  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color) = 0;
 
   /**
-   * Get the color of a pixel, implemented in driver
-   * \param x X value
-   * \param y Y value
-   * \return Color of the pixel
-   */
-  virtual std::uint32_t pixel_get(std::int16_t x, std::int16_t y) const = 0;
+  * Return the color of the pixel
+  * \param x X value
+  * \param y Y value
+  * \return Color of pixel in ARGB format
+  */
+  virtual color::value_type drv_pixel_get(std::int16_t x, std::int16_t y) const = 0;
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // F U N C T I O N S   T H E   D R I V E R   C A N   O V E R R I D E
 //
 // ... if the driver has native (hardware/firmware accelerated) support for it
-protected:
 
   /**
    * Primitive rendering is done. May be overridden by driver to update display,
    * frame buffer or something else (like copy RAM / rendering buffer to screen)
    */
-  virtual void primitive_done()
+  virtual void drv_primitive_done()
   { }
 
 
@@ -810,25 +776,25 @@ protected:
     // check for straight lines
     if (x0 == x1 && y0 < y1) {
       for (; y0 <= y1; ++y0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
       return;
     }
     if (x0 == x1 && y0 > y1) {
       for (; y0 >= y1; --y0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
       return;
     }
     if (y0 == y1 && x0 < x1) {
       for (; x0 <= x1; ++x0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
       return;
     }
     if (y0 == y1 && x0 > x1) {
       for (; x0 >= x1; --x0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
       return;
     }
@@ -841,7 +807,7 @@ protected:
     er = dx - dy;
 
     for(;;) {
-      pixel_set(x0, y0);
+      drv_pixel_set(x0, y0);
       if (x0 == x1 && y0 == y1) {
         return;
       }
@@ -868,12 +834,12 @@ protected:
   {
     if (x0 < x1) {
       for (; x0 <= x1; ++x0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
     }
     else {
       for (; x1 <= x0; ++x1) {
-        pixel_set(x1, y0);
+        drv_pixel_set(x1, y0);
       }
     }
   }
@@ -889,12 +855,12 @@ protected:
   {
     if (y0 < y1) {
       for (; y0 <= y1; ++y0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
     }
     else {
       for (; y1 <= y0; ++y1) {
-        pixel_set(x0, y1);
+        drv_pixel_set(x0, y1);
       }
     }
   }
@@ -929,11 +895,11 @@ protected:
     for(;;) {
       if (dx > dy) {
         for (w = y0 - (wd >> 1U); w < y0 + wd - (wd >> 1U); w++)
-          pixel_set(x0, w);
+          drv_pixel_set(x0, w);
       }
       else {
         for (w = x0 - (wd >> 1U); w < x0 + wd - (wd >> 1U); w++)
-          pixel_set(w, y0);
+          drv_pixel_set(w, y0);
       }
       if (x0 == x1 && y0 == y1) {
         return;
@@ -982,7 +948,7 @@ protected:
 
     for (tmp = x0; y0 <= y1; ++y0) {
       for (x0 = tmp; x0 <= x1; ++x0) {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       }
     }
   }
@@ -1114,7 +1080,7 @@ protected:
       yy += yy;
       err = dx + dy + xy;                             // error 1st step
       do {
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
         if (x0 == x2 && y0 == y2) {
           return;                                     // curve finished
         }
@@ -1142,14 +1108,14 @@ protected:
     std::int16_t xo = (std::int16_t)r, yo = 0, err = 1 - xo;
 
     while (xo >= yo) {
-      pixel_set(x + xo, y + yo);  // q4
-      pixel_set(x + xo, y - yo);  // q1
-      pixel_set(x + yo, y + xo);  // q4
-      pixel_set(x + yo, y - xo);  // q1
-      pixel_set(x - xo, y + yo);  // q3
-      pixel_set(x - xo, y - yo);  // q2
-      pixel_set(x - yo, y + xo);  // q3
-      pixel_set(x - yo, y - xo);  // q2
+      drv_pixel_set(x + xo, y + yo);  // q4
+      drv_pixel_set(x + xo, y - yo);  // q1
+      drv_pixel_set(x + yo, y + xo);  // q4
+      drv_pixel_set(x + yo, y - xo);  // q1
+      drv_pixel_set(x - xo, y + yo);  // q3
+      drv_pixel_set(x - xo, y - yo);  // q2
+      drv_pixel_set(x - yo, y + xo);  // q3
+      drv_pixel_set(x - yo, y - xo);  // q2
       yo++;
       if (err < 0) {
         err += 2 * yo + 1;
@@ -1278,7 +1244,7 @@ protected:
               !((yss * xr) >  (xss * yr)) &&
                ((yse * xr) >= (xse * yr))
              ) {
-            pixel_set(xp, yp);
+            drv_pixel_set(xp, yp);
           }
         }
       }
@@ -1320,7 +1286,7 @@ protected:
     }
 
     // draw the initial pixel, which is always exactly intersected by the line and so needs no weighting
-    pixel_set(x0, y0);
+    drv_pixel_set(x0, y0);
 
     if ((DeltaX = x1 - x0) >= 0) {
       XDir = 1;
@@ -1345,7 +1311,7 @@ protected:
       do {
         x0 += XDir;
         y0++;
-        pixel_set(x0, y0);
+        drv_pixel_set(x0, y0);
       } while (--DeltaY != 0);
       return;
     }
@@ -1373,11 +1339,11 @@ protected:
         // # of bits by which to shift ErrorAcc to get intensity level
         #define INTENSITY_SHIFT (16U - 8U)
         std::uint8_t lum = (std::uint8_t)(ErrorAcc >> INTENSITY_SHIFT);
-        pixel_set_color(x0, y0,        color_mix(color_, pixel_get(x0, y0), lum ^ 0xFFU));
-        pixel_set_color(x0 + XDir, y0, color_mix(color_, pixel_get(x0 + XDir, y0), lum));
+        drv_pixel_set_color(x0, y0,        color::mix(color_, drv_pixel_get(x0, y0), lum ^ 0xFFU));
+        drv_pixel_set_color(x0 + XDir, y0, color::mix(color_, drv_pixel_get(x0 + XDir, y0), lum));
       }
       // draw the final pixel, which is always exactly intersected by the line and so needs no weighting
-      pixel_set(x1, y1);
+      drv_pixel_set(x1, y1);
       return;
     }
 
@@ -1397,11 +1363,11 @@ protected:
       // the IntensityBits most significant bits of ErrorAcc give us the intensity weighting
       // for this pixel, and the complement of the weighting for the paired pixel
       std::uint8_t lum = (std::uint8_t)(ErrorAcc >> INTENSITY_SHIFT);
-      pixel_set_color(x0, y0,     color_mix(color_, pixel_get(x0, y0), lum ^ 0xFFU));
-      pixel_set_color(x0, y0 + 1, color_mix(color_, pixel_get(x0, y0 + 1), lum));
+      drv_pixel_set_color(x0, y0,     color::mix(color_, drv_pixel_get(x0, y0), lum ^ 0xFFU));
+      drv_pixel_set_color(x0, y0 + 1, color::mix(color_, drv_pixel_get(x0, y0 + 1), lum));
     }
     // draw the final pixel, which is always exactly intersected by the line and so needs no weighting
-    pixel_set(x1, y1);
+    drv_pixel_set(x1, y1);
   }
 
 
@@ -1557,7 +1523,7 @@ protected:
    * \param y Y start value inside region to fill
    * \param bounding_color Color of the bound
    */
-  virtual void drv_fill(std::int16_t x, std::int16_t y, std::uint32_t bounding_color)
+  virtual void drv_fill(std::int16_t x, std::int16_t y, color::value_type bounding_color)
   {
     // TBD: fill region up to the bounding border_color with the drawing color
     (void)x; (void)y; (void)bounding_color;
@@ -1581,14 +1547,14 @@ protected:
       if (y0 < y1) {
         for (h = height; h != 0U; --h) {
           for (w = width; w != 0U; --w) {
-            pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
+            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
           }
         }
       }
       else {
         for (h = 0U; h < height; ++h) {
           for (w = width; w != 0U; --w) {
-            pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
+            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
           }
         }
       }
@@ -1597,14 +1563,14 @@ protected:
       if (y0 < y1) {
         for (h = height; h != 0U; --h) {
           for (w = 0U; w < width; ++w) {
-            pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
+            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
           }
         }
       }
       else {
         for (h = 0U; h < height; ++h) {
           for (w = 0U; w < width; ++w) {
-            pixel_set_color(x1 + w, y1 + h, pixel_get(x0 + w, y0 + h));
+            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
           }
         }
       }
@@ -1619,7 +1585,7 @@ protected:
   /**
    * Select the font
    * \param Reference to font to use
-   * \return true if font set successful
+   * \return true if font set successfully
    */
   virtual bool drv_text_set_font(const font_type& font)
   {
@@ -1632,7 +1598,7 @@ protected:
    * Set the new text position
    * \param x X value in pixel on graphic displays, char pos on alpha displays
    * \param y Y value in pixel on graphic displays, char pos on alpha displays
-   * \return true if font set successful
+   * \return true if position is set successfully
    */
   virtual bool drv_text_set_pos(std::int16_t x, std::int16_t y)
   {
@@ -1646,9 +1612,10 @@ protected:
    * \param mode Set normal or inverse video
    * \return true if successful
    */
-  virtual void drv_text_set_mode(text_mode_type mode)
+  virtual bool drv_text_set_mode(text_mode_type mode)
   {
     (void)mode;
+    return true;
   }
 
 
@@ -1693,12 +1660,12 @@ protected:
               std::uint8_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 if (color_depth == VGX_FONT_AA_NONE) {
-                  pixel_set(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y);
+                  drv_pixel_set(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y);
                 }
                 else {
-                  std::uint32_t fg = color_;
-                  std::uint32_t bg = pixel_get(text_x_act_+ info->xpos + x, text_y_act_ + info->ypos + y);
-                  pixel_set_color(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y, color_mix(fg, bg, color_depth == 2U ? intensity << 6U : intensity << 4U));
+                  color::value_type fg = color_;
+                  color::value_type bg = drv_pixel_get(text_x_act_+ info->xpos + x, text_y_act_ + info->ypos + y);
+                  drv_pixel_set_color(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y, color::mix(fg, bg, color_depth == 2U ? intensity << 6U : intensity << 4U));
                 }
               }
             }
@@ -1727,12 +1694,12 @@ protected:
                 uint8_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {
                   if (color_depth == VGX_FONT_AA_NONE) {
-                    pixel_set(text_x_act_ + x, text_y_act_ + y);
+                    drv_pixel_set(text_x_act_ + x, text_y_act_ + y);
                   }
                   else {
-                    std::uint32_t fg = color_;
-                    std::uint32_t bg = pixel_get(text_x_act_ + x, text_y_act_ + y);
-                    pixel_set_color(text_x_act_ + x, text_y_act_ + y, color_mix(fg, bg, color_depth == 2U ? intensity << 6U : intensity << 4U));
+                    color::value_type fg = color_;
+                    color::value_type bg = drv_pixel_get(text_x_act_ + x, text_y_act_ + y);
+                    drv_pixel_set_color(text_x_act_ + x, text_y_act_ + y, color::mix(fg, bg, color_depth == 2U ? intensity << 6U : intensity << 4U));
                   }
                 }
               }
@@ -1756,7 +1723,7 @@ protected:
               uint8_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 if (color_depth == VGX_FONT_AA_NONE) {
-                  pixel_set(text_x_act_ + x, text_y_act_ + y);
+                  drv_pixel_set(text_x_act_ + x, text_y_act_ + y);
                 }
                 else {
                 }
@@ -1820,9 +1787,9 @@ protected:
 ///////////////////////////////////////////////////////////////////////////////
 
 protected:
-  std::uint32_t     color_;           // drawing color
-  std::uint32_t     color_bg_;        // background color
-
+  color::value_type color_;           // drawing color
+  color::value_type color_bg_;        // background color
+  bool              primitive_lock_;  // lock for rendering multiple primitives without refresh
   const font_type*  text_font_;       // actual selected font
   std::int16_t      text_x_set_;      // x cursor position for new line
   std::int16_t      text_x_act_;      // actual x cursor position
@@ -1841,7 +1808,6 @@ protected:
 private:
   /**
    * Helper function to calculate (lookup) sin(x) and cos(x), normalized to 100
-   * Due to speed there's no input value check, so make sure angle is between 0-90!
    * \param angle Angle in degree, valid range from 0° to 90°
    * \return sin(x) * 100 in upper byte, cos(x) * 100 in lower byte
    */
@@ -1855,11 +1821,11 @@ private:
       0x5A2CU, 0x5B2AU, 0x5B29U, 0x5C27U, 0x5D25U, 0x5D24U, 0x5E22U, 0x5F21U, 0x5F1FU, 0x601DU, 0x601CU, 0x611AU, 0x6118U, 0x6116U, 0x6215U, 0x6213U,
       0x6211U, 0x6310U, 0x630EU, 0x630CU, 0x630AU, 0x6409U, 0x6407U, 0x6405U, 0x6403U, 0x6402U, 0x6400U
     };
-    return angle_to_xy[angle];
+    return angle <= 90 ? angle_to_xy[angle] : 0U;   // out of bounds returns 0
   }
 
   // non copyable
-  const gpr& operator=(const gpr& rhs) { return rhs; }  
+  const gpr& operator=(const gpr& rhs) { return rhs; }
 };
 
 } // namespace vgx
