@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2015, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -23,7 +23,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Dummy driver, use this as a non existent display replacement
+// \brief Dummy driver, use this as a non existent display replacement for
+// testing purpose
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -32,11 +33,22 @@
 
 #include "vgx_drv.h"
 
+// defines the driver name and version
+#define VGX_DRV_DUMMY_VERSION   "Dummy driver 1.00"
+
 
 namespace vgx {
 namespace head {
 
-
+/**
+ * Dummy head
+ * \param Screen_Size_X Screen (buffer) width
+ * \param Screen_Size_Y Screen (buffer) height
+ * \param Viewport_Size_X Viewport (window) width
+ * \param Viewport_Size_Y Viewport (window) height
+ */
+template<std::uint16_t Screen_Size_X = 0U,   std::uint16_t Screen_Size_Y = 0U,
+         std::uint16_t Viewport_Size_X = 0U, std::uint16_t Viewport_Size_Y = 0U>
 class dummy : public drv
 {
 public:
@@ -45,9 +57,13 @@ public:
 
   /**
    * ctor
+   * \param viewport_x Viewport x position (left) on the screen, relative to top/left corner
+   * \param viewport_y Viewport y position (top)  on the screen, relative to top/left corner
    */
-  dummy()
-    : drv(0U, 0U, 0, 0)
+  dummy(std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
+    : drv(Screen_Size_X, Screen_Size_Y,
+          Viewport_Size_X, Viewport_Size_Y,
+          viewport_x, viewport_y)
   { }
 
   /**
@@ -57,42 +73,31 @@ public:
   ~dummy()
   { deinit(); }
 
-  // mandatory driver functions
-  virtual void init() { }                                         // driver init
-  virtual void deinit() { }                                       // driver deinit
-  virtual void brightness_set(std::uint8_t) { }                   // set display brightness/backlight
-  virtual const char* version() const { return "Dummy driver"; }  // get driver name and version
-  virtual void primitive_done() { }                               // rendering done (copy RAM / frame buffer to screen)
-  virtual void cls() { };                                         // clear display, all pixels off (black)
 
-/////////////////////////////////////////////////////////////////////////////
-// M A N D A T O R Y   F U N C T I O N S   F O R   G R A P H I C   H E A D S
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
 
-  /**
-   * Set pixel (in actual drawing color)
-   * \param x X value
-   * \param y Y value
-   */
-  virtual void pixel_set(std::int16_t, std::int16_t)
+  virtual void init()
+  { }
+  
+  virtual void deinit()
   { }
 
-  /**
-   * Set pixel in given color, the color doesn't change the actual drawing color
-   * \param x X value
-   * \param y Y value
-   * \param color Color of pixel in ARGB format
-   */
-  virtual void pixel_set_color(std::int16_t, std::int16_t, std::uint32_t)
+  virtual const char* version() const
+  { return (const char*)VGX_DRV_DUMMY_VERSION; }
+
+  virtual void cls()
+  { };
+
+
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   F U N C T I O N S   F O R   G R A P H I C   H E A D S
+
+  virtual void drv_pixel_set_color(int16_t, int16_t, color::value_type)
   { }
 
-  /**
-   * Get pixel color
-   * \param x X value
-   * \param y Y value
-   * \return Color of pixel in ARGB format
-   */
-  virtual std::uint32_t pixel_get(std::int16_t, std::int16_t) const
-  { return 0U; }
+  virtual color::value_type drv_pixel_get(int16_t, int16_t) const
+  { }
 };
 
 } // namespace head

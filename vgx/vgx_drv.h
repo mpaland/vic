@@ -35,6 +35,7 @@
 
 namespace vgx {
 
+
 class drv : public gpr
 {
 public:
@@ -56,30 +57,43 @@ public:
 
   /**
    * Display orientation, the driver takes care of screen rotation
-   * (0,0) is always logical (left/top)
+   * Set the orientation that (0,0) is always left/top
    */
   typedef enum enum_orientation_type
   {
-    orientation_0 = 0,
-    orientation_90,
-    orientation_180,
-    orientation_270
+    orientation_0 = 0,    //   0° one to one
+    orientation_90,       //  90° clockwise
+    orientation_180,      // 180° clockwise
+    orientation_270,      // 270° clockwise
+    orientation_0m,       //   0° vertical screen mirror
+    orientation_90m,      //  90° clockwise, vertical screen mirror
+    orientation_180m,     // 180° clockwise, vertical screen mirror
+    orientation_270m,     // 270° clockwise, vertical screen mirror
   } orientation_type;
 
   ///////////////////////////////////////////////////////////////////////////////
 
   /**
    * ctor
-   * \param xsize Screen width
-   * \param ysize Screen height
-   * \param xoffset X offset within the screen, relative to top/left corner, useful if border pixels are behind a bezel
-   * \param yoffset Y offset within the screen, relative to top/left corner, useful if border pixels are behind a bezel
+   * \param screen_size_x Screen width
+   * \param screen_size_y Screen height
+   * \param viewport_size_x Viewport width
+   * \param viewport_size_y Viewport height
+   * \param viewport_x X offset within the screen, relative to top/left corner
+   * \param viewport_y Y offset within the screen, relative to top/left corner
+   * \param orientation Orientation of the display
    */
-  drv(std::uint16_t xsize, std::uint16_t ysize, std::int16_t xoffset, std::int16_t yoffset)
-    : xsize_(xsize)
-    , ysize_(ysize)
-    , xoffset_(xoffset)
-    , yoffset_(yoffset)
+  drv(std::uint16_t screen_size_x,   std::uint16_t screen_size_y,
+      std::uint16_t viewport_size_x, std::uint16_t viewport_size_y,
+      std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U,
+      orientation_type orientation = orientation_0)
+    : screen_size_x_(screen_size_x)
+    , screen_size_y_(screen_size_y)
+    , viewport_size_x_(viewport_size_x)
+    , viewport_size_y_(viewport_size_y)
+    , viewport_x_(viewport_x)
+    , viewport_y_(viewport_y)
+    , orientation_(orientation)
   { }
 
   /////////////////////////////////////////////////////////////////////////////
@@ -97,16 +111,16 @@ public:
   virtual void deinit() = 0;
 
   /**
-   * Set display or backlight brightness
-   * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
-   */
-  virtual void brightness_set(std::uint8_t level) = 0;
-
-  /**
    * Returns the driver version and name
    * \return Driver version and name
    */
   virtual const char* version() const = 0;
+
+  /**
+   * Returns the display capability: graphic or alpha numeric
+   * \return True if graphic display
+   */
+  virtual bool is_graphic() const = 0;
 
   /**
    * Clear screen, set all pixels off, delete all characters or fill screen with background color
@@ -117,16 +131,9 @@ public:
   /////////////////////////////////////////////////////////////////////////////
   // G R A P H I C   D I S P L A Y S
   //
-  // The functions in this section are MANDATORY FOR GRAPHIC drivers!
+  // These functions are MANDATORY FOR GRAPHIC drivers!
   // Every graphic display driver MUST implement/override them.
   // In case of alpha numeric display, leave unimplemented
-
-  /**
-   * Set pixel (in actual drawing color)
-   * \param x X value
-   * \param y Y value
-   */
-  //virtual void drv_pixel_set(std::int16_t x, std::int16_t y);
 
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
@@ -186,18 +193,55 @@ public:
   //
 
   /**
-   * Returns the screen width
+   * Returns the screen (buffer) width
    * \return Screen width in pixel or chars
    */
-  virtual std::uint16_t get_width()  const
-  { return xsize_; }
+  inline std::uint16_t screen_width()  const
+  { return screen_size_x_; }
 
   /**
-   * Returns the screen height
+   * Returns the screen (buffer) height
    * \return Screen height in pixel or chars
    */
-  virtual std::uint16_t get_height() const
-  { return ysize_; }
+  inline std::uint16_t screen_height() const
+  { return screen_size_y_; }
+
+  /**
+   * Returns the viewport (display) height
+   * \return Viewport height in pixel or chars
+   */
+  inline std::uint16_t viewport_width() const
+  { return viewport_size_x_; }
+
+  /**
+   * Returns the viewport (display) height
+   * \return Viewport height in pixel or chars
+   */
+  inline std::uint16_t viewport_height() const
+  { return viewport_size_y_; }
+
+  /**
+   * Set the viewport origin
+   * \param x Left corner in screen coordinates
+   * \param y Top corner in screen coordinates
+   */
+  inline virtual void viewport_set(std::uint16_t x = 0U, std::uint16_t y = 0U)
+  {
+    viewport_x_ = x;
+    viewport_y_ = y;
+  }
+
+  /**
+   * Get the actual viewport origin
+   * \param x Left corner in screen coordinates
+   * \param y Top corner in screen coordinates
+   */
+  inline virtual void viewport_get(std::uint16_t& x, std::uint16_t& y) const
+  {
+    x = viewport_x_;
+    y = viewport_y_;
+  }
+
 
   /**
    * Set alpha blending level of framebuffer/plane. If driver has no alpha support,
@@ -212,8 +256,17 @@ public:
    * Returns the number of available framebuffers/planes. 1 if no framebuffer support (so just one buffer)
    * \return Number of frame buffers
    */
-  virtual std::uint8_t framebuffer_get_count()
-  { return 0U; }
+  inline virtual std::uint8_t framebuffer_get_count() const
+  { return 1U; }
+
+
+  /**
+   * Set display or backlight brightness
+   * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
+   */
+  virtual void brightness_set(std::uint8_t level)
+  { (void)level; }
+
 
 protected:
   /**
@@ -322,10 +375,13 @@ protected:
   } io_;
 
 protected:
-  const std::uint16_t xsize_;     // x screen size in pixel (graphic) or chars (alpha)
-  const std::uint16_t ysize_;     // y screen size in pixel (graphic) or chars (alpha)
-  const std::int16_t  xoffset_;   // x offset (left)
-  const std::int16_t  yoffset_;   // y offset (top)
+  const std::uint16_t screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
+  const std::uint16_t screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
+  const std::uint16_t viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
+  const std::uint16_t viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
+  std::uint16_t       viewport_x_;        // viewport left corner (x offset to screen)
+  std::uint16_t       viewport_y_;        // viewport top corner  (y offset to screen)
+  orientation_type    orientation_;       // orientation of the display
 };
 
 } // namespace vgx

@@ -33,7 +33,6 @@
 #define _VGX_GPR_H_
 
 #include <cstdint>
-#include <initializer_list>
 
 #include <vgx_cfg.h>      // use < > here, cause vgx_cfg.h may be in some platform folder
 #include "vgx_fonts.h"
@@ -62,6 +61,49 @@ typedef enum enum_text_mode_type {
 } text_mode_type;
 
 
+typedef struct struct_clipping_type
+{
+  /**
+   * ctor
+   */
+  struct_clipping_type(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool inside = true)
+    : x0_(x0), y0_(y0), x1_(x1), y1_(y1), inside_(inside) {
+    if (x0_ > x1_) { std::int16_t t = x0_; x0_ = x1_; x1_ = t; }
+    if (y0_ > y1_) { std::int16_t t = y0_; y0_ = y1_; y1_ = t; }
+  }
+
+  /**
+   * Set the clipping region
+   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
+   */
+  inline void set(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool inside = true) {
+    x0_ = x0; y0_ = y0; x1_ = x1; y1_ = y1; inside_ = inside;
+    if (x0_ > x1_) { std::int16_t t = x0_; x0_ = x1_; x1_ = t; }
+    if (y0_ > y1_) { std::int16_t t = y0_; y0_ = y1_; y1_ = t; }
+  }
+
+  /**
+   * Test if given vertex is inside clipping region
+   * \return True if given vertex is within the active clipping region and should be drawn
+   */
+  inline bool is_clipping(std::int16_t x, std::int16_t y) {
+    if (x >= x0_ && x <= x1_ && y >= y0_ && y <= y1_) {
+      return inside_;
+    }
+    else
+      return !inside_;
+  }
+
+private:
+  std::int16_t x0_;
+  std::int16_t y0_;
+  std::int16_t x1_;
+  std::int16_t y1_;
+  bool         inside_;
+} clipping_type;
+
+
+
 /**
  * Graphic Primitive Renderer
  */
@@ -82,6 +124,7 @@ public:
     , text_x_act_(0)
     , text_y_act_(0)
     , text_mode_(text_mode_normal)
+    , clipping_(nullptr)
   #if defined(VGX_CFG_ANTIALIASING)
     , anti_aliasing_(false)
   #endif
@@ -559,39 +602,29 @@ public:
     return true;
   }
 
+///////////////////////////////////////////////////////////////////////////////
+// C L I P P I N G   F U C T I O N S 
+//
 
-#if defined(VGX_CFG_CLIPPING)
   /**
-   * Set clipping region
+   * Set the clipping region
    * All further points within the region are not drawn
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in region
-   * \param y1 Y end value, included in region
+   * \param clipping The clipping object or nullptr to disable clipping
    */
-  bool clipping_set(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
+  void inline clipping_set(clipping_type* clipping = nullptr)
   {
-    // TBD
-    clippling_x0_ = x0;
-    clippling_y0_ = y0;
-    clippling_x1_ = x1;
-    clippling_y1_ = y1;
-    return false;
+    clipping_ = clipping;
   }
 
 
   /**
    * Disable clipping
    */
-  bool clipping_clear()
+  void inline clipping_clear()
   {
-    // TBD
-    return false;
+    clipping_ = nullptr;
   }
-
-#endif
-
-
+ 
 ///////////////////////////////////////////////////////////////////////////////
 // T E X T   F U C T I O N S 
 //
@@ -707,8 +740,14 @@ public:
     return 0U;
   }
 
-///////////////////////////////////////////////////////////////////////////////
+  ///////////////////////////////////////////////////////////////////////////////
 
+  /**
+   * Prevent calling drv_primitive_done after single primitive drawing.
+   * Use this to draw complex objects like controls. After all primitives are drawn call
+   * primitive_lock(false) which releases the lock and calls drv_primitive_done().
+   * \param lock True for engaging a drv_primitive_done() lock.
+   */
   void primitive_lock(bool lock = true)
   {
     primitive_lock_ = lock;
@@ -718,17 +757,23 @@ public:
     }
   }
 
+
 ///////////////////////////////////////////////////////////////////////////////
 // D R I V E R   F U N C T I O N S
 //
 protected:
 
   /**
-  * Set pixel (in actual drawing color)
+  * Set pixel in the actual drawing color
+  * Override this function, if the driver handles the drawing color or in case of a monochrome display
   * \param x X value
   * \param y Y value
   */
-  virtual void drv_pixel_set(std::int16_t x, std::int16_t y) = 0;
+  virtual inline void drv_pixel_set(std::int16_t x, std::int16_t y)
+  {
+    drv_pixel_set_color(x, y, color_get());
+  }
+
 
   /**
   * Set pixel in given color, the color doesn't change the actual drawing color
@@ -736,7 +781,9 @@ protected:
   * \param y Y value
   * \param color Color of pixel in ARGB format
   */
-  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color) = 0;
+  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
+  { (void)x; (void)y; (void)color; }
+
 
   /**
   * Return the color of the pixel
@@ -744,7 +791,10 @@ protected:
   * \param y Y value
   * \return Color of pixel in ARGB format
   */
-  virtual color::value_type drv_pixel_get(std::int16_t x, std::int16_t y) const = 0;
+  virtual color::value_type drv_pixel_get(std::int16_t x, std::int16_t y) const
+  { (void)x; (void)y;
+    return color::black;
+  }
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -774,27 +824,29 @@ protected:
     std::int16_t er, er2;
 
     // check for straight lines
-    if (x0 == x1 && y0 < y1) {
-      for (; y0 <= y1; ++y0) {
-        drv_pixel_set(x0, y0);
+    if (x0 == x1) {
+      if (y0 < y1) {
+        for (; y0 <= y1; ++y0) {
+          drv_pixel_set(x0, y0);
+        }
+      }
+      else {
+        for (; y0 >= y1; --y0) {
+          drv_pixel_set(x0, y0);
+        }
       }
       return;
     }
-    if (x0 == x1 && y0 > y1) {
-      for (; y0 >= y1; --y0) {
-        drv_pixel_set(x0, y0);
+    if (y0 == y1) {
+      if (x0 < x1) {
+        for (; x0 <= x1; ++x0) {
+          drv_pixel_set(x0, y0);
+        }
       }
-      return;
-    }
-    if (y0 == y1 && x0 < x1) {
-      for (; x0 <= x1; ++x0) {
-        drv_pixel_set(x0, y0);
-      }
-      return;
-    }
-    if (y0 == y1 && x0 > x1) {
-      for (; x0 >= x1; --x0) {
-        drv_pixel_set(x0, y0);
+      else {
+        for (; x0 >= x1; --x0) {
+          drv_pixel_set(x0, y0);
+        }
       }
       return;
     }
@@ -1004,12 +1056,12 @@ protected:
 
     // sort vertexes that y0 < y1 < y2
     if (y2 < y1) {
-      t = x1; x1 = x2; x2 = t; t = y1; y1 = y2; y2 = t;
+      swap(x1, y1, x2, y2);
     }
     if (y1 < y0) {
-      t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t;
+      swap(x0, y0, x1, y1);
       if (y2 < y1) {
-        t = x1; x1 = x2; x2 = t; t = y1; y1 = y2; y2 = t;
+        swap(x1, y1, x2, y2);
       }
     }
 
@@ -1053,8 +1105,8 @@ protected:
    */
   virtual void drv_arc(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
   {
-    std::int16_t sx = x2-x1, sy = y2-y1;
-    std::int32_t xx = x0-x1, yy = y0-y1, xy;            // relative values for checks
+    std::int16_t sx = x2 - x1, sy = y2 - y1;
+    std::int32_t xx = x0 - x1, yy = y0 - y1, xy;        // relative values for checks
     std::int32_t dx, dy, err, cur = xx * sy - yy * sx;  // curvature
 
     // sign of gradient must not change
@@ -1280,9 +1332,7 @@ protected:
 
     // make sure the line runs top to bottom
     if (y0 > y1) {
-      std::int16_t temp;
-      temp = y0; y0 = y1; y1 = temp;
-      temp = x0; x0 = x1; x1 = temp;
+      swap(x0, y0, x1, y1);
     }
 
     // draw the initial pixel, which is always exactly intersected by the line and so needs no weighting
@@ -1290,7 +1340,8 @@ protected:
 
     if ((DeltaX = x1 - x0) >= 0) {
       XDir = 1;
-    } else {
+    }
+    else {
       XDir = -1;
       DeltaX = -DeltaX; // make DeltaX positive
     }
@@ -1580,7 +1631,6 @@ protected:
 
   /////////////////////////////////////////////////////////////////////////////
   // D R I V E R   T E X T   F U N C T I O N S
-  /////////////////////////////////////////////////////////////////////////////
 
   /**
    * Select the font
@@ -1795,17 +1845,27 @@ protected:
   std::int16_t      text_x_act_;      // actual x cursor position
   std::int16_t      text_y_act_;      // actual y cursor position
   text_mode_type    text_mode_;       // text mode
+  clipping_type*    clipping_;        // clipping object
 #if defined(VGX_CFG_ANTIALIASING)
   bool              anti_aliasing_;   // true if AA is enabled
 #endif
-#if defined(VGX_CFG_CLIPPING)
-  std::int16_t  clipping_x0_;         // clipping region top/left
-  std::int16_t  clipping_y0_;         // clipping region top/left
-  std::int16_t  clipping_x1_;         // clipping region bottom/right
-  std::int16_t  clipping_y1_;         // clipping region bottom/right
-#endif
 
 private:
+  /**
+   * Helper function to swap two vertexes (as coordinates)
+   * \param x0 X of first vertex
+   * \param y0 Y of first vertex
+   * \param x1 X of second vertex
+   * \param y1 Y of second vertex
+   */
+  inline void swap(std::int16_t& x0, std::int16_t& y0, std::int16_t& x1, std::int16_t& y1) const
+  {
+    std::int16_t xt = x0, yt = y0;
+    x0 = x1; y0 = y1;
+    x1 = xt; y1 = yt;
+  }
+
+
   /**
    * Helper function to calculate (lookup) sin(x) and cos(x), normalized to 100
    * \param angle Angle in degree, valid range from 0° to 90°

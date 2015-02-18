@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2015, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -23,7 +23,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Base class for complex controls like gauges, buttons, bars,
+// \brief Base class for complex controls like gauges, buttons, progress bars,
 //        checkboxes, switches, etc.
 //
 ///////////////////////////////////////////////////////////////////////////////

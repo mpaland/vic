@@ -40,9 +40,6 @@
 // library anti aliasing support (include AA functions)
 #define VGX_CFG_ANTIALIASING
 
-// library clipping support (slower)
-//#define VGX_CFG_CLIPPING
-
 // Future feature: theme support for controls
 // Define this if you are using controls
 #define VGX_CFG_THEME

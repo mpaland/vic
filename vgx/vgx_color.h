@@ -31,6 +31,7 @@
 #define _VGX_COLOR_H_
 
 #include <cstdint>
+#include <initializer_list>
 
 
 namespace vgx {
@@ -38,7 +39,7 @@ namespace vgx {
 struct color
 {
   /**
-   * Color format is 32 bit ARGB
+   * Default color format is 32 bit ARGB
    */
   typedef std::uint32_t   value_type;
 
@@ -63,19 +64,20 @@ struct color
   */
   typedef enum enum_format_type
   {
-    format_L1 = 0,    // 1 bit luminance (monochrome)
-    format_L2,        // 2 bit
-    format_L4,        // 4 bit
-    format_L8,        // 8 bit, 256 luminance (gray) levels
-    format_C8,        // 8 bit CLUT (color lookup table) - reserved for future, unsupported yet
-    format_RGB332,
-    format_RGB555,
-    format_RGB565,
-    format_RGB666,
-    format_RGB888,
-    format_ARGB1555,
-    format_ARGB4444,
-    format_ARGB8888
+    format_L1 = 0,    //  1 bit luminance (monochrome)
+    format_L2,        //  2 bit
+    format_L4,        //  4 bit
+    format_L8,        //  8 bit, 256 luminance (gray) levels (0 = black, 255 = white)
+    format_C8,        //  8 bit CLUT (color lookup table) - reserved for future, unsupported yet
+    format_C16,       // 16 bit CLUT (color lookup table) - reserved for future, unsupported yet
+    format_RGB332,    //  8 bit RGB
+    format_RGB555,    // 15 bit RGB
+    format_RGB565,    // 16 bit RGB
+    format_RGB666,    // 18 bit RGB
+    format_RGB888,    // 24 bit RGB, no alpha
+    format_ARGB1555,  // 16 bit ARGB, 1 bit alpha (0 = opaque, 1 = transparent)
+    format_ARGB4444,  // 16 bit ARGB, 4 bit alpha
+    format_ARGB8888   // 32 bit ARGB format (internal default format of vgx)
   } format_type;
 
   /**
@@ -144,8 +146,8 @@ struct color
    * Color gradient structure
    * A gradient has a range from 0 to 1000, all color start positions have to be defined within this range
    * Construct a gradient with 3 colors like
-   * vgx::gradient<3U> gr = { {0, VGX_COLOR_GREEN}, {500, VGX_COLOR_YELLOW}, {750, VGX_COLOR_RED} };
-                              green                 yellow                   red                  red
+   * vgx::color::gradient<3U> gr = { {0, vgx::color::green}, {500, vgx::color::yellow}, {750, vgx::color::red} };
+   *                                 green                   yellow                     red                    red
    */
   template<std::size_t N>
   struct gradient : public gradient_base
@@ -192,7 +194,7 @@ struct color
   //////////////////////////////////////////////////////////////////////////
   // C O L O R S
 
-  // color assembly
+  // static color assembly
   template <std::uint8_t Red, std::uint8_t Green, std::uint8_t Blue, std::uint8_t Alpha = 0U>
   struct rgb_maker {
     static const value_type value = ((static_cast<value_type>(Alpha) << 24U) |
