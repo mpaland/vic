@@ -86,6 +86,9 @@ public:
   virtual const char* version() const
   { return (const char*)VGX_DRV_DUMMY_VERSION; }
 
+  virtual bool is_graphic() const
+  { return true; }
+
   virtual void cls()
   { };
 

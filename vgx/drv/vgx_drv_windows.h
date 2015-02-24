@@ -23,7 +23,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Windows head driver
+// \brief This is a Windows graphics head driver, setup the desired screen and
+// viewport size a template parameter
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -35,12 +36,13 @@
 #include <Windows.h>
 #include <process.h>
 
+
 // defines the driver name and version
 #define VGX_DRV_WINDOWS_VERSION   "Windows driver 2.01"
 
-
 namespace vgx {
 namespace head {
+
 
 /**
  * Windows head
@@ -65,10 +67,12 @@ public:
    */
   windows(std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U,
           std::uint16_t window_x = 0U, std::uint16_t window_y = 0U,
-          std::uint8_t zoom_x = 1U, std::uint8_t zoom_y = 1U)
+          std::uint8_t zoom_x = 1U, std::uint8_t zoom_y = 1U,
+          orientation_type orientation = orientation_0)
     : drv(Screen_Size_X, Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
-          viewport_x, viewport_y)
+          viewport_x, viewport_y,
+          orientation)
     , window_x_(window_x)
     , window_y_(window_y)
     , zoom_x_(zoom_x)
@@ -194,7 +198,7 @@ public:
 
     // copy memory bitmap to viewport
     ::HDC hDC = ::GetDC(hwnd_);
-    ::BitBlt(hDC, 0, 0, viewport_width() * zoom_x_,viewport_height() * zoom_y_, hmemdc_, 0, 0, SRCCOPY);
+    ::BitBlt(hDC, viewport_x_ * zoom_x_, viewport_y_ * zoom_y_, viewport_width() * zoom_x_,viewport_height() * zoom_y_, hmemdc_, 0, 0, SRCCOPY);
     ::ReleaseDC(hwnd_, hDC);
   }
 

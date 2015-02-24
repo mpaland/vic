@@ -47,9 +47,9 @@ namespace head {
 
 /**
  * MAX7219 head is a monochrome LED / 7-segment driver, using 1 bit color depth
- * \param Screen_Size_X Screen (buffer) width
+ * \param Screen_Size_X Screen (buffer) width, unused, should be 8
  * \param Screen_Size_Y Screen (buffer) height
- * \param Viewport_Size_X Viewport (window) width
+ * \param Viewport_Size_X Viewport (window) width, unused, should be 8
  * \param Viewport_Size_Y Viewport (window) height
  */
 template<std::uint16_t Screen_Size_X = 8U,   std::uint16_t Screen_Size_Y = 8U,
@@ -69,9 +69,9 @@ public:
    */
   MAX7219(orientation_type orientation, std::uint16_t spi_device_id,
           std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
-    : drv(8U, Screen_Size_Y,
-          8U, Viewport_Size_Y,
-          viewport_x, viewport_y,
+    : drv(Screen_Size_X,   Screen_Size_Y,
+          Viewport_Size_Y, Viewport_Size_Y,
+          viewport_x,      viewport_y,
           orientation)
     , spi_device_id_(spi_device_id)
   { }
