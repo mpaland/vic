@@ -34,7 +34,7 @@
 
 
 // defines the driver name and version
-#define VGX_DRV_DIGOLE_VERSION   "Digole driver 1.01"
+#define VGX_DRV_DIGOLE_VERSION   "Digole driver 1.10"
 
 namespace vgx {
 namespace head {
@@ -58,17 +58,17 @@ public:
   /**
    * ctor
    * \param orientation Screen orientation
-   * \param interface Interface mode, SPI, I²C and UART are valid
-   * \param interface_port Interface port: SPI: device id, I²C: address, UART: port
+   * \param iface Interface type, SPI, I²C or UART are valid
+   * \param iface_id Interface id: SPI: device id, I²C: address, UART: port_id
    * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
-  digole(orientation_type orientation, interface_type iface, std::uint16_t interface_port, std::uint32_t uart_baudrate = 9600U)
-    : drv(Screen_Size_X, Screen_Size_Y,
+  digole(orientation_type orientation, interface_type iface, std::uint16_t iface_id, std::uint32_t uart_baudrate = 9600U)
+    : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
           0U, 0U)
     , orientation_(orientation)
     , interface_(iface)
-    , interface_port_(interface_port)
+    , interface_port_(iface_id)
     , uart_baudrate_(uart_baudrate)
   { }
 
@@ -115,16 +115,16 @@ public:
       cmd_[0] = 'S';
       cmd_[1] = 'B';
       switch (uart_baudrate_) {
-        case    300 : cmd_[2] = '3'; cmd_[3] = '0'; cmd_[4] = '0';                                              len = 5U; break;
-        case   1200 : cmd_[2] = '1'; cmd_[3] = '2'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
-        case   2400 : cmd_[2] = '2'; cmd_[3] = '4'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
-        case   4800 : cmd_[2] = '4'; cmd_[3] = '8'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
-        case   9600 : cmd_[2] = '9'; cmd_[3] = '6'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
-        case  19200 : cmd_[2] = '1'; cmd_[3] = '9'; cmd_[4] = '2'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
-        case  28800 : cmd_[2] = '2'; cmd_[3] = '8'; cmd_[4] = '8'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
-        case  38400 : cmd_[2] = '3'; cmd_[3] = '8'; cmd_[4] = '4'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
-        case  57600 : cmd_[2] = '5'; cmd_[3] = '7'; cmd_[4] = '6'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
-        case 115200 : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; len = 8U; break;
+        case    300U : cmd_[2] = '3'; cmd_[3] = '0'; cmd_[4] = '0';                                              len = 5U; break;
+        case   1200U : cmd_[2] = '1'; cmd_[3] = '2'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+        case   2400U : cmd_[2] = '2'; cmd_[3] = '4'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+        case   4800U : cmd_[2] = '4'; cmd_[3] = '8'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+        case   9600U : cmd_[2] = '9'; cmd_[3] = '6'; cmd_[4] = '0'; cmd_[5] = '0';                               len = 6U; break;
+        case  19200U : cmd_[2] = '1'; cmd_[3] = '9'; cmd_[4] = '2'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+        case  28800U : cmd_[2] = '2'; cmd_[3] = '8'; cmd_[4] = '8'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+        case  38400U : cmd_[2] = '3'; cmd_[3] = '8'; cmd_[4] = '4'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+        case  57600U : cmd_[2] = '5'; cmd_[3] = '7'; cmd_[4] = '6'; cmd_[5] = '0'; cmd_[6] = '0';                len = 7U; break;
+        case 115200U : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; len = 8U; break;
         default: break;
       }
       (void)write(cmd_, len);
@@ -178,6 +178,13 @@ public:
 
   void drv_pixel_set(int16_t x, int16_t y)
   {
+    // check limits and clipping
+    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
+      // out of bounds or outside clipping region
+      return;
+    }
+
+    // assemble and send command
     cmd_[0] = 'D';
     cmd_[1] = 'P';
     cmd_[2] = static_cast<std::uint8_t>(x);
@@ -188,6 +195,13 @@ public:
 
   void drv_pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
   {
+    // check limits and clipping
+    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
+      // out of bounds or outside clipping region
+      return;
+    }
+
+    // assemble and send command
     cmd_[ 0] = 'E';
     cmd_[ 1] = 'S';
     cmd_[ 2] = 'C';
@@ -232,6 +246,14 @@ public:
 
   void drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_line(x0, y0, x1, y1); 
+      return;
+    }
+
+    // assemble and send command
     cmd_[0] = 'L';
     cmd_[1] = 'N';
     cmd_[2] = static_cast<std::uint8_t>(x0);
@@ -244,6 +266,14 @@ public:
 
   void drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_line_horz(x0, y0, x1); 
+      return;
+    }
+
+    // assemble and send command
     cmd_[0] = 'L';
     cmd_[1] = 'N';
     cmd_[2] = static_cast<std::uint8_t>(x0);
@@ -256,6 +286,14 @@ public:
 
   void drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_line_vert(x0, y0, y1); 
+      return;
+    }
+
+    // assemble and send command
     cmd_[0] = 'L';
     cmd_[1] = 'N';
     cmd_[2] = static_cast<std::uint8_t>(x0);
@@ -268,6 +306,13 @@ public:
 
   void drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_rect(x0, y0, x1, y1); 
+      return;
+    }
+
     std::int16_t tmp;
     if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
     if (y0 > y1) { tmp = y0; y0 = y1; y1 = tmp; }
@@ -284,6 +329,13 @@ public:
 
   void drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_box(x0, y0, x1, y1); 
+      return;
+    }
+
     std::int16_t tmp;
     if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
     if (y0 > y1) { tmp = y0; y0 = y1; y1 = tmp; }
@@ -300,6 +352,13 @@ public:
 
   void drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_circle(x, y, r);
+      return;
+    }
+
     cmd_[0] = 'C';
     cmd_[1] = 'C';
     cmd_[2] = static_cast<std::uint8_t>(x);
@@ -312,6 +371,13 @@ public:
 
   void drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_disc(x, y, r);
+      return;
+    }
+
     cmd_[0] = 'C';
     cmd_[1] = 'C';
     cmd_[2] = static_cast<std::uint8_t>(x);
@@ -324,6 +390,13 @@ public:
 
   void drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
   {
+    // check clipping
+    if (clipping_) {
+      // Digole displays doesn't support clipping, using the gpr instead
+      gpr::drv_move(x0, y0, x1, y1, width, height);
+      return;
+    }
+
     cmd_[0] = 'M';
     cmd_[1] = 'A';
     cmd_[2] = static_cast<std::uint8_t>(x0);
@@ -336,7 +409,7 @@ public:
   }
 
 
-  bool write(std::uint8_t* buffer, std::uint8_t length)
+  inline bool write(std::uint8_t* buffer, std::uint16_t length)
   {
     return io::dev_set(interface_, interface_port_, buffer, length, nullptr, 0U);
   }

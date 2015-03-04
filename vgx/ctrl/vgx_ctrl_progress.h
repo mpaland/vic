@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2015, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -53,8 +53,8 @@ public:
     orientation_type  orientation;    // orientation of the bar, see orientation_type
     std::int16_t      range_lower;    // initial lower range
     std::int16_t      range_upper;    // initial upper range
-    std::uint32_t     color;          // foreground
-    std::uint32_t     bg_color;       // background color
+    color::value_type color;          // foreground
+    color::value_type bg_color;       // background color
   } config_type;
 
   /**
@@ -73,7 +73,7 @@ public:
    * Set new bar color
    * \param color New color for control, control is redrawn
    */
-  void set_color(std::uint32_t color)
+  void set_color(color::value_type color)
   { config_.color = color; redraw(); }
 
   /**

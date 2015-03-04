@@ -65,6 +65,12 @@ typedef struct struct_clipping_type
 {
   /**
    * ctor
+   * Create a clipping region
+   * \param x0 Left coordinate
+   * \param y0 Top coordinate
+   * \param x1 Right coordinate
+   * \param y1 Bottom coordinate
+   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
    */
   struct_clipping_type(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool inside = true)
     : x0_(x0), y0_(y0), x1_(x1), y1_(y1), inside_(inside) {
@@ -129,6 +135,13 @@ public:
     , anti_aliasing_(false)
   #endif
   { }
+
+
+  /**
+   * Returns the display capability: graphic or alpha numeric
+   * \return True if graphic display
+   */
+  virtual const bool is_graphic() const = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 // C O L O R   F U N C T I O N S
@@ -643,8 +656,8 @@ public:
 
   /**
    * Set the new text position
-   * \param x X value in pixel on graphic displays, char pos on alpha displays
-   * \param y Y value in pixel on graphic displays, char pos on alpha displays
+   * \param x X (left) value in pixel on graphic displays, char pos on alpha displays
+   * \param y Y (top) value in pixel on graphic displays, char pos on alpha displays
    * \return true if successful
    */
   bool text_set_pos(std::int16_t x, std::int16_t y)
@@ -694,8 +707,8 @@ public:
 
   /**
    * Output a string at x/y position (combines text_set_pos and text_string)
-   * \param x X value in pixel on graphic displays, char pos on alpha displays
-   * \param y Y value in pixel on graphic displays, char pos on alpha displays
+   * \param x X (left) value in pixel on graphic displays, char pos on alpha displays
+   * \param y Y (left) value in pixel on graphic displays, char pos on alpha displays
    * \param string Output string in ASCII/UTF-8 format, zero terminated
    * \return Number of written characters, not bytes (as a character may consist out of two bytes)
    */
@@ -730,14 +743,39 @@ public:
    * The string is not rendered on screen
    * \param width Width the rendered string would take
    * \param height Height the rendered string would take
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as a character may consist out of two bytes)
+   * \param string String in ASCII/UTF-8 format, zero terminated
+   * \return Number of string characters, not bytes (as a character may consist out of two bytes)
    */
-  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t height, const std::uint8_t* string)
+  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string)
   {
-    // TBD
-    (void)width; (void)height; (void)string;
-    return 0U;
+    if (is_graphic()) {
+      return drv_text_string_get_extend(width, height, string);
+    }
+    else {
+      // return the string length
+      std::uint16_t cnt = 0U;
+      while (*string) {
+        if ((*string & 0x80U) == 0x00U) {
+          // 1 byte sequence (ASCII char)
+          string++;
+        }
+        else if ((*string & 0xE0U) == 0xC0U) {
+          // 2 byte UTF-8 sequence
+          string += 2U;
+        } else if ((*string & 0xF0U) == 0xE0U) {
+          // 3 byte UTF-8 sequence
+          string += 3U;
+        } else {
+          // unknown sequence - should not happen
+          string++;
+          continue;
+        }
+        cnt++;
+      }
+      width  = cnt;
+      height = 1U;
+      return cnt;
+    }
   }
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -1634,7 +1672,7 @@ protected:
 
   /**
    * Select the font
-   * \param Reference to font to use
+   * \param Reference to the font to use
    * \return true if font set successfully
    */
   virtual bool drv_text_set_font(const font_type& font)
@@ -1803,7 +1841,7 @@ protected:
         ch = (std::uint16_t)(*string++ & 0x7FU);
       }
       else if ((*string & 0xE0U) == 0xC0U) {
-        // 2 byte sequence
+        // 2 byte UTF-8 sequence
         ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
         string += 2U;
       } else if ((*string & 0xF0U) == 0xE0U) {
@@ -1819,6 +1857,20 @@ protected:
       cnt++;
     }
     return cnt;
+  }
+
+
+  /**
+   * Returns the width and height the rendered string would take.
+   * The string is not rendered on screen, works on graphic displays only
+   * \param width Width the rendered string would take
+   * \param height Height the rendered string would take
+   * \param string String in ASCII/UTF-8 format, zero terminated
+   * \return Number of string characters, not bytes (as a character may consist out of two bytes)
+   */
+  std::uint16_t drv_text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string)
+  {
+    return 0;
   }
 
 
