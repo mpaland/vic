@@ -196,7 +196,7 @@ public:
    * Returns the screen (buffer) width
    * \return Screen width in pixel or chars
    */
-  inline std::uint16_t screen_width()  const
+  inline std::uint16_t screen_width() const
   { return screen_size_x_; }
 
   /**
@@ -205,6 +205,15 @@ public:
    */
   inline std::uint16_t screen_height() const
   { return screen_size_y_; }
+
+  /**
+   * Returns the true if the given vertex is within the screen area
+   * \param x X value in screen coordinates
+   * \param y Y value in screen coordinates
+   * \return true if the given vertex is within the screen area
+   */
+  inline bool is_screen(std::int16_t x, std::int16_t y) const
+  { return x >= 0 && x < screen_size_x_ && y >= 0 && y < screen_size_y_; }
 
   /**
    * Returns the viewport (display) height

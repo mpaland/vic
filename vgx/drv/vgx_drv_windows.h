@@ -150,10 +150,10 @@ public:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual void drv_pixel_set_color(int16_t x, int16_t y, color::value_type color)
+  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
   {
     // check limits and clipping
-    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
+    if (!is_screen(x,y) || (clipping_ && !clipping_->is_clipping(x, y))) {
       // out of bounds or outside clipping region
       return;
     }
@@ -175,7 +175,7 @@ public:
   virtual inline color::value_type drv_pixel_get(int16_t x, int16_t y) const
   {
     // check limits and clipping
-    if (x >= screen_width() || y >= screen_height()) {
+    if (!is_screen(x,y)) {
       // out of bounds or outside clipping region
       return vgx::color::black;
     }

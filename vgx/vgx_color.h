@@ -81,7 +81,7 @@ struct color
   } format_type;
 
   /**
-   * Color assembly, returns ARGB format out of color components
+   * Color assembly, returns ARGB format out of RGB components
    * \param red Red color
    * \param green Green color
    * \param blue Blue color
@@ -90,6 +90,41 @@ struct color
    */
   static inline value_type rgb(std::uint8_t red, std::uint8_t green, std::uint8_t blue, std::uint8_t alpha = 0U)
   { return static_cast<value_type>((((value_type)alpha) << 24U) | (((value_type)red) << 16U) | (((value_type)green) << 8U) | ((value_type)blue)); }
+
+  /**
+   * Color assembly, returns ARGB format out of HSV components
+   * \param hue Hue (0-359) in degree
+   * \param saturation Saturation from 0-100
+   * \param value Value 
+   * \param alpha Alpha level, 0 = opaque, 255 = completely transparent
+   * \return ARGB color
+   */
+  static inline value_type hsv(std::uint16_t hue, std::uint8_t saturation, std::uint8_t value, std::uint8_t alpha = 0U)
+  {
+    hue = hue % 360U;
+    const std::uint16_t hi  = static_cast<std::uint16_t>(hue / 60U);
+    const std::uint16_t f   = static_cast<std::uint16_t>(hue - static_cast<std::uint16_t>(hi * 60U));
+    const std::uint8_t  s_f = static_cast<std::uint8_t>((std::uint16_t)saturation * f / 60U);
+    const std::uint16_t p   = ((uint16_t)value * (255U - saturation)) / 255U;
+    const std::uint16_t q   = ((uint16_t)value * (255U - s_f)) / 255U;
+    const std::uint16_t t   = ((uint16_t)value * (255U - saturation + s_f)) / 255U;
+
+    std::uint8_t red, green, blue;
+    switch (hi) {
+      case 0 : red = value;                        green = static_cast<std::uint8_t>(t); blue = static_cast<std::uint8_t>(p); break;
+      case 1 : red = static_cast<std::uint8_t>(q); green = value;                        blue = static_cast<std::uint8_t>(p); break;
+      case 2 : red = static_cast<std::uint8_t>(p); green = value;                        blue = static_cast<std::uint8_t>(t); break;
+      case 3 : red = static_cast<std::uint8_t>(p); green = static_cast<std::uint8_t>(q); blue = value;                        break;
+      case 4 : red = static_cast<std::uint8_t>(t); green = static_cast<std::uint8_t>(p); blue = value;                        break;
+      case 5 : red = value;                        green = static_cast<std::uint8_t>(p); blue = static_cast<std::uint8_t>(q); break;
+      default: red = 0U;                           green = 0U;                           blue = 0U;                           break;
+    }
+
+    return ((static_cast<value_type>(alpha) << 24U) |
+            (static_cast<value_type>(red)   << 16U) |
+            (static_cast<value_type>(green) <<  8U) |
+            (static_cast<value_type>(blue)  <<  0U));
+  }
 
   // color channel values out of 32BBP ARGB color
   static inline std::uint8_t get_alpha(value_type color) { return static_cast<std::uint8_t>((color & 0xFF000000UL) >> 24U); }
@@ -194,7 +229,7 @@ struct color
   //////////////////////////////////////////////////////////////////////////
   // C O L O R S
 
-  // static color assembly
+  // static RGB color assembly
   template <std::uint8_t Red, std::uint8_t Green, std::uint8_t Blue, std::uint8_t Alpha = 0U>
   struct rgb_maker {
     static const value_type value = ((static_cast<value_type>(Alpha) << 24U) |
@@ -202,6 +237,7 @@ struct color
                                      (static_cast<value_type>(Green) <<  8U) |
                                      (static_cast<value_type>(Blue)  <<  0U));
   };
+
 
   // no color
   static const value_type none          = rgb_maker<  0,   0,   0, 255>::value;

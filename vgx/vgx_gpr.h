@@ -141,7 +141,7 @@ public:
    * Returns the display capability: graphic or alpha numeric
    * \return True if graphic display
    */
-  virtual const bool is_graphic() const = 0;
+  virtual bool is_graphic(void) const = 0;
 
 ///////////////////////////////////////////////////////////////////////////////
 // C O L O R   F U N C T I O N S
