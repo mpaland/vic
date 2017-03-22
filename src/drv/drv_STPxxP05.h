@@ -40,7 +40,7 @@
 #ifndef _VGX_DRV_STPXXP05_H_
 #define _VGX_DRV_STPXXP05_H_
 
-#include "vgx_drv.h"
+#include "../drv.h"
 
 
 // defines the driver name and version
@@ -90,11 +90,11 @@ public:
 
   /**
    * dtor
-   * Deinit the driver
+   * Shutdown the driver
    */
   ~STPxxP05()
   {
-    deinit();
+    shutdown();
   }
 
 
@@ -103,8 +103,8 @@ public:
   { }
 
 
-  // driver deinit
-  virtual void deinit()
+  // driver shutdown
+  virtual void shutdown()
   {
     cls();
   }
@@ -142,7 +142,7 @@ public:
   }
 
 
-  virtual void pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
+  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
   {
     // check limits and clipping
     if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {

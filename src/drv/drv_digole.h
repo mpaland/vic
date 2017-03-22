@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2017, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -30,7 +30,7 @@
 #ifndef _VGX_DRV_DIGOLE_H_
 #define _VGX_DRV_DIGOLE_H_
 
-#include "vgx_drv.h"
+#include "../drv.h"
 
 
 // defines the driver name and version
@@ -40,7 +40,7 @@ namespace vgx {
 namespace head {
 
 
-  /**
+/**
  * Digole head is an RGB color graphics driver
  * \param Screen_Size_X Screen (buffer) width
  * \param Screen_Size_Y Screen (buffer) height
@@ -58,9 +58,9 @@ public:
   /**
    * ctor
    * \param orientation Screen orientation
-   * \param iface Interface type, SPI, I²C or UART are valid
-   * \param iface_id Interface id: SPI: device id, I²C: address, UART: port_id
-   * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
+   * \param iface Interface type, SPI, Iï¿½C or UART are valid
+   * \param iface_id Interface id: SPI: device id, Iï¿½C: address, UART: port_id
+   * \param uart_baudrate Baudrate of the UART interface, unused for SPI or Iï¿½C mode
    */
   digole(orientation_type orientation, interface_type iface, std::uint16_t iface_id, std::uint32_t uart_baudrate = 9600U)
     : drv(Screen_Size_X,   Screen_Size_Y,
@@ -75,18 +75,20 @@ public:
 
   /**
    * dtor
-   * Deinit the driver
+   * Shutdown the driver
    */
   ~digole()
-  { deinit(); }
+  { shutdown(); }
 
 
-  void init()
+protected:
+
+  void drv_init()
   {
     if (interface_ == interface_i2c) {
-      // set I²C address
+      // set Iï¿½C address
       std::uint8_t i2c_adr = static_cast<std::uint8_t>(interface_port_);
-      interface_port_ = 0x27;   // use default I²C address for init
+      interface_port_ = 0x27;   // use default Iï¿½C address for init
       cmd_[0] = 'S';
       cmd_[1] = 'I';
       cmd_[2] = '2';
@@ -104,12 +106,12 @@ public:
     (void)write(cmd_, 3U);
 
     // clear screen
-    cls();
+    drv_cls();
 
     // display on
     brightness_set(255U);
 
-    if (interface_ == interface_uart) {
+    if (interface_ == interface_serial) {
     // set UART baudrate
       std::uint8_t len = 0U;
       cmd_[0] = 'S';
@@ -132,9 +134,104 @@ public:
   }
 
 
-  void deinit()
+  void drv_shutdown()
   {
+    drv_cls();
     brightness_set(0U);     // display off
+  }
+
+
+  inline const char* drv_version() const
+  {
+    return (const char*)VGX_DRV_DIGOLE_VERSION;
+  }
+
+
+  inline virtual bool drv_is_graphic() const
+  {
+    // Digole LCD is a graphic display
+    return true;
+  }
+
+
+  void drv_cls()
+  {
+    cmd_[0] = 'C';
+    cmd_[1] = 'L';
+    cmd_[2] = 'T';
+    cmd_[3] = 'P';
+    cmd_[4] = static_cast<std::uint8_t>(0U);
+    cmd_[5] = static_cast<std::uint8_t>(0U);
+    (void)write(cmd_, 6U);
+  }
+
+
+  /**
+   * Set pixel in given color, the color doesn't change the actual drawing color
+   * \param x X value
+   * \param y Y value
+   * \param color Color of pixel in ARGB format
+   */
+  virtual void drv_pixel_set_color(vertex_type point, color::value_type color)
+  {
+    // check limits and clipping
+    if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
+      // out of bounds or outside clipping region
+      return;
+    }
+
+    // assemble and send command
+    cmd_[ 0] = 'E';
+    cmd_[ 1] = 'S';
+    cmd_[ 2] = 'C';
+    cmd_[ 3] = color::get_red(color);
+    cmd_[ 4] = color::get_green(color);
+    cmd_[ 5] = color::get_blue(color);
+    cmd_[ 6] = 'D';
+    cmd_[ 7] = 'P';
+    cmd_[ 8] = static_cast<std::uint8_t>(point.x);
+    cmd_[ 9] = static_cast<std::uint8_t>(point.y);
+    cmd_[10] = 'E';
+    cmd_[11] = 'S';
+    cmd_[12] = 'C';
+    cmd_[13] = color::get_red(color_);
+    cmd_[14] = color::get_green(color_);
+    cmd_[15] = color::get_blue(color_);
+    (void)write(cmd_, 16U);
+  }
+
+
+  /**
+   * The problem of the Digole displays is that they communicate unidirectional - you can't read anything back.
+   * To get the pixel color, a buffer would be necessary to store a display content copy locally, about 60k for 160x128 RGB
+   * Therefore this function is not implemented, anti aliasing and fill function don't work.
+   */
+  inline color::value_type drv_pixel_get(vertex_type) const
+  {
+    return color_bg_get();
+  }
+
+
+  inline void pixel_set(vertex_type point)
+  {
+    // check limits and clipping
+    if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
+      // out of bounds or outside clipping region
+      return;
+    }
+
+    if (color_pen_function_) {
+      // color pen function is set, so use the base class to render the pixel
+      base::pixel_set(point);
+      return;
+    }
+
+    // assemble and send command
+    cmd_[0] = 'D';
+    cmd_[1] = 'P';
+    cmd_[2] = static_cast<std::uint8_t>(point.x);
+    cmd_[3] = static_cast<std::uint8_t>(point.y);
+    (void)write(cmd_, 4U);
   }
 
 
@@ -151,89 +248,9 @@ public:
   }
 
 
-  const char* digole::version() const
+  void color_pen_set(color::value_type color)
   {
-    return (const char*)VGX_DRV_DIGOLE_VERSION;
-  }
-
-
-  virtual bool is_graphic() const
-  {
-    // Digole LCD is a graphic display
-    return true;
-  }
-
-
-  void cls()
-  {
-    cmd_[0] = 'C';
-    cmd_[1] = 'L';
-    cmd_[2] = 'T';
-    cmd_[3] = 'P';
-    cmd_[4] = static_cast<std::uint8_t>(0U);
-    cmd_[5] = static_cast<std::uint8_t>(0U);
-    (void)write(cmd_, 6U);
-  }
-
-
-  void drv_pixel_set(int16_t x, int16_t y)
-  {
-    // check limits and clipping
-    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
-      // out of bounds or outside clipping region
-      return;
-    }
-
-    // assemble and send command
-    cmd_[0] = 'D';
-    cmd_[1] = 'P';
-    cmd_[2] = static_cast<std::uint8_t>(x);
-    cmd_[3] = static_cast<std::uint8_t>(y);
-    (void)write(cmd_, 4U);
-  }
-
-
-  void drv_pixel_set_color(int16_t x, int16_t y, std::uint32_t color)
-  {
-    // check limits and clipping
-    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
-      // out of bounds or outside clipping region
-      return;
-    }
-
-    // assemble and send command
-    cmd_[ 0] = 'E';
-    cmd_[ 1] = 'S';
-    cmd_[ 2] = 'C';
-    cmd_[ 3] = color::get_red(color);
-    cmd_[ 4] = color::get_green(color);
-    cmd_[ 5] = color::get_blue(color);
-    cmd_[ 6] = 'D';
-    cmd_[ 7] = 'P';
-    cmd_[ 8] = static_cast<std::uint8_t>(x);
-    cmd_[ 9] = static_cast<std::uint8_t>(y);
-    cmd_[10] = 'E';
-    cmd_[11] = 'S';
-    cmd_[12] = 'C';
-    cmd_[13] = color::get_red(color_);
-    cmd_[14] = color::get_green(color_);
-    cmd_[15] = color::get_blue(color_);
-    (void)write(cmd_, 16U);
-  }
-
-
-  // The problem of the Digole displays is that they communicate unidirectional - you can't read anything back.
-  // To get the pixel color, a buffer would be necessary to store a display content copy locally, about 60k for 160x128 RGB
-  // Therefore this function is not implemented, (font) anti aliasing and fill function don't work correctly.
-  std::uint32_t drv_pixel_get(int16_t, int16_t) const
-  {
-    return color_bg_;
-  }
-
-
-  void color_set(color::value_type color)
-  {
-    color_ = color;
+    color_pen_ = color;
     cmd_[0] = 'E';
     cmd_[1] = 'S';
     cmd_[2] = 'C';
@@ -243,96 +260,52 @@ public:
     (void)write(cmd_, 6U);
   }
 
-
-  void drv_line(int16_t x0, int16_t y0, int16_t x1, int16_t y1)
+  virtual void line_horz(vertex_type v0, vertex_type v1)
   {
     // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_line(x0, y0, x1, y1); 
+    if (clipping_.is_enabled()) {
+      // Digole displays doesn't support clipping, use the gpr instead
+      gpr::line_horz(v0, v1);
       return;
     }
 
     // assemble and send command
     cmd_[0] = 'L';
     cmd_[1] = 'N';
-    cmd_[2] = static_cast<std::uint8_t>(x0);
-    cmd_[3] = static_cast<std::uint8_t>(y0);
-    cmd_[4] = static_cast<std::uint8_t>(x1);
-    cmd_[5] = static_cast<std::uint8_t>(y1);
+    cmd_[2] = static_cast<std::uint8_t>(v0.x);
+    cmd_[3] = static_cast<std::uint8_t>(v0.y);
+    cmd_[4] = static_cast<std::uint8_t>(v1.x);
+    cmd_[5] = static_cast<std::uint8_t>(v1.y);
     (void)write(cmd_, 6U);
   }
 
 
-  void drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
+  virtual void line_vert(vertex_type v0, vertex_type v1)
   {
     // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_line_horz(x0, y0, x1); 
+    if (clipping_.is_enabled()) {
+      // Digole displays doesn't support clipping, use the gpr instead
+      gpr::drv_line_vert(v0, v1);
       return;
     }
 
     // assemble and send command
     cmd_[0] = 'L';
     cmd_[1] = 'N';
-    cmd_[2] = static_cast<std::uint8_t>(x0);
-    cmd_[3] = static_cast<std::uint8_t>(y0);
-    cmd_[4] = static_cast<std::uint8_t>(x1);
-    cmd_[5] = static_cast<std::uint8_t>(y0);
+    cmd_[2] = static_cast<std::uint8_t>(v0.x);
+    cmd_[3] = static_cast<std::uint8_t>(v0.y);
+    cmd_[4] = static_cast<std::uint8_t>(v1.x);
+    cmd_[5] = static_cast<std::uint8_t>(v1.y);
     (void)write(cmd_, 6U);
   }
 
 
-  void drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
+  virtual void box(vertex_type v0, vertex_type v1)
   {
     // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_line_vert(x0, y0, y1); 
-      return;
-    }
-
-    // assemble and send command
-    cmd_[0] = 'L';
-    cmd_[1] = 'N';
-    cmd_[2] = static_cast<std::uint8_t>(x0);
-    cmd_[3] = static_cast<std::uint8_t>(y0);
-    cmd_[4] = static_cast<std::uint8_t>(x0);
-    cmd_[5] = static_cast<std::uint8_t>(y1);
-    (void)write(cmd_, 6U);
-  }
-
-
-  void drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
-  {
-    // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_rect(x0, y0, x1, y1); 
-      return;
-    }
-
-    std::int16_t tmp;
-    if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
-    if (y0 > y1) { tmp = y0; y0 = y1; y1 = tmp; }
-
-    cmd_[0] = 'D';
-    cmd_[1] = 'R';
-    cmd_[2] = static_cast<std::uint8_t>(x0);
-    cmd_[3] = static_cast<std::uint8_t>(y0);
-    cmd_[4] = static_cast<std::uint8_t>(x1);
-    cmd_[5] = static_cast<std::uint8_t>(y1);
-    (void)write(cmd_, 6U);
-  }
-
-
-  void drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
-  {
-    // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_box(x0, y0, x1, y1); 
+    if (clipping_.is_enabled()) {
+      // Digole displays doesn't support clipping, use the gpr instead
+      gpr::drv_box(v0, v1);
       return;
     }
 
@@ -342,79 +315,82 @@ public:
 
     cmd_[0] = 'F';
     cmd_[1] = 'R';
-    cmd_[2] = static_cast<std::uint8_t>(x0);
-    cmd_[3] = static_cast<std::uint8_t>(y0);
-    cmd_[4] = static_cast<std::uint8_t>(x1);
-    cmd_[5] = static_cast<std::uint8_t>(y1);
+    cmd_[2] = static_cast<std::uint8_t>(v0.x);
+    cmd_[3] = static_cast<std::uint8_t>(v0.y);
+    cmd_[4] = static_cast<std::uint8_t>(v1.x);
+    cmd_[5] = static_cast<std::uint8_t>(v1.y);
     (void)write(cmd_, 6U);
   }
 
 
-  void drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
+#ifdef DIGOLE_HAS_NO_ANTI_ALIASING_SUPPORT
+  virtual void drv_circle(vertex_type center, std::uint16_t radius)
   {
     // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_circle(x, y, r);
+    if (clipping_.is_enabled()) {
+      // Digole displays doesn't support clipping, use the gpr instead
+      gpr::drv_circle(center, radius);
       return;
     }
 
     cmd_[0] = 'C';
     cmd_[1] = 'C';
-    cmd_[2] = static_cast<std::uint8_t>(x);
-    cmd_[3] = static_cast<std::uint8_t>(y);
-    cmd_[4] = static_cast<std::uint8_t>(r);
+    cmd_[2] = static_cast<std::uint8_t>(center.x);
+    cmd_[3] = static_cast<std::uint8_t>(center.y);
+    cmd_[4] = static_cast<std::uint8_t>(radius);
     cmd_[5] = static_cast<std::uint8_t>(0U);
     (void)write(cmd_, 6U);
   }
 
 
-  void drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
+  virtual void drv_disc(vertex_type center, std::uint16_t radius)
   {
     // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_disc(x, y, r);
+    if (clipping_.is_enabled()) {
+      // Digole displays doesn't support clipping, use the gpr instead
+      gpr::drv_disc(center, radius);
       return;
     }
 
     cmd_[0] = 'C';
     cmd_[1] = 'C';
-    cmd_[2] = static_cast<std::uint8_t>(x);
-    cmd_[3] = static_cast<std::uint8_t>(y);
-    cmd_[4] = static_cast<std::uint8_t>(r);
+    cmd_[2] = static_cast<std::uint8_t>(center.x);
+    cmd_[3] = static_cast<std::uint8_t>(center.y);
+    cmd_[4] = static_cast<std::uint8_t>(radius);
     cmd_[5] = static_cast<std::uint8_t>(1U);
     (void)write(cmd_, 6U);
   }
+#endif
 
 
-  void drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
+  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
   {
     // check clipping
-    if (clipping_) {
-      // Digole displays doesn't support clipping, using the gpr instead
-      gpr::drv_move(x0, y0, x1, y1, width, height);
+    if (clipping_.is_enabled()) {
+      // Digole displays doesn't support clipping, use the gpr instead
+      gpr::drv_move(source, destination, width, height);
       return;
     }
 
     cmd_[0] = 'M';
     cmd_[1] = 'A';
-    cmd_[2] = static_cast<std::uint8_t>(x0);
-    cmd_[3] = static_cast<std::uint8_t>(y0);
+    cmd_[2] = static_cast<std::uint8_t>(source.x);
+    cmd_[3] = static_cast<std::uint8_t>(source.y);
     cmd_[4] = static_cast<std::uint8_t>(width);
     cmd_[5] = static_cast<std::uint8_t>(height);
-    cmd_[6] = static_cast<std::uint8_t>(x1);
-    cmd_[7] = static_cast<std::uint8_t>(y1);
+    cmd_[6] = static_cast<std::uint8_t>(destination.x);
+    cmd_[7] = static_cast<std::uint8_t>(destination.y);
     (void)write(cmd_, 8U);
   }
 
 
-  inline bool write(std::uint8_t* buffer, std::uint16_t length)
+private:
+
+  inline bool write(const std::uint8_t* buffer, std::uint16_t length)
   {
     return io::dev_set(interface_, interface_port_, buffer, length, nullptr, 0U);
   }
 
-private:
   interface_type    interface_;         // interface type
   std::uint32_t     uart_baudrate_;     // baudrate for UART interface mode
   std::uint16_t     interface_port_;    // interface port

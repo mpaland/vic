@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2015, PALANDesign Hannover, Germany
+//             2014-2017, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -35,11 +35,11 @@
 #ifndef _VGX_DRV_MAX7219_H_
 #define _VGX_DRV_MAX7219_H_
 
-#include "vgx_drv.h"
+#include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.00"
+#define VGX_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.30"
 
 namespace vgx {
 namespace head {
@@ -47,31 +47,26 @@ namespace head {
 
 /**
  * MAX7219 head is a monochrome LED / 7-segment driver, using 1 bit color depth
- * \param Screen_Size_X Screen (buffer) width, unused, should be 8
- * \param Screen_Size_Y Screen (buffer) height
- * \param Viewport_Size_X Viewport (window) width, unused, should be 8
- * \param Viewport_Size_Y Viewport (window) height
+ * \param Screen_Size_X Screen (buffer) width, should be normally 8
+ * \param Screen_Size_Y Screen (buffer) height, should be normally 8
  */
-template<std::uint16_t Screen_Size_X = 8U,   std::uint16_t Screen_Size_Y = 8U,
-         std::uint16_t Viewport_Size_X = 8U, std::uint16_t Viewport_Size_Y = 8U>
+template<std::uint16_t Screen_Size_X = 8U, std::uint16_t Screen_Size_Y = 8U>
 class MAX7219 : public drv
 {
 public:
-/////////////////////////////////////////////////////////////////////////////
-// M A N D A T O R Y   F U N C T I O N S
+
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   F U N C T I O N S
 
   /**
    * ctor
    * \param orientation Screen orientation
    * \param spi_device_id Logical SPI bus device ID
-   * \param viewport_x X offset of the viewport, relative to top/left corner
-   * \param viewport_y Y offset of the viewport, relative to top/left corner
    */
-  MAX7219(orientation_type orientation, std::uint16_t spi_device_id,
-          std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
-    : drv(Screen_Size_X,   Screen_Size_Y,
-          Viewport_Size_Y, Viewport_Size_Y,
-          viewport_x,      viewport_y,
+  MAX7219(orientation_type orientation, std::uint16_t spi_device_id)
+    : drv(Screen_Size_X, Screen_Size_Y,
+          Screen_Size_X, Screen_Size_Y,     // no viewport support (screen = viewport)
+          0, 0,                             // no viewport support
           orientation)
     , spi_device_id_(spi_device_id)
   { }
@@ -79,24 +74,26 @@ public:
 
   /**
    * dtor
-   * Deinit the driver
+   * Shutdown the driver
    */
   ~MAX7219()
-  { deinit(); }
+  { drv_shutdown(); }
 
 
-  virtual void init()
+protected:
+
+  virtual void drv_init()
   {
     // set scan limit according to width or height
     write(REG_SCANLIMIT, (orientation_ == orientation_0)  || (orientation_ == orientation_180) ||
                          (orientation_ == orientation_0m) || (orientation_ == orientation_180m) ?
-                         static_cast<std::uint8_t>(viewport_height() - 1U) : static_cast<std::uint8_t>(viewport_width() - 1U));
+                         static_cast<std::uint8_t>(screen_height() - 1U) : static_cast<std::uint8_t>(screen_width() - 1U));
 
     // set no decode
-    write(REG_DECODE, 0x00);
+    write(REG_DECODE, 0x00U);
 
     // clear buffer
-    cls();
+    drv_cls();
     brightness_set(255U);   // full brightness
 
     // start normal operation
@@ -104,87 +101,76 @@ public:
   }
 
 
-  virtual void deinit()
+  virtual void drv_shutdown()
   {
     // clear buffer
-    cls();
+    drv_cls();
 
     // shutdown operation
     write(REG_SHUTDOWN, 0x00U);
   }
 
 
-  virtual void brightness_set(std::uint8_t level)
-  {
-    // set brightness, use lower nibble of level
-    write(REG_INTENSITY, static_cast<std::uint8_t>(level >> 4U));
-  }
-
-
-  virtual const char* version() const
+  inline virtual const char* drv_version() const
   {
     return (const char*)VGX_DRV_MAX7219_VERSION;
   }
 
 
-  virtual bool is_graphic() const
+  inline virtual bool drv_is_graphic() const
   {
     // MAX7219 is a graphic display
     return true;
   }
 
 
-  virtual void cls()
+  virtual void drv_cls()
   {
     // clear display
     for (std::uint_fast8_t i = 0U; i < screen_height(); ++i) {
       digit_[i] = 0U;
     }
     // data to MAX7219
-    drv_primitive_done();
+    drv_present();
   }
 
 
-  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
+  virtual void drv_pixel_set_color(vertex_type point, color::value_type color)
   {
     // check limits and clipping
-    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
+    if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
       // out of bounds or outside clipping region
       return;
     }
 
     // set pixel in display buffer
     if (color_to_head_L1(color)) {
-      digit_[y] |= static_cast<std::uint8_t>(0x01U << (x & 0x07U));     // set pixel
+      digit_[point.y] |= static_cast<std::uint8_t>(0x01U << (point.x & 0x07U));     // set pixel
     }
     else {
-      digit_[y] &= static_cast<std::uint8_t>(~(0x01U << (x & 0x07U)));  // clear pixel
+      digit_[point.y] &= static_cast<std::uint8_t>(~(0x01U << (point.x & 0x07U)));  // clear pixel
     }
   }
 
 
-  virtual color::value_type drv_pixel_get(std::int16_t x, std::int16_t y) const
+  virtual inline color::value_type drv_pixel_get(vertex_type point) const
   {
     // check limits
-    if (x >= screen_width() || y >= screen_height()) {
+    if (!screen_is_inside(point)) {
       // out of bounds
       return color_from_head_L1(0U);
     }
-    return color_from_head_L1(static_cast<std::uint8_t>(digit_[y] >> x) & 0x01U);
+    return color_from_head_L1(static_cast<std::uint8_t>(digit_[point.y] >> point.x) & 0x01U);
   }
 
 
-  virtual void drv_primitive_done()
+  virtual void drv_present()
   {
-    if (primitive_lock_) {
-      return;
-    }
-
     // copy memory bitmap to screen
     switch (orientation_) {
       case orientation_0 :
         for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
-          write(REG_DIGIT0 + y, digit_[viewport_y_ + y]);
+          write(REG_DIGIT0 + y, digit_[viewport_get().y + y]);
         }
         break;
       case orientation_90 :
@@ -192,14 +178,14 @@ public:
           std::uint8_t data = 0U;
           for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
             data >>= 1U;
-            data |= (digit_[viewport_y_ + x] & (0x80U >> y)) ? 0x80U : 0x00U;
+            data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x80U : 0x00U;
           }
           write(REG_DIGIT0 + y, data);
         }
         break;
       case orientation_180 :
         for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
-          write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_y_ + viewport_height() - y - 1U]));
+          write(REG_DIGIT0 + y, byte_reverse(digit_[static_cast<std::uint32_t>(viewport_get().y + viewport_height()) - y - 1U]));
         }
         break;
       case orientation_270 :
@@ -207,14 +193,14 @@ public:
           std::uint8_t data = 0U;
           for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
             data <<= 1U;
-            data |= (digit_[viewport_y_ + x] & (0x01U << y)) ? 0x01U : 0x00U;
+            data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x01U : 0x00U;
           }
           write(REG_DIGIT0 + y, data);
         }
         break;
       case orientation_0m :
         for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
-          write(REG_DIGIT0 + y, digit_[viewport_y_ + viewport_height() - y - 1U]);
+          write(REG_DIGIT0 + y, digit_[static_cast<std::uint32_t>(viewport_get().y + viewport_height()) - y - 1U]);
         }
         break;
       case orientation_90m :
@@ -222,14 +208,14 @@ public:
           std::uint8_t data = 0U;
           for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
             data >>= 1U;
-            data |= (digit_[viewport_y_ + x] & (0x01U << y)) ? 0x80U : 0x00U;
+            data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x80U : 0x00U;
           }
           write(REG_DIGIT0 + y, data);
         }
         break;
       case orientation_180m :
         for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
-          write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_y_ + y]));
+          write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_get().y + y]));
         }
         break;
       case orientation_270m :
@@ -237,7 +223,7 @@ public:
           std::uint8_t data = 0U;
           for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
             data <<= 1U;
-            data |= (digit_[viewport_y_ + x] & (0x80U >> y)) ? 0x01U : 0x00U;
+            data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x01U : 0x00U;
           }
           write(REG_DIGIT0 + y, data);
         }
@@ -246,6 +232,14 @@ public:
         break;
     }
   }
+
+
+  virtual inline void brightness_set(std::uint8_t level)
+  {
+    // set brightness, use lower nibble of level
+    write(REG_INTENSITY, static_cast<std::uint8_t>(level >> 4U));
+  }
+
 
 private:
   /**
@@ -270,7 +264,7 @@ private:
     return static_cast<std::uint8_t>(((data * 0x0802LU & 0x22110LU) | (data * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16U);
   }
 
-private:
+
   // register address map
   const std::uint8_t REG_NOOP       = 0x00U;
   const std::uint8_t REG_DIGIT0     = 0x01U;
@@ -287,9 +281,10 @@ private:
   const std::uint8_t REG_SHUTDOWN   = 0x0CU;
   const std::uint8_t REG_TEST       = 0x0FU;
 
+
 private:
-  std::uint16_t     spi_device_id_;           // Logical SPI device ID
-  std::uint8_t      digit_[Screen_Size_Y];    // display buffer, cause reading data isn't supported
+  std::uint16_t   spi_device_id_;           // Logical SPI device ID
+  std::uint8_t    digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
 };
 
 } // namespace head

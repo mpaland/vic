@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2015, PALANDesign Hannover, Germany
+//             2014-2017, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -25,14 +25,18 @@
 //
 // \brief seven-segment driver
 // This is the driver for a seven-segment device with a decimal point
-// It's a character head which can display 0-9 and A-F
+// It's a alpha numeric head which can display 0-9 and A-F
 //
 ///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _VGX_DRV_SEVEN_SEGMENT_H_
 #define _VGX_DRV_SEVEN_SEGMENT_H_
 
-#include "vgx_drv.h"
+#include "../drv.h"
+
+
+// defines the driver name and version
+#define VGX_DRV_SEVEN_SEGMENT_VERSION   "Seven segment driver 1.00"
 
 
 namespace vgx {
@@ -42,23 +46,25 @@ namespace head {
 /**
  * 7-segment driver, using 1 bit color depth
  */
-template<std::uint_fast8_t XSIZE>
+template<std::uint16_t COLUMNS>
 class seven_segment : public drv
 {
 public:
-/////////////////////////////////////////////////////////////////////////////
-// M A N D A T O R Y   F U N C T I O N S
 
-typedef struct stuct_segment_type {
-  std::uint16_t a;
-  std::uint16_t b;
-  std::uint16_t c;
-  std::uint16_t d;
-  std::uint16_t e;
-  std::uint16_t f;
-  std::uint16_t g;
-  std::uint16_t dp;
-} segment_type;
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   F U N C T I O N S
+
+  typedef struct tag_segment_type {
+    std::uint16_t a;
+    std::uint16_t b;
+    std::uint16_t c;
+    std::uint16_t d;
+    std::uint16_t e;
+    std::uint16_t f;
+    std::uint16_t g;
+    std::uint16_t dp;
+  } segment_type;
+
 
   /**
    * ctor
@@ -69,62 +75,117 @@ typedef struct stuct_segment_type {
    * \param orientation Screen orientation
    * \param spi_device_id Logical SPI bus device ID
    */
-  seven_segment(const segment_type& seg_id, std::uint16_t* device_select
-               )
-    : drv(XSIZE, 1, 0, 0)
+  seven_segment(const segment_type& seg_id, std::uint16_t* device_select)
+    : drv(COLUMNS, 1,
+          0, 0)
     , seg_id_(seg_id)
   { }
 
+
   /**
    * dtor
-   * Deinit the driver
+   * Shutdown the driver
    */
   ~seven_segment()
-  { deinit(); }
+  { drv_shutdown(); }
 
-  // mandatory driver functions
-  virtual void init();                                    // driver init
-  virtual void deinit();                                  // driver deinit
-  virtual void brightness_set(std::uint8_t level);        // set display brightness/backlight
-  virtual const char* version() const;                    // get driver name and version
-  virtual void primitive_done();                          // rendering done (copy RAM / frame buffer to screen)
-  virtual void cls();                                     // clear display, all pixels off (black)
 
-  /**
-   * Output one character
-   * \param ch Output character in ASCII format
-   */
-  virtual void drv_text_char(std::uint16_t ch)
+protected:
+
+  virtual void drv_init()
+  { }
+
+
+  virtual void drv_shutdown()
+  { }
+
+
+  virtual inline const char* drv_version() const
   {
-    // handling of special chars
-    if (((char)ch == '\n') || ((char)ch == '\r')) {
-      // X = 0
-      text_x_act_ = 0;
-      return;
-    }
-    // check for valid chars
-    if (((char)ch >= '0') && ((char)ch <= '9') ||
-        ((char)ch >= 'A') && ((char)ch <= 'F') ||
-        ((char)ch == '.')) {
-      if ((char)ch == '.') {
-        point_[text_x_act_ ? text_x_act_ - 1U : 0U] = 1U;
-      }
-      else {
-        digit_[text_x_act_]   = static_cast<std::uint8_t>(ch);
-        point_[text_x_act_++] = 0U;
-      }
-    }
-
+    // return the driver version, like
+    return (const char*)VGX_DRV_SEVEN_SEGMENT_VERSION;
   }
 
+
+  virtual inline bool drv_is_graphic() const
+  {
+    // alpha numeric display
+    return false;
+  }
+
+
+  virtual void drv_cls()
+  {
+    // clear the entire screen / buffer
+  }
+
+ 
+  /**
+   * Set pixel in given color, the color doesn't change the actual drawing color
+   * \param x X value
+   * \param y Y value
+   * \param color Color of pixel in ARGB format
+   */
+  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color)
+  { }
+
+
+  /**
+   * Get pixel color
+   * \param x X value
+   * \param y Y value
+   * \return Color of pixel in ARGB format
+   */
+  virtual inline color::value_type drv_pixel_get(vertex_type point) const
+  { return vgx::color::black; }
+
+
+  /**
+   * Rendering is done (copy RAM / frame buffer to screen)
+   */
+  virtual void drv_present()
+  { }
+
+ 
+  /**
+   * Output a single ASCII/UNICODE char at the actual cursor position
+   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
+   * \return 1 if the char is rendered, 0 if error/not rendered
+   */
+  virtual std::uint16_t text_char(std::uint16_t ch)
+  {
+    if (ch < 0x20U) {
+      // ignore non characters
+      return 0U;
+    }
+
+    // check limits
+    if (screen_is_inside({ text_x_act_, text_y_act_ })) {
+
+      // check for valid chars
+      if (((char)ch >= '0') && ((char)ch <= '9') ||
+        ((char)ch >= 'A') && ((char)ch <= 'F') ||
+        ((char)ch == '.')) {
+        if ((char)ch == '.') {
+          point_[text_x_act_ ? text_x_act_ - 1U : 0U] = 1U;
+        }
+        else {
+          digit_[text_x_act_] = static_cast<std::uint8_t>(ch);
+          point_[text_x_act_++] = 0U;
+        }
+      }
+    }
+
+    return 1U;
+  }
 
 
   void digit_out() {
     // digits 0 - 9, A - F, encoding is 0 a b c d e f g
-    const std::uint8_t seg[16] = { 0×7E, 0×30, 0×6D, 0×79, 0×33, 0×5B, 0×5F, 0×70, 0×7F, 0×7B,
-                                   0×77, 0×1F, 0×4E, 0×3D, 0×4F, 0×47 };
-
+    const std::uint8_t seg[16] = { 0x7E, 0x30, 0x6D, 0x79, 0x33, 0x5B, 0x5F, 0x70, 0x7F, 0x7B,
+                                   0x77, 0x1F, 0x4E, 0x3D, 0x4F, 0x47 };
   }
+
 
 private:
   /**
@@ -142,8 +203,8 @@ private:
 
 private:
 
-  std::uint8_t      digit_[XSIZE];    // digit buffer
-  std::uint8_t      point_[XSIZE];    // point buffer
+  std::uint8_t  digit_[COLUMNS];    // digit buffer
+  std::uint8_t  point_[COLUMNS];    // point buffer
 };
 
 } // namespace head
