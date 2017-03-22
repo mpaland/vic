@@ -31,7 +31,7 @@
 #ifndef _VGX_CTRL_H_
 #define _VGX_CTRL_H_
 
-#include "vgx_drv.h"
+#include "drv.h"
 
 
 namespace vgx {
@@ -45,15 +45,14 @@ public:
    */
   ctrl(drv& head)
     : head_(head)
-  { };
+  { }
 
   /**
-   * Check if the given coordinate is inside the control
-   * \param x X coordinate
-   * \param y Y coordinate
-   * \return true if coordinate is inside the control
+   * Check if the given point is inside the control
+   * \param point Point to check
+   * \return true if point is inside the control
    */
-  virtual bool is_inside(std::int16_t x, std::int16_t y) = 0;
+  virtual bool is_inside(vertex_type point) = 0;
 
 protected:
   drv& head_;
