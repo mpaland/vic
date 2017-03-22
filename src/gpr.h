@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2015, PALANDesign Hannover, Germany
+//             2001-2017, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -25,96 +25,205 @@
 //
 // \brief Graphic Primitive Renderer to render lines, arcs, boxes etc.
 // This is the base class of any driver. If a driver can't provide drawing functions
-// on its own, this routines are taken.
+// on its own, these routines are taken.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _VGX_GPR_H_
 #define _VGX_GPR_H_
 
-#include <cstdint>
-
-#include <vgx_cfg.h>      // use < > here, cause vgx_cfg.h may be in some platform folder
-#include "vgx_fonts.h"
-#include "vgx_color.h"
+#include "base.h"
 
 
 namespace vgx {
 
 
-typedef struct struct_vertex_type {
-  std::int16_t x;
-  std::int16_t y;
-} vertex_type;
-
-
-typedef enum enum_line_style_type {
-  vgx_line_style_solid = 0,
-  vgx_line_style_dotted,
-  vgx_line_style_dashed
-} line_style_type;
-
-
-typedef enum enum_text_mode_type {
-  text_mode_normal = 0,
-  text_mode_inverse
-} text_mode_type;
-
-
-typedef struct struct_clipping_type
-{
-  /**
-   * ctor
-   * Create a clipping region
-   * \param x0 Left coordinate
-   * \param y0 Top coordinate
-   * \param x1 Right coordinate
-   * \param y1 Bottom coordinate
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
-   */
-  struct_clipping_type(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool inside = true)
-    : x0_(x0), y0_(y0), x1_(x1), y1_(y1), inside_(inside) {
-    if (x0_ > x1_) { std::int16_t t = x0_; x0_ = x1_; x1_ = t; }
-    if (y0_ > y1_) { std::int16_t t = y0_; y0_ = y1_; y1_ = t; }
-  }
-
-  /**
-   * Set the clipping region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
-   */
-  inline void set(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool inside = true) {
-    x0_ = x0; y0_ = y0; x1_ = x1; y1_ = y1; inside_ = inside;
-    if (x0_ > x1_) { std::int16_t t = x0_; x0_ = x1_; x1_ = t; }
-    if (y0_ > y1_) { std::int16_t t = y0_; y0_ = y1_; y1_ = t; }
-  }
-
-  /**
-   * Test if given vertex is inside clipping region
-   * \return True if given vertex is within the active clipping region and should be drawn
-   */
-  inline bool is_clipping(std::int16_t x, std::int16_t y) {
-    if (x >= x0_ && x <= x1_ && y >= y0_ && y <= y1_) {
-      return inside_;
-    }
-    else
-      return !inside_;
-  }
-
-private:
-  std::int16_t x0_;
-  std::int16_t y0_;
-  std::int16_t x1_;
-  std::int16_t y1_;
-  bool         inside_;
-} clipping_type;
-
+typedef struct struct_pen_type {
+  std::int8_t   x;
+  std::int8_t   y;
+  std::uint8_t  alpha;
+  std::uint8_t  next;
+} pen_type;
 
 
 /**
  * Graphic Primitive Renderer
  */
-class gpr
+class gpr : virtual public base
 {
+protected:
+
+  /**
+   * Helper function to calculate (lookup) sin(x) normalized to 10000
+   * \param angle Angle in degree, valid range from 0ï¿½ to 360ï¿½
+   * \return sin(x) * 10000 in upper int16
+   */
+  std::int16_t sin(std::uint16_t angle) const   // sin(x) helper function
+  {
+    const std::uint16_t val[90] = { 8989 
+// TBD 
+    
+    };
+    return angle <= 180U ? val[angle % 90U] : -val[angle % 90U];
+  }
+
+  /**
+   * Helper function to calculate (lookup) cos(x) normalized to 10000
+   * \param angle Angle in degree, valid range from 0ï¿½ to 360ï¿½
+   * \return cos(x) * 10000 in upper int16
+   */
+  std::int16_t cos(std::uint16_t angle) const   // sin(x) helper function
+  {
+    const std::uint16_t val[90] = { 8989 
+// TBD 
+    };
+    return (angle <= 90U || angle >= 270) ? val[angle % 90U] : -val[angle % 90U];
+  }
+
+  /**
+   * Helper function to calculate (lookup) sin(x) and cos(x), normalized to 100
+   * \param angle Angle in degree, valid range from 0ï¿½ to 90ï¿½
+   * \return sin(x) * 100 in upper byte, cos(x) * 100 in lower byte
+   */
+/*
+  inline std::uint16_t sin(std::uint8_t angle) const   // sin(x) helper function
+  {
+    const std::uint16_t angle_to_xy[91U] = {
+      0x0064U, 0x0264U, 0x0364U, 0x0564U, 0x0764U, 0x0964U, 0x0A63U, 0x0C63U, 0x0E63U, 0x1063U, 0x1162U, 0x1362U, 0x1562U, 0x1661U, 0x1861U, 0x1A61U,
+      0x1C60U, 0x1D60U, 0x1F5FU, 0x215FU, 0x225EU, 0x245DU, 0x255DU, 0x275CU, 0x295BU, 0x2A5BU, 0x2C5AU, 0x2D59U, 0x2F58U, 0x3057U, 0x3257U, 0x3456U,
+      0x3555U, 0x3654U, 0x3853U, 0x3952U, 0x3B51U, 0x3C50U, 0x3E4FU, 0x3F4EU, 0x404DU, 0x424BU, 0x434AU, 0x4449U, 0x4548U, 0x4747U, 0x4845U, 0x4944U,
+      0x4A43U, 0x4B42U, 0x4D40U, 0x4E3FU, 0x4F3EU, 0x503CU, 0x513BU, 0x5239U, 0x5338U, 0x5436U, 0x5535U, 0x5634U, 0x5732U, 0x5730U, 0x582FU, 0x592DU,
+      0x5A2CU, 0x5B2AU, 0x5B29U, 0x5C27U, 0x5D25U, 0x5D24U, 0x5E22U, 0x5F21U, 0x5F1FU, 0x601DU, 0x601CU, 0x611AU, 0x6118U, 0x6116U, 0x6215U, 0x6213U,
+      0x6211U, 0x6310U, 0x630EU, 0x630CU, 0x630AU, 0x6409U, 0x6407U, 0x6405U, 0x6403U, 0x6402U, 0x6400U
+    };
+    return angle <= 90U ? angle_to_xy[angle] : 0U;   // out of bounds returns 0
+  }
+*/
+
+
+  inline std::int16_t orient_2d(vertex_type a, vertex_type b, vertex_type c) const
+  {
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  }
+
+
+  /**
+   * Helper function to swap two vertexes (as coordinates)
+   * \param v0 First vertex
+   * \param v1 Second vertex
+   */
+  inline void vertex_swap(vertex_type& v0, vertex_type& v1) const
+  {
+    const vertex_type t = v0;
+    v0 = v1;
+    v1 = t; 
+  }
+
+  /**
+   * Helper function to rotate a point of a given angle in respect to given center
+   */
+  inline vertex_type vertex_rotate(vertex_type center, vertex_type point, std::int16_t angle) const
+  {
+    const std::int32_t s = sin(angle);
+    const std::int32_t c = cos(angle);
+  
+    // translate point to center
+    point.x -= center.x;
+    point.y -= center.y;
+
+    // rotate point and translate back
+    vertex_type rp;
+    rp.x = static_cast<std::int16_t>(((std::int32_t)point.x * c - (std::int32_t)point.y * s) / 10000) + center.x;
+    rp.y = static_cast<std::int16_t>(((std::int32_t)point.x * s - (std::int32_t)point.y * c) / 10000) + center.y;
+
+    return rp;
+  }
+
+
+  inline void render_pen(vertex_type center)
+  {
+    std::size_t i = 0U;
+    do {
+      const vertex_type v = { center.x + pen_shape_[i].x, center.y + pen_shape_[i].y };
+      drv_pixel_set_color(v, pen_shape_[i].alpha == 0U ? color_pen_get(v) : color::mix(drv_pixel_get(v), color_pen_get(v), pen_shape_[i].alpha));
+    } while (pen_shape_[i++].next);
+  }
+
+
+  class anti_aliasing
+  {
+    gpr* gpr_;
+    vertex_type pipe_[3];   // 3 pixel pipe
+
+  public:
+    anti_aliasing(gpr* _gpr)
+      : gpr_(_gpr)
+      , pipe_()
+    { }
+
+    inline void render(vertex_type v)
+    {
+      gpr_->drv_pixel_set_color({v.x, v.y}, color::yellow);
+
+      // put the new vertex in the pipe
+      pipe_[0] = pipe_[1];
+      pipe_[1] = pipe_[2];
+      pipe_[2] = v;
+
+      // check the distance
+      const std::int16_t dx = util::abs<std::int16_t>(pipe_[2].x - pipe_[1].x);
+      const std::int16_t dy = util::abs<std::int16_t>(pipe_[2].y - pipe_[1].y);
+      if (dx > 1 && dy > 1) {
+        // antialising not possible, distance too far
+        gpr_->drv_pixel_set_color({ v.x, v.y }, color::brightred);
+        return;
+      }
+/*
+
+      // calculate the gradient for "bluring the tail"
+      std::int16_t dx = abs<std::int16_t>(pipe_[2].x - pipe_[0].x);
+      std::int16_t dy = abs<std::int16_t>(pipe_[2].y - pipe_[0].y);
+
+      if (dy * 2 <= dx) {
+        // 0 - 30ï¿½
+      }
+      if (dy <= dx) {
+        // 30 - 45ï¿½
+      }
+      if (dx * 2 <= dy) {
+        // 90 - 75ï¿½
+      }
+      if (dx <= dy) {
+        // 45 - 30ï¿½
+      }
+
+
+  //     _ _|_ _
+  //    |       |
+  //    |       |_
+  //    |       |
+  //    |_ _ _ _|
+  //
+  //
+
+      // render anti aliasing
+      switch (0) {
+      case 0:
+        break;
+      case 30:
+        pixel_set(x - 2, y);
+        pixel_set(x - 1, y, 50 % );
+        pixel_set(x, y + 1, 50 % );
+
+        pixel_set(x, y, 75 % );
+        break;
+        //      drv_pixel_set_color(x0, y0 + 1, color::mix(color_, drv_pixel_get(x0, y0 + 1), lum));
+      }
+  */
+    }
+  };
+
+
 public:
 
   /**
@@ -122,176 +231,177 @@ public:
    * Init vars
    */
   gpr()
-    : color_(color::white)
-    , color_bg_(color::black)
-    , primitive_lock_(false)
-    , text_font_(nullptr)
-    , text_x_set_(0)
-    , text_x_act_(0)
-    , text_y_act_(0)
-    , text_mode_(text_mode_normal)
-    , clipping_(nullptr)
-  #if defined(VGX_CFG_ANTIALIASING)
-    , anti_aliasing_(false)
-  #endif
+    : primitive_lock_(false)
+    , anti_aliasing_(false)     // no AA as default
+    , pen_shape_(nullptr)       // 1 pixel pen as default
   { }
-
-
-  /**
-   * Returns the display capability: graphic or alpha numeric
-   * \return True if graphic display
-   */
-  virtual bool is_graphic(void) const = 0;
-
-///////////////////////////////////////////////////////////////////////////////
-// C O L O R   F U N C T I O N S
-
-  /**
-   * Set the drawing color
-   * \param color New drawing color in ARGB format
-   */
-  virtual inline void color_set(color::value_type color)
-  { color_ = color; }
-
-  /**
-   * Get the actual drawing color
-   * \return Actual drawing color in ARGB format
-   */
-  virtual inline color::value_type color_get() const
-  { return color_; }
-
-  /**
-   * Set the background color (e.g. for cls)
-   * \param color_background New background color in ARGB format
-   */
-  virtual inline void color_set_bg(color::value_type color_background)
-  { color_bg_ = color_background; }
-
-  /**
-   * Get the actual background color
-   * \return Actual background color in ARGB format
-   */
-  virtual inline color::value_type color_get_bg() const
-  { return color_bg_; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 // G R A P H I C   P R I M I T I V E   F U N C T I O N S
 
   /**
-   * Plot a point
-   * \param x X value
-   * \param y Y value
-   * \return true if successful
+   * Select the actual drawing pen
+   * \param pen_shape Set the actual pen shape or nullptr for 1 pixel default pen (fastest)
    */
-  bool plot(std::int16_t x, std::int16_t y)
+  void pen_set(const pen_type* pen_shape)
   {
-    drv_pixel_set(x, y);
-    drv_primitive_done();
-    return true;
+    pen_shape_ = pen_shape;
+  }
+
+
+  /**
+   * Plot a point in the actual drawing (pen) color
+   * \param point Vertex to plot
+   */
+  void plot(vertex_type point)
+  {
+    drv_pixel_set_color(point, color_pen_get(point));
+    present();
   }
 
 
   /**
    * Plot a point with a given color, drawing color is not affected
-   * \param x X value
-   * \param y Y value
+   * \param point Vertex to plot
    * \param color Color of the pixel
-   * \return true if successful
    */
-  bool plot(std::int16_t x, std::int16_t y, color::value_type color)
+  void plot(vertex_type point, color::value_type color)
   {
-    drv_pixel_set_color(x, y, color);
-    drv_primitive_done();
-    return true;
+    drv_pixel_set_color(point, color);
+    present();
   }
 
 
   /**
-   * Draw a line, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   * \param y1 Y end value, included in line
-   * \return true if successful
+   * Draw a line with the actual selected pen in drawing (pen) color
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line
    */
-  bool line(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
+  void line(vertex_type v0, vertex_type v1)
   {
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_line_aa(x0, y0, x1, y1);
+    const std::int16_t dx = v1.x > v0.x ? v1.x - v0.x : v0.x - v1.x;
+    const std::int16_t dy = v1.y > v0.y ? v1.y - v0.y : v0.y - v1.y;
+    const std::int16_t sx = v1.x > v0.x ? 1 : -1;
+    const std::int16_t sy = v1.y > v0.y ? 1 : -1;
+          std::int16_t er = dx - dy;
+
+    // start Bresenham line algorithm
+    if (pen_shape_) {
+      for (;;) {
+        render_pen(v0);
+        if (v0.x == v1.x && v0.y == v1.y) {
+          break;
+        }
+        std::int16_t er2 = er * 2;
+        if (er2 + dy > 0) {
+          er -= dy;
+          v0.x += sx;
+        }
+        if (er2 < dx) {
+          er += dx;
+          v0.y += sy;
+        }
+      }
+    }
+    else if (anti_aliasing_) {
+      anti_aliasing aa(this);
+      for (;;) {
+        aa.render(v0);
+        if (v0.x == v1.x && v0.y == v1.y) {
+          break;
+        }
+        std::int16_t er2 = er * 2;
+        if (er2 + dy > 0) {
+          er -= dy;
+          v0.x += sx;
+        }
+        if (er2 < dx) {
+          er += dx;
+          v0.y += sy;
+        }
+      }
     }
     else {
-      drv_line(x0, y0, x1, y1);
+      for (;;) {
+        pixel_set(v0);
+        if (v0.x == v1.x && v0.y == v1.y) {
+          break;
+        }
+        std::int16_t er2 = er * 2;
+        if (er2 + dy > 0) {
+          er -= dy;
+          v0.x += sx;
+        }
+        if (er2 < dx) {
+          er += dx;
+          v0.y += sy;
+        }
+      }
     }
-  #else
-    drv_line(x0, y0, x1, y1);
-  #endif
-    drv_primitive_done();
-    return true;
+    present();
   }
 
 
   /**
-   * Draw a horizontal line, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
+   * Draw a horizontal line, width is one pixel, no pen support
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, y component is ignored
    * \return true if successful
    */
-  bool line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
+  virtual void line_horz(vertex_type v0, vertex_type v1)
   {
-    drv_line_horz(x0, y0, x1);
-    drv_primitive_done();
-    return true;
+    if (v0.x < v1.x) {
+      for (; v0.x <= v1.x; ++v0.x) {
+        pixel_set(v0);
+      }
+    }
+    else {
+      for (; v1.x <= v0.x; ++v1.x) {
+        pixel_set(v1);
+      }
+    }
+    present();
   }
 
 
   /**
-   * Draw a vertical line, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param y1 Y end value, included in line
-   * \return true if successful
+   * Draw a vertical line, width is one pixel, no pen support
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, x component is ignored
    */
-  bool line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
+  virtual void line_vert(vertex_type v0, vertex_type v1)
   {
-    drv_line_vert(x0, y0, y1);
-    drv_primitive_done();
-    return true;
+    if (v0.y < v1.y) {
+      for (; v0.y <= v1.y; ++v0.y) {
+        pixel_set(v0);
+      }
+    }
+    else {
+      for (; v1.y <= v0.y; ++v1.y) {
+        pixel_set(v1);
+      }
+    }
+    present();
   }
 
 
   /**
-   * Draw a line with specified width
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   * \param y1 Y end value, included in line
-   * \param width Line width in pixel
-   * \return true if successful
-   */
-  bool line_width(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width)
-  {
-    drv_line_width(x0, y0, x1, y1, width);
-    drv_primitive_done();
-    return true;
-  }
-
-
-  /**
-   * Draw a rectangle (frame)
+   * Draw a rectangle (frame) with the current pen
    * \param x0 X start value
    * \param y0 Y start value
    * \param x1 X end value, included in rect
    * \param y1 Y end value, included in rect
    * \return true if successful
    */
-  bool rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
+  virtual void rect(vertex_type v0, vertex_type v1)
   {
-    drv_rect(x0, y0, x1, y1);
-    drv_primitive_done();
-    return true;
+    present_lock();
+    line(v0, { v1.x, v0.y });
+    line(v1, { v1.x, v0.y });
+    line(v0, { v0.x, v1.y });
+    line(v1, { v0.x, v1.y });
+    present_lock(false);    // unlock and present
   }
 
 
@@ -303,167 +413,193 @@ public:
    * \param y1 Y end value, included in box
    * \return true if successful
    */
-  bool box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
+  virtual void box(vertex_type v0, vertex_type v1)
   {
-    drv_box(x0, y0, x1, y1);
-    drv_primitive_done();
-    return true;
+    if (v0.x > v1.x) { std::int16_t t = v0.x; v0.x = v1.x; v1.x = t; }
+    if (v0.y > v1.y) { std::int16_t t = v0.y; v0.y = v1.y; v1.y = t; }
+    for (; v0.y <= v1.y; ++v0.y) {
+      const std::int16_t t = v0.x;
+      for (v0.x = t; v0.x <= v1.x; ++v0.x) {
+        pixel_set(v0);
+      }
+    }
+    present();
   }
 
 
   /**
-   * Draw a box (filled rectangle) with gradient colors
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   * \param y1 Y end value, included in line
-   * \param horizontal True for horizontal gradient
-   * \param gr Gradient
-   * \return true if successful
+   * Draw a multiple lines
+   * \param vertexes Pointer to array of vertexes, at least 2
+   * \param vertex_count Number of vertexes in the array, at least 2
    */
-  bool box_gradient(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, bool horizontal, const color::gradient_base& gr)
+  void polyline(const vertex_type* vertexes, std::size_t vertex_count)
   {
-    if (horizontal) {
-      // horizontal gradient
-      if (x1 < x0) { std::int16_t t = x0; x0 = x1; x1 = t; }
-      std::uint16_t seg = x1 - x0;
-      for (std::int16_t x = x0; x <= x1; ++x) {
-        color_set(gr.mix((std::uint32_t)(x - x0) * 1000UL / seg));
-        drv_line_vert(x, y0, y1);
-      }
+    if (vertex_count-- < 2U) {
+      return;
     }
-    else {
-      // vertical gradient
-      if (y1 < y0) { std::int16_t t = y0; y0 = y1; y1 = t; }
-      std::uint16_t seg = y1 - y0;
-      for (std::int16_t y = y0; y <= y1; ++y) {
-        color_set(gr.mix((std::uint32_t)(y - y0) * 1000UL / seg));
-        drv_line_horz(x0, y, x1);
-      }
+    present_lock();
+    for (std::size_t n = 0U; n < vertex_count; ++n) {
+      line(vertexes[n], vertexes[vertex_count + 1U]);
     }
-    drv_primitive_done();
-    return true;
-  }
-
-
-  /**
-   * Draw a polygon
-   * \param vertexes Pointer to array of polygon vertexes, at least 3
-   * \param vertex_count Number of polygon points in the structure, at least 3
-   * \return true if successful
-   */
-  bool polygon(const vertex_type* vertexes, std::uint16_t vertex_count)
-  {
-    if (!vertex_count || --vertex_count < 2U) {
-      return false;
-    }
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_line_aa(vertexes[0].x, vertexes[0].y, vertexes[vertex_count].x, vertexes[vertex_count].y);
-      for (; vertex_count > 0U; --vertex_count) {
-        drv_line_aa(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
-      }
-    }
-    else {
-      drv_line(vertexes[0].x, vertexes[0].y, vertexes[vertex_count].x, vertexes[vertex_count].y);
-      for (; vertex_count > 0U; --vertex_count) {
-        drv_line(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
-      }
-    }
-  #else
-    drv_line(vertexes[0].x, vertexes[0].y, vertexes[vertex_count].x, vertexes[vertex_count].y);
-    for (; vertex_count > 0U; --vertex_count) {
-      drv_line(vertexes[vertex_count].x, vertexes[vertex_count].y, vertexes[vertex_count - 1U].x, vertexes[vertex_count - 1U].y);
-    }
-  #endif
-    drv_primitive_done();
-    return true;
+    present_lock(false);    // present
   }
 
 
   /**
    * Draw a triangle
-   * \param x0 X value, included in triangle
-   * \param y0 Y value, included in triangle
-   * \param x1 X value, included in triangle
-   * \param y1 Y value, included in triangle
-   * \param x2 X value, included in triangle
-   * \param y2 Y value, included in triangle
-   * \return true if successful
+   * \param v0 value, included in triangle
+   * \param v1 value, included in triangle
+   * \param v2 value, included in triangle
    */
-  bool triangle(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
+  void triangle(vertex_type v0, vertex_type v1, vertex_type v2)
   {
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_triangle_aa(x0, y0, x1, y1, x2, y2);
-    }
-    else {
-      drv_triangle(x0, y0, x1, y1, x2, y2);
-    }
-  #else
-      drv_triangle(x0, y0, x1, y1, x2, y2);
-  #endif
-    drv_primitive_done();
-    return true;
+    present_lock();
+    line(v0, v1);
+    line(v0, v2);
+    line(v1, v2);
+    present_lock(false);  // present
   }
 
 
   /**
    * Draw a solid (filled) triangle
-   * \param x0 X value, included in triangle
-   * \param y0 Y value, included in triangle
-   * \param x1 X value, included in triangle
-   * \param y1 Y value, included in triangle
-   * \param x2 X value, included in triangle
-   * \param y2 Y value, included in triangle
-   * \return true if successful
+   * \param v0 value, included in triangle
+   * \param v1 value, included in triangle
+   * \param v2 value, included in triangle
    */
-  bool triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
+  void triangle_solid(vertex_type v0, vertex_type v1, vertex_type v2)
   {
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_triangle_solid_aa(x0, y0, x1, y1, x2, y2);
+    // check if triangle is a horizontal line
+    if ((v0.y == v1.y) && (v1.y == v2.y)) {
+      line_horz(v0, v1);
+      line_horz(v1, v2);
+      present();
+      return;
     }
-    else {
-      drv_triangle_solid(x0, y0, x1, y1, x2, y2);
+
+    // check if triangle is a vertical line
+    if ((v0.x == v1.x) && (v1.x == v2.x)) {
+      line_vert(v0, v1);
+      line_vert(v1, v2);
+      present();
+      return;
     }
-  #else
-      drv_triangle_solid(x0, y0, x1, y1, x2, y2);
-  #endif
-    drv_primitive_done();
-    return true;
+
+    // compute triangle bounding box
+    const std::int16_t min_x = util::min3(v0.x, v1.x, v2.x);
+    const std::int16_t min_y = util::min3(v0.y, v1.y, v2.y);
+    const std::int16_t max_x = util::max3(v0.x, v1.x, v2.x);
+    const std::int16_t max_y = util::max3(v0.y, v1.y, v2.y);
+
+    // triangle setup
+    const std::int16_t a01 = v0.y - v1.y, B01 = v1.x - v0.x;
+    const std::int16_t a12 = v1.y - v2.y, B12 = v2.x - v1.x;
+    const std::int16_t a20 = v2.y - v0.y, B20 = v0.x - v2.x;
+
+    // Barycentric coordinates at minX/minY corner
+    vertex_type p = { min_x, min_y };
+    std::int16_t w0_row = orient_2d(v1, v2, p);
+    std::int16_t w1_row = orient_2d(v2, v0, p);
+    std::int16_t w2_row = orient_2d(v0, v1, p);
+
+    anti_aliasing aa_left(this), aa_right(this);
+
+    // rasterize
+    for (p.y = min_y; p.y <= max_y; ++p.y) {
+      // Barycentric coordinates at start of row
+      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      bool aa_inside = false;
+      for (p.x = min_x; p.x <= max_x; ++p.x) {
+        // if p is on or inside all edges, render the pixel
+        if (w0 <= 0 && w1 <= 0 && w2 <= 0) {
+          // if (w0 & w1 & w2 & 0x8000) {
+          if (anti_aliasing_) {
+            // AA dedection
+            if (!aa_inside) {
+              aa_inside = true;
+              aa_left.render(p);
+            }
+            else {
+              if (w0 + a12 > 0 || w1 + a20 > 0 || w2 + a01 > 0) {
+                aa_inside = false;
+                aa_right.render(p);
+              }
+              else {
+                pixel_set(p);
+              }
+            }
+          }
+          else {
+            pixel_set(p);
+          }
+        }
+        // one step to the right
+        w0 += a12; w1 += a20; w2 += a01;
+      }
+      // one row step
+      w0_row += B12; w1_row += B20; w2_row += B01;
+    }
+    present();
   }
 
 
   /**
-   * Draw an arc (Bézier curve)
-   * \param x0 X start value, included in arc
-   * \param y0 Y start value, included in arc
-   * \param x1 X mid value, included in arc
-   * \param y1 Y mid value, included in arc
-   * \param x2 X end value, included in arc
-   * \param y2 Y end value, included in arc
-   * \return true if successful
+   * Draw an arc (Bezier curve)
+   * \param v0 Start value, included in arc
+   * \param v1 Mid value, included in arc
+   * \param v2 End value, included in arc
    */
-  bool arc(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
+  void arc(vertex_type v0, vertex_type v1, vertex_type v2)
   {
     // sign of gradient must not change
-    if ((x0 - x1) * (x2 - x1) > 0 ||
-        (y0 - y1) * (y2 - y1) > 0) {
-      return false;
+    if ((v0.x - v1.x) * (v2.x - v1.x) > 0 ||
+        (v0.y - v1.y) * (v2.y - v1.y) > 0) {
+      return;
     }
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_arc_aa(x0, y0, x1, y1, x2, y2);
+
+    std::int16_t sx = v2.x - v1.x, sy = v2.y - v1.y;
+    std::int32_t xx = v0.x - v1.x, yy = v0.y - v1.y, xy;  // relative values for checks
+    std::int32_t dx, dy, err, cur = xx * sy - yy * sx;    // curvature
+    anti_aliasing aa(this);
+
+    // sign of gradient must not change
+    if (xx * sx > 0 || yy * sy > 0) {
+      return;
     }
-    else {
-      drv_arc(x0, y0, x1, y1, x2, y2);
+
+    if (sx * (std::int32_t)sx + sy * (std::int32_t)sy > xx * xx + yy * yy) {      // begin with longer part
+      v2.x = v0.x; v0.x = sx + v1.x; v2.y = v0.y; v0.y = sy + v1.y; cur = -cur;   // swap
     }
-  #else
-    drv_arc(x0, y0, x1, y1, x2, y2);
-  #endif
-    drv_primitive_done();
-    return true;
+    if (cur != 0) {                                   // no straight line
+      xx += sx; xx *= sx = v0.x < v2.x ? 1 : -1;      // x step direction
+      yy += sy; yy *= sy = v0.y < v2.y ? 1 : -1;      // y step direction
+      xy = 2 * xx * yy;
+      xx *= xx;
+      yy *= yy;                                       // differences 2nd degree
+      if (cur * sx * sy < 0) {                        // negated curvature?
+        xx = -xx; yy = -yy; xy = -xy; cur = -cur;
+      }
+      dx = 4 * sy * cur * (v1.x - v0.x) + xx - xy;    // differences 1st degree
+      dy = 4 * sx * cur * (v0.y - v1.y) + yy - xy;
+      xx += xx;
+      yy += yy;
+      err = dx + dy + xy;                             // error 1st step
+      do {
+        pen_shape_ ? render_pen(v0) : anti_aliasing_ ? aa.render(v0) : pixel_set(v0);
+        if (v0.x == v2.x && v0.y == v2.y) {
+          return;                                     // curve finished
+        }
+        v1.y = 2 * err < dx;                          // save value for test of y step
+        if (2 * err > dy) {
+          v0.x += sx; dx -= xy; err += dy += yy;      // x step
+        }
+        if (v1.y) {
+          v0.y += sy; dy -= xy; err += dx += xx;      // y step
+        }
+      } while (dy < dx);                              // gradient negates -> algorithm fails
+    }
+    line(v0, v2);                                     // plot remaining part to end
+    present();
   }
 
 
@@ -474,867 +610,199 @@ public:
    * \param radius Circle radius
    * \return true if successful
    */
-  bool circle(std::int16_t x, std::int16_t y, std::uint16_t radius)
+  void circle(vertex_type center, std::uint16_t radius)
   {
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_circle_aa(x, y, radius);
+    std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
+
+    if (pen_shape_) {
+      // render with pen
+      while (xo >= yo) {
+        render_pen({ center.x + xo, center.y + yo });  // q4
+        render_pen({ center.x + xo, center.y - yo });  // q1
+        render_pen({ center.x + yo, center.y + xo });  // q4
+        render_pen({ center.x + yo, center.y - xo });  // q1
+        render_pen({ center.x - xo, center.y + yo });  // q3
+        render_pen({ center.x - xo, center.y - yo });  // q2
+        render_pen({ center.x - yo, center.y + xo });  // q3
+        render_pen({ center.x - yo, center.y - xo });  // q2
+        yo++;
+        if (err < 0) {
+          err += 2 * yo + 1;
+        }
+        else {
+          xo--;
+          err += 2 * (yo - xo + 1);
+        }
+      }
+    }
+    else if (anti_aliasing_) {
+      // render antialiased
+      anti_aliasing aa(this);
+// TBD 8 aa renders needed!
+      while (xo >= yo) {
+        aa.render({ center.x + xo, center.y + yo });  // q4
+        aa.render({ center.x + xo, center.y - yo });  // q1
+        aa.render({ center.x + yo, center.y + xo });  // q4
+        aa.render({ center.x + yo, center.y - xo });  // q1
+        aa.render({ center.x - xo, center.y + yo });  // q3
+        aa.render({ center.x - xo, center.y - yo });  // q2
+        aa.render({ center.x - yo, center.y + xo });  // q3
+        aa.render({ center.x - yo, center.y - xo });  // q2
+        yo++;
+        if (err < 0) {
+          err += 2 * yo + 1;
+        }
+        else {
+          xo--;
+          err += 2 * (yo - xo + 1);
+        }
+      }
     }
     else {
-      drv_circle(x, y, radius);
+      while (xo >= yo) {
+        pixel_set({ center.x + xo, center.y + yo });  // q4
+        pixel_set({ center.x + xo, center.y - yo });  // q1
+        pixel_set({ center.x + yo, center.y + xo });  // q4
+        pixel_set({ center.x + yo, center.y - xo });  // q1
+        pixel_set({ center.x - xo, center.y + yo });  // q3
+        pixel_set({ center.x - xo, center.y - yo });  // q2
+        pixel_set({ center.x - yo, center.y + xo });  // q3
+        pixel_set({ center.x - yo, center.y - xo });  // q2
+        yo++;
+        if (err < 0) {
+          err += 2 * yo + 1;
+        }
+        else {
+          xo--;
+          err += 2 * (yo - xo + 1);
+        }
+      }
     }
-  #else
-    drv_circle(x, y, radius);
-  #endif
-    drv_primitive_done();
-    return true;
+    present();
   }
 
 
   /**
    * Draw a disc (filled circle)
-   * \param x X center value
-   * \param y Y center value
+   * \param center Center value
    * \param radius Disc radius
    * \return true if successful
    */
-  bool disc(std::int16_t x, std::int16_t y, std::uint16_t radius)
+  void disc(vertex_type center, std::uint16_t radius)
   {
-  #if defined(VGX_CFG_ANTIALIASING)
-    if (anti_aliasing_) {
-      drv_disc_aa(x, y, radius);
+    std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
+// TBD: aa support
+    while (xo >= yo) {
+      line_horz({ center.x + xo, center.y + yo }, { center.x - xo, center.y });
+      line_horz({ center.x + yo, center.y + xo }, { center.x - yo, center.y });
+      line_horz({ center.x - xo, center.y - yo }, { center.x + xo, center.y });
+      line_horz({ center.x - yo, center.y - xo }, { center.x + yo, center.y });
+      yo++;
+      if (err < 0) {
+        err += 2 * yo + 1;
+      }
+      else {
+        xo--;
+        err += 2 * (yo - xo + 1);
+      }
     }
-    else {
-      drv_disc(x, y, radius);
-    }
-  #else
-    drv_disc(x, y, radius);
-  #endif
-    drv_primitive_done();
-    return true;
+    present();
   }
 
 
   /**
    * Draw a disc section (filled quarter circle)
-   * \param x X center value
-   * \param y Y center value
+   * \param center Center value
    * \param radius Disc section radius
-   * \param section Section number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
+   * \param section Section number: 0: top/left, 1: top/right, 2: bottom/right, 3: bottom/left
    * \return true if successful
    */
-  bool disc_section(std::int16_t x, std::int16_t y, std::uint16_t radius, std::uint8_t section)
+  void disc_section(vertex_type center, std::uint16_t radius, std::uint8_t section)
   {
-    drv_disc_section(x, y, radius, section);
-    drv_primitive_done();
-    return true;
+    std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
+// TBD: aa suport
+    while (xo >= yo) {
+      switch (section) {
+      case 1U:
+        line_horz({ center.x, center.y - yo }, { center.x + xo, center.y });     // q1
+        line_horz({ center.x, center.y - xo }, { center.x + yo, center.y });     // q1
+        break;
+      case 2U:
+        line_horz({ center.x, center.y - yo }, { center.x - xo, center.y });     // q2
+        line_horz({ center.x, center.y - xo }, { center.x - yo, center.y });     // q2
+        break;
+      case 3U:
+        line_horz({ center.x, center.y + yo }, { center.x - xo, center.y });     // q3
+        line_horz({ center.x, center.y + xo }, { center.x - yo, center.y });     // q3
+        break;
+      case 4U:
+        line_horz({ center.x, center.y + yo }, { center.x + xo, center.y });     // q4
+        line_horz({ center.x, center.y + xo }, { center.x + yo, center.y });     // q4
+        break;
+      default:
+        break;
+      }
+      yo++;
+      if (err < 0) {
+        err += 2 * yo + 1;
+      }
+      else {
+        xo--;
+        err += 2 * (yo - xo + 1);
+      }
+    }
+    present();
   }
 
 
   /**
-   * Draw a sector (filled circle piece)
-   * \param x X center value
-   * \param y Y center value
+   * Draw a sector (pie, filled circle piece)
+   * \param center Center value
    * \param inner_radius Inner sector radius
    * \param outer_radius Outer sector radius
-   * \param start_angle Start angle in degree, 0° is horizontal right, counting anticlockwise
+   * \param start_angle Start angle in degree, 0ï¿½ is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    * \return true if successful
    */
-  bool sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
-  {
-    drv_sector(x, y, inner_radius, outer_radius, start_angle, end_angle);
-    drv_primitive_done();
-    return true;
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-
-  /**
-   *  Fill region up to the bounding color with the drawing color
-   * \param x X start value inside region to fill
-   * \param y Y start value inside region to fill
-   * \param bounding_color Color of the surrounding bound
-   * \return true if successful
-   */
-  bool fill(std::int16_t x, std::int16_t y, color::value_type bounding_color)
-  {
-    drv_fill(x, y, bounding_color);
-    drv_primitive_done();
-    return true;
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Block bit transfer
-   * Transfer image to display
-   * \param x X destination value
-   * \param y Y destination value
-   * \param image_width Width of the image
-   * \param image_height Height of the image
-   * \param image_format Color format of the image
-   * \param image_data Image data
-   * \return true if successful
-   */
-  bool blitter(std::int16_t x, std::int16_t y, std::uint16_t image_width, std::uint16_t image_height, color::format_type image_format, std::uint8_t* image_data)
-  {
-    // TBD: blittering
-    (void)x; (void)y; (void)image_width; (void)image_height; (void)image_format; (void)image_data;
-    return false;
-  }
-
-
-  /**
-   * Move display area
-   * \param x0 X source value
-   * \param y0 Y source value
-   * \param x1 X destination value
-   * \param y1 Y destination value
-   * \param width Width of the area
-   * \param height Height of the area
-   * \return true if successful
-   */
-  bool move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
-  {
-    drv_move(x0, y0, x1, y1, width, height);
-    drv_primitive_done();
-    return true;
-  }
-
-
-  /**
-   * Enable/disable anti aliasing support
-   * \param enable True to enable anti aliasing
-   */
-  bool anti_aliasing_set(bool enable)
-  {
-  #if defined(VGX_CFG_ANTIALIASING)
-    anti_aliasing_ = enable;
-  #endif
-    return true;
-  }
-
-///////////////////////////////////////////////////////////////////////////////
-// C L I P P I N G   F U C T I O N S 
-//
-
-  /**
-   * Set the clipping region
-   * All further points within the region are not drawn
-   * \param clipping The clipping object or nullptr to disable clipping
-   */
-  void inline clipping_set(clipping_type* clipping = nullptr)
-  {
-    clipping_ = clipping;
-  }
-
-
-  /**
-   * Disable clipping
-   */
-  void inline clipping_clear()
-  {
-    clipping_ = nullptr;
-  }
- 
-///////////////////////////////////////////////////////////////////////////////
-// T E X T   F U C T I O N S 
-//
-
-  /**
-   * Select the font
-   * \param Reference to font to use
-   * \return true if successful
-   */
-  bool text_set_font(const font_type& font)
-  {
-    text_font_ = &font;
-    return drv_text_set_font(font);
-  }
-
-
-  /**
-   * Set the new text position
-   * \param x X (left) value in pixel on graphic displays, char pos on alpha displays
-   * \param y Y (top) value in pixel on graphic displays, char pos on alpha displays
-   * \return true if successful
-   */
-  bool text_set_pos(std::int16_t x, std::int16_t y)
-  {
-    text_x_act_ = text_x_set_ = x;
-    text_y_act_ = y;
-    return drv_text_set_pos(x, y);
-  }
-
-
-  /**
-   * Set the text mode
-   * \param mode Set normal or inverse video
-   * \return true if successful
-   */
-  bool text_set_mode(text_mode_type mode)
-  {
-    text_mode_ = mode;
-    drv_text_set_mode(mode);
-    return true;
-  }
-
-
-  /**
-   * Output a single ASCII/UNICODE char at the actual cursor position
-   * \param ch Output character in ASCII/UNICODE (NOT UTF-8) format, 20-7F is compatible with ASCII
-   */
-  void text_char(std::uint16_t ch)
-  {
-    drv_text_char(ch);
-    drv_primitive_done();
-  }
-
-
-  /**
-   * Render an ASCII/UTF-8 coded string
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
-   */
-  std::uint16_t text_string(const std::uint8_t* string)
-  {
-    std::uint16_t cnt = drv_text_string(string);
-    drv_primitive_done();
-    return cnt;
-  }
-
-
-  /**
-   * Output a string at x/y position (combines text_set_pos and text_string)
-   * \param x X (left) value in pixel on graphic displays, char pos on alpha displays
-   * \param y Y (left) value in pixel on graphic displays, char pos on alpha displays
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as a character may consist out of two bytes)
-   */
-  std::uint16_t text_string_pos(std::int16_t x, std::int16_t y, const std::uint8_t* string)
-  {
-    text_set_pos(x, y);
-    std::uint16_t cnt = drv_text_string(string);
-    drv_primitive_done();
-    return cnt;
-  }
-
-
-  /**
-   * Output a rotated string
-   * \param x X value in pixel on graphic displays
-   * \param y Y value in pixel on graphic displays
-   * \param angle Angle in degree, 0° is horizontal right, counting anticlockwise
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as a character may consist out of two bytes)
-   */
-  std::uint16_t text_string_rotate(std::int16_t x, std::int16_t y, std::uint16_t angle, const std::uint8_t* string)
-  {
-    text_set_pos(x, y);
-    std::uint16_t cnt = drv_text_string_rotate(angle, string);
-    drv_primitive_done();
-    return cnt;
-  }
-
-
-  /**
-   * Returns the width and height the rendered string would take.
-   * The string is not rendered on screen
-   * \param width Width the rendered string would take
-   * \param height Height the rendered string would take
-   * \param string String in ASCII/UTF-8 format, zero terminated
-   * \return Number of string characters, not bytes (as a character may consist out of two bytes)
-   */
-  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string)
-  {
-    if (is_graphic()) {
-      return drv_text_string_get_extend(width, height, string);
-    }
-    else {
-      // return the string length
-      std::uint16_t cnt = 0U;
-      while (*string) {
-        if ((*string & 0x80U) == 0x00U) {
-          // 1 byte sequence (ASCII char)
-          string++;
-        }
-        else if ((*string & 0xE0U) == 0xC0U) {
-          // 2 byte UTF-8 sequence
-          string += 2U;
-        } else if ((*string & 0xF0U) == 0xE0U) {
-          // 3 byte UTF-8 sequence
-          string += 3U;
-        } else {
-          // unknown sequence - should not happen
-          string++;
-          continue;
-        }
-        cnt++;
-      }
-      width  = cnt;
-      height = 1U;
-      return cnt;
-    }
-  }
-
-  ///////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Prevent calling drv_primitive_done after single primitive drawing.
-   * Use this to draw complex objects like controls. After all primitives are drawn call
-   * primitive_lock(false) which releases the lock and calls drv_primitive_done().
-   * \param lock True for engaging a drv_primitive_done() lock.
-   */
-  void primitive_lock(bool lock = true)
-  {
-    primitive_lock_ = lock;
-    if (!lock) {
-      // primitive is done when lock is released
-      drv_primitive_done();
-    }
-  }
-
-
-///////////////////////////////////////////////////////////////////////////////
-// D R I V E R   F U N C T I O N S
-//
-protected:
-
-  /**
-  * Set pixel in the actual drawing color
-  * Override this function, if the driver handles the drawing color or in case of a monochrome display
-  * \param x X value
-  * \param y Y value
-  */
-  virtual inline void drv_pixel_set(std::int16_t x, std::int16_t y)
-  {
-    drv_pixel_set_color(x, y, color_get());
-  }
-
-
-  /**
-  * Set pixel in given color, the color doesn't change the actual drawing color
-  * \param x X value
-  * \param y Y value
-  * \param color Color of pixel in ARGB format
-  */
-  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
-  { (void)x; (void)y; (void)color; }
-
-
-  /**
-  * Return the color of the pixel
-  * \param x X value
-  * \param y Y value
-  * \return Color of pixel in ARGB format
-  */
-  virtual color::value_type drv_pixel_get(std::int16_t x, std::int16_t y) const
-  { (void)x; (void)y;
-    return color::black;
-  }
-
-
-///////////////////////////////////////////////////////////////////////////////
-// F U N C T I O N S   T H E   D R I V E R   C A N   O V E R R I D E
-//
-// ... if the driver has native (hardware/firmware accelerated) support for it
-
-  /**
-   * Primitive rendering is done. May be overridden by driver to update display,
-   * frame buffer or something else (like copy RAM / rendering buffer to screen)
-   */
-  virtual void drv_primitive_done()
-  { }
-
-
-  /**
-   * Line drawing algorithm, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   * \param y1 Y end value, included in line
-   */
-  virtual void drv_line(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
-  {
-    std::int16_t dx, dy;
-    std::int16_t sx, sy;
-    std::int16_t er, er2;
-
-    // check for straight lines
-    if (x0 == x1) {
-      if (y0 < y1) {
-        for (; y0 <= y1; ++y0) {
-          drv_pixel_set(x0, y0);
-        }
-      }
-      else {
-        for (; y0 >= y1; --y0) {
-          drv_pixel_set(x0, y0);
-        }
-      }
-      return;
-    }
-    if (y0 == y1) {
-      if (x0 < x1) {
-        for (; x0 <= x1; ++x0) {
-          drv_pixel_set(x0, y0);
-        }
-      }
-      else {
-        for (; x0 >= x1; --x0) {
-          drv_pixel_set(x0, y0);
-        }
-      }
-      return;
-    }
-
-    // start Bresenham line algorithm
-    dx = x1 > x0 ? x1 - x0 : x0 - x1;
-    sx = x1 > x0 ? 1 : -1;
-    dy = y1 > y0 ? y1 - y0 : y0 - y1;
-    sy = y1 > y0 ? 1 : -1;
-    er = dx - dy;
-
-    for(;;) {
-      drv_pixel_set(x0, y0);
-      if (x0 == x1 && y0 == y1) {
-        return;
-      }
-      er2 = er * 2;
-      if (er2 + dy > 0) {
-        er -= dy;
-        x0 += sx;
-      }
-      if (er2 < dx) {
-        er += dx;
-        y0 += sy;
-      }
-    }
-  }
-
-
-  /**
-   * Horizontal line drawing algorithm, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   */
-  virtual void drv_line_horz(std::int16_t x0, std::int16_t y0, std::int16_t x1)
-  {
-    if (x0 < x1) {
-      for (; x0 <= x1; ++x0) {
-        drv_pixel_set(x0, y0);
-      }
-    }
-    else {
-      for (; x1 <= x0; ++x1) {
-        drv_pixel_set(x1, y0);
-      }
-    }
-  }
-
-
-  /**
-   * Vertical line drawing algorithm, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param y1 Y end value, included in line
-   */
-  virtual void drv_line_vert(std::int16_t x0, std::int16_t y0, std::int16_t y1)
-  {
-    if (y0 < y1) {
-      for (; y0 <= y1; ++y0) {
-        drv_pixel_set(x0, y0);
-      }
-    }
-    else {
-      for (; y1 <= y0; ++y1) {
-        drv_pixel_set(x0, y1);
-      }
-    }
-  }
-
-
-
-  /**
-   * Line drawing algorithm with specified line width
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   * \param y1 Y end value, included in line
-   * \param width Line width in pixel
-   */
-  virtual void drv_line_width(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width)
-  {
-    std::int16_t dx, dy;
-    std::int16_t sx, sy;
-    std::int16_t er, er2;
-
-  // TBD: calculate wd without using float
-    std::int16_t wd, w;
-    wd = (int16_t)width;
-
-    // start Bresenham line algorithm
-    dx = x1 > x0 ? x1 - x0 : x0 - x1;
-    dy = y1 > y0 ? y1 - y0 : y0 - y1;
-    sx = x1 > x0 ? 1 : -1;
-    sy = y1 > y0 ? 1 : -1;
-    er = dx - dy;
-
-    for(;;) {
-      if (dx > dy) {
-        for (w = y0 - (wd >> 1U); w < y0 + wd - (wd >> 1U); w++)
-          drv_pixel_set(x0, w);
-      }
-      else {
-        for (w = x0 - (wd >> 1U); w < x0 + wd - (wd >> 1U); w++)
-          drv_pixel_set(w, y0);
-      }
-      if (x0 == x1 && y0 == y1) {
-        return;
-      }
-      er2 = er * 2;
-      if (er2 + dy > 0) {
-        er -= dy;
-        x0 += sx;
-      }
-      if (er2 < dx) {
-        er += dx;
-        y0 += sy;
-      }
-    }
-  }
-
-
-  /**
-   * Rectangle (frame) drawing algorithm
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in rect
-   * \param y1 Y end value, included in rect
-   */
-  virtual void drv_rect(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
-  {
-    drv_line_horz(x0, y0, x1);
-    drv_line_horz(x0, y1, x1);
-    drv_line_vert(x0, y0, y1);
-    drv_line_vert(x1, y0, y1);
-  }
-
-
-  /**
-   * Box (filled rectangle) drawing algorithm
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in box
-   * \param y1 Y end value, included in box
-   */
-  virtual void drv_box(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
-  {
-    std::int16_t tmp;
-    if (x0 > x1) { tmp = x0; x0 = x1; x1 = tmp; }
-    if (y0 > y1) { tmp = y0; y0 = y1; y1 = tmp; }
-
-    for (tmp = x0; y0 <= y1; ++y0) {
-      for (x0 = tmp; x0 <= x1; ++x0) {
-        drv_pixel_set(x0, y0);
-      }
-    }
-  }
-
-
-  /**
-   * Triangle drawing algorithm
-   * \param x0 X value, included in triangle
-   * \param y0 Y value, included in triangle
-   * \param x1 X value, included in triangle
-   * \param y1 Y value, included in triangle
-   * \param x2 X value, included in triangle
-   * \param y2 Y value, included in triangle
-   */
-  virtual void drv_triangle(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
-  {
-    drv_line(x0, y0, x1, y1);
-    drv_line(x0, y0, x2, y2);
-    drv_line(x1, y1, x2, y2);
-  }
-
-
-  /**
-   * Solid (filled) triangle drawing algorithm
-   * \param x0 X value, included in triangle
-   * \param y0 Y value, included in triangle
-   * \param x1 X value, included in triangle
-   * \param y1 Y value, included in triangle
-   * \param x2 X value, included in triangle
-   * \param y2 Y value, included in triangle
-   */
-  virtual void drv_triangle_solid(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
-  {
-    std::int16_t t, sy;
-    std::int32_t dx1, dx2, dx3, sx, ex;
-
-    // check if triangle is a horizontal line
-    if ((y0 == y1) && (y1 == y2)) {
-      // sort x values
-      if (x2 < x1) {
-        t = x1; x1 = x2; x2 = t;
-      }
-      if (x1 < x0) {
-        t = x0; x0 = x1; x1 = t;
-        // now we have to make sure that x1 is smaller as x2
-        if (x2 < x1) {
-          t = x1; x1 = x2; x2 = t;
-        }
-      }
-      drv_line_horz(x0, y0, x2);
-      return;
-    }
-
-    // sort vertexes that y0 < y1 < y2
-    if (y2 < y1) {
-      swap(x1, y1, x2, y2);
-    }
-    if (y1 < y0) {
-      swap(x0, y0, x1, y1);
-      if (y2 < y1) {
-        swap(x1, y1, x2, y2);
-      }
-    }
-
-    dx1 = (y1 != y0) ? ((std::int32_t)(x1 - x0) << 16U) / (y1 - y0) : 0;
-    dx2 = (y2 != y0) ? ((std::int32_t)(x2 - x0) << 16U) / (y2 - y0) : 0;
-    dx3 = (y2 != y1) ? ((std::int32_t)(x2 - x1) << 16U) / (y2 - y1) : 0;
-
-    sx = ex = (std::int32_t)x0 << 16U;
-    sy = y0;
-
-    if (dx1 > dx2) {
-      for (; sy < y1; sy++, sx += dx2, ex += dx1) {
-        drv_line_horz((std::int16_t)(sx >> 16U), sy, (std::int16_t)(ex >> 16U) + ((std::int16_t)(ex >> 15U) & 1));
-      }
-      ex = (std::int32_t)x1 << 16U;
-      for (; sy <= y2; sy++, sx += dx2, ex += dx3) {
-        drv_line_horz((std::int16_t)(sx >> 16U), sy, (std::int16_t)(ex >> 16U) + ((std::int16_t)(ex >> 15U) & 1));
-      }
-    }
-    else {
-      for (; sy < y1; sy++, sx += dx1, ex += dx2) {
-        drv_line_horz((std::int16_t)(sx >> 16U), sy, (std::int16_t)(ex >> 16U)+ ((std::int16_t)(ex >> 15U) & 1));
-      } 
-      sx = (std::int32_t)x1 << 16U;
-      sy = y1;
-      for (; sy <= y2; sy++, sx += dx3, ex += dx2) {
-        drv_line_horz((std::int16_t)(sx >> 16U), sy, (std::int16_t)(ex >> 16U)+ ((std::int16_t)(ex >> 15U) & 1));
-      }
-    }
-  }
-
-
-  /**
-   * Arc (Bézier curve) drawing algorithm
-   * \param x0 X start value, included in arc
-   * \param y0 Y start value, included in arc
-   * \param x1 X mid value, included in arc
-   * \param y1 Y mid value, included in arc
-   * \param x2 X end value, included in arc
-   * \param y2 Y end value, included in arc
-   */
-  virtual void drv_arc(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
-  {
-    std::int16_t sx = x2 - x1, sy = y2 - y1;
-    std::int32_t xx = x0 - x1, yy = y0 - y1, xy;        // relative values for checks
-    std::int32_t dx, dy, err, cur = xx * sy - yy * sx;  // curvature
-
-    // sign of gradient must not change
-    if (xx * sx > 0 || yy * sy > 0) {
-      return;
-    }
-
-    if (sx * (std::int32_t)sx + sy * (std::int32_t)sy > xx * xx + yy * yy) {  // begin with longer part
-      x2 = x0; x0 = sx + x1; y2 = y0; y0 = sy + y1; cur = -cur;     // swap
-    }  
-    if (cur != 0) {                                   // no straight line
-      xx += sx; xx *= sx = x0 < x2 ? 1 : -1;          // x step direction
-      yy += sy; yy *= sy = y0 < y2 ? 1 : -1;          // y step direction
-      xy  = 2 * xx * yy;
-      xx *= xx;
-      yy *= yy;                                       // differences 2nd degree
-      if (cur * sx * sy < 0) {                        // negated curvature?
-        xx = -xx; yy = -yy; xy = -xy; cur = -cur;
-      }
-      dx = 4 * sy * cur * (x1 - x0) + xx - xy;        // differences 1st degree
-      dy = 4 * sx * cur * (y0 - y1) + yy - xy;
-      xx += xx;
-      yy += yy;
-      err = dx + dy + xy;                             // error 1st step
-      do {
-        drv_pixel_set(x0, y0);
-        if (x0 == x2 && y0 == y2) {
-          return;                                     // curve finished
-        }
-        y1 = 2 * err < dx;                            // save value for test of y step
-        if (2 * err > dy) {
-          x0 += sx; dx -= xy; err += dy += yy;        // x step
-        }
-        if (y1) {
-          y0 += sy; dy -= xy; err += dx += xx;        // y step
-        }
-      } while (dy < dx );                             // gradient negates -> algorithm fails
-    }
-    drv_line(x0, y0, x2, y2);                         // plot remaining part to end
-  }
-
-
-  /**
-   * Circle drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param radius Circle radius
-   */
-  virtual void drv_circle(std::int16_t x, std::int16_t y, std::uint16_t r)
-  {
-    std::int16_t xo = (std::int16_t)r, yo = 0, err = 1 - xo;
-
-    while (xo >= yo) {
-      drv_pixel_set(x + xo, y + yo);  // q4
-      drv_pixel_set(x + xo, y - yo);  // q1
-      drv_pixel_set(x + yo, y + xo);  // q4
-      drv_pixel_set(x + yo, y - xo);  // q1
-      drv_pixel_set(x - xo, y + yo);  // q3
-      drv_pixel_set(x - xo, y - yo);  // q2
-      drv_pixel_set(x - yo, y + xo);  // q3
-      drv_pixel_set(x - yo, y - xo);  // q2
-      yo++;
-      if (err < 0) {
-        err += 2 * yo + 1;
-      }
-      else {
-        xo--;
-        err += 2 * (yo - xo + 1);
-      }
-    }
-  }
-
-
-  /**
-   * Disc (filled circle) drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param radius Disc radius
-   */
-  virtual void drv_disc(std::int16_t x, std::int16_t y, std::uint16_t r)
-  {
-    std::int16_t xo = (int16_t)r, yo = 0, err = 1 - xo;
-
-    while (xo >= yo) {
-      drv_line_horz(x + xo, y + yo, x - xo);
-      drv_line_horz(x + yo, y + xo, x - yo);
-      drv_line_horz(x - xo, y - yo, x + xo);
-      drv_line_horz(x - yo, y - xo, x + yo);
-      yo++;
-      if (err < 0) {
-        err += 2 * yo + 1;
-      } else {
-        xo--;
-        err += 2 * (yo - xo + 1);
-      }
-    }
-  }
-
-
-  /**
-   * Disc section (filled quarter circle) drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param radius Disc section radius
-   * \param section Section number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
-   */
-  virtual void drv_disc_section(std::int16_t x, std::int16_t y, std::uint16_t r, std::uint8_t section)
-  {
-    std::int16_t xo = (std::int16_t)r, yo = 0, err = 1 - xo;
-
-    while (xo >= yo) {
-      switch (section) {
-        case 1U :
-          drv_line_horz(x, y - yo, x + xo);     // q1
-          drv_line_horz(x, y - xo, x + yo);     // q1
-          break;
-        case 2U :
-          drv_line_horz(x, y - yo, x - xo);     // q2
-          drv_line_horz(x, y - xo, x - yo);     // q2
-          break;
-        case 3U :
-          drv_line_horz(x, y + yo, x - xo);     // q3
-          drv_line_horz(x, y + xo, x - yo);     // q3
-          break;
-        case 4U :
-          drv_line_horz(x, y + yo, x + xo);     // q4
-          drv_line_horz(x, y + xo, x + yo);     // q4
-          break;
-        default :
-          break;
-      }
-      yo++;
-      if (err < 0) {
-        err += 2 * yo + 1;
-      } else {
-        xo--;
-        err += 2 * (yo - xo + 1);
-      }
-    }
-  }
-
-
-  /**
-   * Sector (filled circle piece) drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param inner_radius Inner sector radius
-   * \param outer_radius Outer sector radius
-   * \param start_angle Start angle in degree, 0° is horizontal right, counting anticlockwise
-   * \param end_angle end angle in degree
-   */
-  virtual void drv_sector(std::int16_t x, std::int16_t y, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
+  void sector(vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
   {
     // angle:
-    // 0° = 3 o'clock
-    //   0° -  89°: Q1 (top/right)
-    //  90° - 179°: Q2 (top/left)
-    // 180° - 269°: Q3 (bottom/left)
-    // 270° - 359°: Q4 (bottom/right)
+    // 0ï¿½ = 3 o'clock
+    //   0ï¿½ -  89ï¿½: Q1 (top/right)
+    //  90ï¿½ - 179ï¿½: Q2 (top/left)
+    // 180ï¿½ - 269ï¿½: Q3 (bottom/left)
+    // 270ï¿½ - 359ï¿½: Q4 (bottom/right)
 
     bool second_half;
     std::uint16_t end_angle2 = end_angle;
-    if ((end_angle > start_angle && end_angle > start_angle + 180U) || 
-        (start_angle > end_angle && end_angle + 180U > start_angle)) {
-      // more than 180°
-      end_angle  = (start_angle + 180U) % 360U;
+    if ((end_angle > start_angle && end_angle > start_angle + 180U) ||
+      (start_angle > end_angle && end_angle + 180U > start_angle)) {
+      // more than 180ï¿½
+      end_angle = (start_angle + 180U) % 360U;
     }
 
     do {
       bool q14s = (start_angle < 90U) || (start_angle >= 270U);
-      bool q14e = (end_angle   < 90U) || (end_angle   >= 270U);
+      bool q14e = (end_angle < 90U) || (end_angle >= 270U);
       bool q24s = (start_angle >= 90U && start_angle < 180U) || (start_angle >= 270U);
-      bool q24e = (end_angle   >= 90U && end_angle   < 180U) || (end_angle   >= 270U);
+      bool q24e = (end_angle >= 90U && end_angle < 180U) || (end_angle >= 270U);
 
       std::int16_t xss = (std::uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 8U : 0U)) * (std::int16_t)(q14s ? 1 : -1);
       std::int16_t yss = (std::uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 0U : 8U)) * (std::int16_t)((start_angle < 180U) ? 1 : -1);
-      std::int16_t xse = (std::uint8_t)(sin((q24e ? end_angle   - 90U : end_angle)   % 90U) >> (q24e ? 8U : 0U)) * (std::int16_t)(q14e ? 1 : -1);
-      std::int16_t yse = (std::uint8_t)(sin((q24e ? end_angle   - 90U : end_angle)   % 90U) >> (q24e ? 0U : 8U)) * (std::int16_t)((end_angle   < 180U) ? 1 : -1);
+      std::int16_t xse = (std::uint8_t)(sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 8U : 0U)) * (std::int16_t)(q14e ? 1 : -1);
+      std::int16_t yse = (std::uint8_t)(sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 0U : 8U)) * (std::int16_t)((end_angle < 180U) ? 1 : -1);
 
-      for (std::int16_t yp = y - outer_radius; yp <= y + outer_radius; yp++) {
-        for (std::int16_t xp = x - outer_radius; xp <= x + outer_radius; xp++) {
+      for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; yp++) {
+        for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; xp++) {
           // check if xp/yp is within the sector
-          std::int16_t xr = xp - x;
-          std::int16_t yr = y - yp;   // * -1 for coords to screen conversion
-          if ( ((xr * xr + yr * yr) >= inner_radius * inner_radius) &&
-               ((xr * xr + yr * yr) <  outer_radius * outer_radius) &&
-              !((yss * xr) >  (xss * yr)) &&
-               ((yse * xr) >= (xse * yr))
-             ) {
-            drv_pixel_set(xp, yp);
+          std::int16_t xr = xp - center.x;
+          std::int16_t yr = center.y - yp;   // * -1 for coords to screen conversion
+          if (((xr * xr + yr * yr) >= inner_radius * inner_radius) &&
+            ((xr * xr + yr * yr) < outer_radius * outer_radius) &&
+            !((yss * xr) > (xss * yr)) &&
+            ((yse * xr) >= (xse * yr))
+            ) {
+            pixel_set({ xp, yp });
           }
         }
       }
@@ -1342,599 +810,105 @@ protected:
       second_half = false;
       if (end_angle != end_angle2) {
         start_angle = end_angle;
-        end_angle   = end_angle2;
+        end_angle = end_angle2;
         second_half = true;
       }
     } while (second_half);
+    present();
   }
 
-
-///////////////////////////////////////////////////////////////////////////////
-// A N T I   A L I A S I N G   S U P P O R T
-///////////////////////////////////////////////////////////////////////////////
-#if defined(VGX_CFG_ANTIALIASING)
-  /**
-   * Anti aliased line drawing algorithm, width is one pixel
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in line
-   * \param y1 Y end value, included in line
-   */
-  virtual void drv_line_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1)
-  {
-    // using Xiaolin Wu's anti aliasing line algorithm
-    // adaption of code from Michael Abrash in Dr. Dobbs journal, 1992 June 01
-
-    std::uint16_t ErrorAdj, ErrorAcc, ErrorAccTemp;
-    std::int16_t  DeltaX, DeltaY, XDir;
-
-    // make sure the line runs top to bottom
-    if (y0 > y1) {
-      swap(x0, y0, x1, y1);
-    }
-
-    // draw the initial pixel, which is always exactly intersected by the line and so needs no weighting
-    drv_pixel_set(x0, y0);
-
-    if ((DeltaX = x1 - x0) >= 0) {
-      XDir = 1;
-    }
-    else {
-      XDir = -1;
-      DeltaX = -DeltaX; // make DeltaX positive
-    }
-    // special-case horizontal, vertical, and diagonal lines, which require no weighting
-    // because they go right through the center of every pixel
-    if ((DeltaY = y1 - y0) == 0) {
-      // horizontal line
-      drv_line_horz(x0, y0, x1);
-      return;
-    }
-    if (DeltaX == 0) {
-      // vertical line
-      drv_line_vert(x0, y0, y1);
-      return;
-    }
-    if (DeltaX == DeltaY) {
-      // diagonal line
-      do {
-        x0 += XDir;
-        y0++;
-        drv_pixel_set(x0, y0);
-      } while (--DeltaY != 0);
-      return;
-    }
-
-    // line is not horizontal, diagonal, or vertical
-    ErrorAcc = 0U;    // initialize the line error accumulator to 0
-
-    // Is this an X-major or Y-major line?
-    if (DeltaY > DeltaX) {
-      // Y-major line; calculate 16-bit fixed-point fractional part of a
-      // pixel that X advances each time Y advances 1 pixel, truncating the
-      // result so that we won't overrun the endpoint along the X axis
-      ErrorAdj = ((std::int32_t)DeltaX << 16U) / (std::int32_t)DeltaY;
-      // draw all pixels other than the first and last
-      while (--DeltaY) {
-        ErrorAccTemp = ErrorAcc;    // remember current accumulated error
-        ErrorAcc += ErrorAdj;       // calculate error for next pixel
-        if (ErrorAcc <= ErrorAccTemp) {
-          // The error accumulator turned over, so advance the X coord
-          x0 += XDir;
-        }
-        y0++; // Y-major, so always advance Y
-        // the IntensityBits most significant bits of ErrorAcc give us the intensity weighting
-        // for this pixel, and the complement of the weighting for the paired pixel
-        // # of bits by which to shift ErrorAcc to get intensity level
-        #define INTENSITY_SHIFT (16U - 8U)
-        std::uint8_t lum = (std::uint8_t)(ErrorAcc >> INTENSITY_SHIFT);
-        drv_pixel_set_color(x0, y0,        color::mix(color_, drv_pixel_get(x0, y0), lum ^ 0xFFU));
-        drv_pixel_set_color(x0 + XDir, y0, color::mix(color_, drv_pixel_get(x0 + XDir, y0), lum));
-      }
-      // draw the final pixel, which is always exactly intersected by the line and so needs no weighting
-      drv_pixel_set(x1, y1);
-      return;
-    }
-
-    // It's an X-major line; calculate 16-bit fixed-point fractional part of a
-    // pixel that Y advances each time X advances 1 pixel, truncating the
-    // result to avoid overrunning the endpoint along the X axis
-    ErrorAdj = ((std::uint32_t)DeltaY << 16U) / (std::uint32_t)DeltaX;
-    // draw all pixels other than the first and last
-    while (--DeltaX) {
-      ErrorAccTemp = ErrorAcc;    // remember current accumulated error
-      ErrorAcc += ErrorAdj;       // calculate error for next pixel
-      if (ErrorAcc <= ErrorAccTemp) {
-        // the error accumulator turned over, so advance the Y coord
-        y0++;
-      }
-      x0 += XDir;   // X-major, so always advance X
-      // the IntensityBits most significant bits of ErrorAcc give us the intensity weighting
-      // for this pixel, and the complement of the weighting for the paired pixel
-      std::uint8_t lum = (std::uint8_t)(ErrorAcc >> INTENSITY_SHIFT);
-      drv_pixel_set_color(x0, y0,     color::mix(color_, drv_pixel_get(x0, y0), lum ^ 0xFFU));
-      drv_pixel_set_color(x0, y0 + 1, color::mix(color_, drv_pixel_get(x0, y0 + 1), lum));
-    }
-    // draw the final pixel, which is always exactly intersected by the line and so needs no weighting
-    drv_pixel_set(x1, y1);
-  }
-
+  ///////////////////////////////////////////////////////////////////////////////
 
   /**
-   * Anti aliased arc (Bézier curve) drawing algorithm
-   * \param x0 X start value, included in arc
-   * \param y0 Y start value, included in arc
-   * \param x1 X mid value, included in arc
-   * \param y1 Y mid value, included in arc
-   * \param x2 X end value, included in arc
-   * \param y2 Y end value, included in arc
-   */
-  virtual void drv_arc_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
-  {
-    // TBD
-    (void)x0; (void)y0; (void)x1; (void)y1; (void)x2; (void)y2;
-    // Linear-constrain circle anti-aliased algorithm, copyright by Konstantin Kirillov, license: MIT
-  #if 0
-    int I=255;  // intensity range. Determines algorithms' accuracy.
-
-      //No precalculation is required.
-      //Calculation of the 1/8 of circle will take
-      // R/sq(2) steps = R/sq(2)*(3mult+1div+8add) ~ 1.4R(3mult+1div)
-      // All operations are of integer type.
-        
-        
-      //Input: uses precalculated variables D and I.
-      public void drawArch( int R ) {
-         int R2=R*R;
-         int y=0;
-         int x=R;
-
-         int B=x*x;
-         int xTop=x+1;
-         int T=xTop*xTop;
-
-         while( y<x ) {
-             int E=R2-y*y;
-             int L=E-B;
-             int U=T-E;
-             if(L<0){ //We had Wu's lemma before: if( dnew < d ) x--;
-               xTop=x;
-               x--;
-               T=B;
-               U=-L;
-               B=x*x;
-               L=E-B;
-             }
-             int u=I*U/(U+L);
-           
-             //good for debug:
-             con("x="+x+" y="+y+" E="+E+" B="+B+" T="+T+" L="+L+" U="+U+" u="+u);
-           
-             //These two statements are not a part of the algorithm:
-             //Each language, OS, or framework has own ways to put a "pixel".
-             putpixel(x,      y,     u,  doDemo);
-             putpixel(xTop,   y, (I-u), !doDemo);
-           
-             y++;
-         }    
-      }
-      //- - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - 
-      // Calculation of an arc
-      //----------------------------------------------------------------
-
-      //----------------------------------------------------------------
-      //End of Algorithm.
-      //==========================================================================
-  #endif
-  }
-
-
-  /**
-   * Anti aliased triangle drawing algorithm
-   * \param x0 X value, included in triangle
-   * \param y0 Y value, included in triangle
-   * \param x1 X value, included in triangle
-   * \param y1 Y value, included in triangle
-   * \param x2 X value, included in triangle
-   * \param y2 Y value, included in triangle
-   */
-  virtual void drv_triangle_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
-  {
-    drv_line_aa(x0, y0, x1, y1);
-    drv_line_aa(x0, y0, x2, y2);
-    drv_line_aa(x1, y1, x2, y2);
-  }
-
-
-  /**
-   * Solid (filled) anti aliased triangle drawing algorithm
-   * \param x0 X value, included in triangle
-   * \param y0 Y value, included in triangle
-   * \param x1 X value, included in triangle
-   * \param y1 Y value, included in triangle
-   * \param x2 X value, included in triangle
-   * \param y2 Y value, included in triangle
-   */
-  virtual void drv_triangle_solid_aa(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::int16_t x2, std::int16_t y2)
-  {
-    drv_triangle_solid(x0, y0, x1, y1, x2, y2);
-    drv_line_aa(x0, y0, x1, y1);
-    drv_line_aa(x0, y0, x2, y2);
-    drv_line_aa(x1, y1, x2, y2);
-  }
-
-
-  /**
-   * Anti aliased circle drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param radius Circle radius
-   */
-  virtual void drv_circle_aa(std::int16_t x, std::int16_t y, std::uint16_t r)
-  {
-    // TBD: render an AA circle
-    (void)x; (void)y; (void)r;
-  }
-
-
-  /**
-   * Anti aliased disc (filled circle) drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param radius Disc radius
-   */
-  virtual void drv_disc_aa(std::int16_t x, std::int16_t y, std::uint16_t r)
-  {
-    // TBD: render an AA disc
-    (void)x; (void)y; (void)r;
-  }
-
-
-  /**
-   * Anti aliased disc section (filled quarter circle) drawing algorithm
-   * \param x X center value
-   * \param y Y center value
-   * \param radius Disc section radius
-   * \param section Section number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
-   */
-  virtual void drv_disc_section_aa(std::int16_t x, std::int16_t y, std::uint16_t r, std::uint8_t section)
-  {
-    // TBD: render an AA section
-    (void)x; (void)y; (void)r; (void)section;
-  }
-
-#endif  // VGX_CFG_ANTIALIASING
-
-
-  /**
-   *  Fill region up to the bounding border_color with the drawing color algorithm
-   * \param x X start value inside region to fill
-   * \param y Y start value inside region to fill
-   * \param bounding_color Color of the bound
-   */
-  virtual void drv_fill(std::int16_t x, std::int16_t y, color::value_type bounding_color)
-  {
-    // TBD: fill region up to the bounding border_color with the drawing color
-    (void)x; (void)y; (void)bounding_color;
-  }
-
-
-  /**
-   * Move display area algorithm
-   * \param x0 X source value
-   * \param y0 Y source value
-   * \param x1 X destination value
-   * \param y1 Y destination value
-   * \param width Width of the area
-   * \param height Height of the area
-   */
-  virtual void drv_move(std::int16_t x0, std::int16_t y0, std::int16_t x1, std::int16_t y1, std::uint16_t width, std::uint16_t height)
-  {
-    std::uint16_t w, h;
-
-    if (x0 < x1) {
-      if (y0 < y1) {
-        for (h = height; h != 0U; --h) {
-          for (w = width; w != 0U; --w) {
-            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
-          }
-        }
-      }
-      else {
-        for (h = 0U; h < height; ++h) {
-          for (w = width; w != 0U; --w) {
-            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
-          }
-        }
-      }
-    }
-    else {
-      if (y0 < y1) {
-        for (h = height; h != 0U; --h) {
-          for (w = 0U; w < width; ++w) {
-            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
-          }
-        }
-      }
-      else {
-        for (h = 0U; h < height; ++h) {
-          for (w = 0U; w < width; ++w) {
-            drv_pixel_set_color(x1 + w, y1 + h, drv_pixel_get(x0 + w, y0 + h));
-          }
-        }
-      }
-    }
-  }
-
-
-  /////////////////////////////////////////////////////////////////////////////
-  // D R I V E R   T E X T   F U N C T I O N S
-
-  /**
-   * Select the font
-   * \param Reference to the font to use
-   * \return true if font set successfully
-   */
-  virtual bool drv_text_set_font(const font_type& font)
-  {
-    (void)font;
-    return true;
-  }
-
-
-  /**
-   * Set the new text position
-   * \param x X value in pixel on graphic displays, char pos on alpha displays
-   * \param y Y value in pixel on graphic displays, char pos on alpha displays
-   * \return true if position is set successfully
-   */
-  virtual bool drv_text_set_pos(std::int16_t x, std::int16_t y)
-  {
-    (void)x; (void)y;
-    return true;
-  }
-
-
-  /**
-   * Set the text mode
-   * \param mode Set normal or inverse video
+   *  Fill region up to the bounding color with the drawing color
+   * \param start Start value inside region to fill
+   * \param bounding_color Color of the surrounding bound
    * \return true if successful
    */
-  virtual bool drv_text_set_mode(text_mode_type mode)
-  {
-    (void)mode;
-    return true;
-  }
-
-
-  /**
-   * Output one character
-   * \param ch Output character in ASCII/UNICODE (NOT UTF-8) format
-   */
-  virtual void drv_text_char(std::uint16_t ch)
-  {
-  #if defined(VGX_CFG_FONT)
-    std::uint8_t color_depth = (text_font_->font_attr & VGX_FONT_AA_MASK);
-    std::uint8_t color_mask  = (1U << color_depth) - 1U;
-
-    // handling of special chars
-    if ((char)ch == '\n') {
-      // LF: X = 0, Y = next line
-      text_x_act_ = text_x_set_;
-      text_y_act_ = text_y_act_ + text_font_->ysize;
-      return;
-    }
-    else if ((char)ch == '\r') {
-      // CR: X = 0
-      text_x_act_ = text_x_set_;
-      return;
-    }
-    else if (ch < 0x0020U) {
-      // ignore all other codes
-      return;
-    }
-
-    if ((text_font_->font_attr & VGX_FONT_ENCODING_MASK) == VGX_FONT_ENCODING_UNICODE) {
-      // extended (UNICODE) font
-      const font_prop_ext_type* font_prop_ext = text_font_->font_type_type.font_prop_ext;
-      do {
-        if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
-          // found char
-          const font_charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
-          std::uint16_t x, y, d = 0;
-          for (y = 0U; y < info->ysize; ++y) {
-            d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
-            for (x = 0U; x < info->xsize ; ++x) {
-              std::uint8_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
-              if (intensity) {
-                if (color_depth == VGX_FONT_AA_NONE) {
-                  drv_pixel_set(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y);
-                }
-                else {
-                  color::value_type fg = color_;
-                  color::value_type bg = drv_pixel_get(text_x_act_+ info->xpos + x, text_y_act_ + info->ypos + y);
-                  drv_pixel_set_color(text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y, color::mix(fg, bg, color_depth == 2U ? intensity << 6U : intensity << 4U));
-                }
-              }
-            }
-          }
-          text_x_act_ += info->xdist;
-          return;
-        }
-        font_prop_ext = font_prop_ext->next;
-      } while (font_prop_ext);
-      // char not found
-      return;
-    }
-    else {
-      // normal (ASCII) font
-      if ((text_font_->font_attr & VGX_FONT_TYPE_MASK) == VGX_FONT_TYPE_PROP) {
-        // prop font
-        const font_prop_type* font_prop = text_font_->font_type_type.font_prop;
-        do {
-          if (ch >= font_prop->first && ch <= font_prop->last) {
-            // found char
-            const font_charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
-            std::uint16_t x, y, d;
-            for (y = 0U; y < text_font_->ysize; ++y) {
-              d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
-              for (x = 0U; x < info->xsize ; ++x) {
-                uint8_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
-                if (intensity) {
-                  if (color_depth == VGX_FONT_AA_NONE) {
-                    drv_pixel_set(text_x_act_ + x, text_y_act_ + y);
-                  }
-                  else {
-                    color::value_type fg = color_;
-                    color::value_type bg = drv_pixel_get(text_x_act_ + x, text_y_act_ + y);
-                    drv_pixel_set_color(text_x_act_ + x, text_y_act_ + y, color::mix(fg, bg, color_depth == 2U ? intensity << 6U : intensity << 4U));
-                  }
-                }
-              }
-            }
-            text_x_act_ += info->xdist;
-            return;
-          }
-          font_prop = font_prop->next;
-        } while (font_prop);
-        // char not found
-        return;
-      }
-      else {
-        // mono font
-        const font_mono_type* font_mono = text_font_->font_type_type.font_mono;
-        if (ch >= font_mono->first && ch <= font_mono->last) {
-          std::uint16_t x, y, d;
-          for (y = 0U; y < text_font_->ysize; ++y) {
-            d = (ch - font_mono->first) * text_font_->ysize * font_mono->bytes_per_line + y * font_mono->bytes_per_line;
-            for (x = 0U; x < font_mono->xsize; ++x) {
-              uint8_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
-              if (intensity) {
-                if (color_depth == VGX_FONT_AA_NONE) {
-                  drv_pixel_set(text_x_act_ + x, text_y_act_ + y);
-                }
-                else {
-                }
-              }
-            }
-          }
-          text_x_act_ += font_mono->xsize;   // x-distance is xsize
-          return;
-        }
-      }
-    }
-  #endif  // VGX_CFG_FONT
-  }
-
-
-  /**
-   * Render an ASCII/UTF-8 coded string
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
-   */
-  virtual std::uint16_t drv_text_string(const std::uint8_t* string)
-  {
-    std::uint16_t ch, cnt = 0U;
-    while (*string) {
-      if ((*string & 0x80U) == 0x00U) {
-        // 1 byte sequence (ASCII char)
-        ch = (std::uint16_t)(*string++ & 0x7FU);
-      }
-      else if ((*string & 0xE0U) == 0xC0U) {
-        // 2 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
-        string += 2U;
-      } else if ((*string & 0xF0U) == 0xE0U) {
-        // 3 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x000FU) << 12U) | (((std::uint16_t)*(string + 1U) & 0x003FU) << 6U) | ((std::uint16_t)*(string + 2U) & 0x003FU);
-        string += 3U;
-      } else {
-        // unknown sequence
-        string++;
-        continue;
-      }
-      drv_text_char(ch);
-      cnt++;
-    }
-    return cnt;
-  }
-
-
-  /**
-   * Returns the width and height the rendered string would take.
-   * The string is not rendered on screen, works on graphic displays only
-   * \param width Width the rendered string would take
-   * \param height Height the rendered string would take
-   * \param string String in ASCII/UTF-8 format, zero terminated
-   * \return Number of string characters, not bytes (as a character may consist out of two bytes)
-   */
-  std::uint16_t drv_text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string)
-  {
-    return 0;
-  }
-
-
-  /**
-   * Render an ASCII/UTF-8 coded string
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
-   */
-  virtual std::uint16_t drv_text_string_rotate(std::uint16_t angle, const std::uint8_t* string)
+  void fill(vertex_type start, color::value_type bounding_color)
   {
     // TBD
-    (void)angle; (void)string;
-    return 0;
+    (void)start; (void)bounding_color;
+    present();
   }
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+
+  /**
+   * Move display area
+   * \param source Source vertex
+   * \param destination Destination vertex
+   * \param width Width of the area
+   * \param height Height of the area
+   * \return true if successful
+   */
+  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  {
+    std::int16_t w, h;
+    if (source.x < destination.x) {
+      if (source.y < destination.y) {
+        for (h = height; h != 0; --h) {
+          for (w = width; w != 0; --w) {
+            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+          }
+        }
+      }
+      else {
+        for (h = 0; h < height; ++h) {
+          for (w = width; w != 0; --w) {
+            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+          }
+        }
+      }
+    }
+    else {
+      if (source.y < destination.y) {
+        for (h = height; h != 0; --h) {
+          for (w = 0; w < width; ++w) {
+            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+          }
+        }
+      }
+      else {
+        for (h = 0; h < height; ++h) {
+          for (w = 0; w < width; ++w) {
+            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+          }
+        }
+      }
+    }
+    present();
+  }
+
+
+  /**
+   * Enable/disable anti aliasing support
+   * \param enable True to enable anti aliasing
+   */
+  void anti_aliasing_set(bool enable)
+  {
+    anti_aliasing_ = enable;
+  }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 
 protected:
-  color::value_type color_;           // drawing color
-  color::value_type color_bg_;        // background color
   bool              primitive_lock_;  // lock for rendering multiple primitives without refresh
-  const font_type*  text_font_;       // actual selected font
-  std::int16_t      text_x_set_;      // x cursor position for new line
-  std::int16_t      text_x_act_;      // actual x cursor position
-  std::int16_t      text_y_act_;      // actual y cursor position
-  text_mode_type    text_mode_;       // text mode
-  clipping_type*    clipping_;        // clipping object
-#if defined(VGX_CFG_ANTIALIASING)
   bool              anti_aliasing_;   // true if AA is enabled
-#endif
+
+  const pen_type*   pen_shape_;       // actual selected drawing pen
+
+  // default pens
+  const pen_type    pen_shape_width_1[1] = { { 0, 0, 0, 0 } };                                   // one pixel pen
+  const pen_type    pen_shape_width_2[4] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 },
+                                             { 0, 1, 0, 1 }, { 1, 1, 0, 0 } };                   // two pixel pen
+  const pen_type    pen_shape_width_3[9] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 }, { 2, 0, 0, 1 },
+                                             { 0, 1, 0, 1 }, { 1, 1, 0, 1 }, { 2, 1, 0, 1 },
+                                             { 0, 2, 0, 1 }, { 1, 2, 0, 1 }, { 2, 2, 0, 0 } };   // three pixel pen
 
 private:
-  /**
-   * Helper function to swap two vertexes (as coordinates)
-   * \param x0 X of first vertex
-   * \param y0 Y of first vertex
-   * \param x1 X of second vertex
-   * \param y1 Y of second vertex
-   */
-  inline void swap(std::int16_t& x0, std::int16_t& y0, std::int16_t& x1, std::int16_t& y1) const
-  {
-    std::int16_t xt = x0, yt = y0;
-    x0 = x1; y0 = y1;
-    x1 = xt; y1 = yt;
-  }
-
-
-  /**
-   * Helper function to calculate (lookup) sin(x) and cos(x), normalized to 100
-   * \param angle Angle in degree, valid range from 0° to 90°
-   * \return sin(x) * 100 in upper byte, cos(x) * 100 in lower byte
-   */
-  inline std::uint16_t sin(std::uint8_t angle) const   // sin(x) helper function
-  {
-    const std::uint16_t angle_to_xy[91U] = {
-      0x0064U, 0x0264U, 0x0364U, 0x0564U, 0x0764U, 0x0964U, 0x0A63U, 0x0C63U, 0x0E63U, 0x1063U, 0x1162U, 0x1362U, 0x1562U, 0x1661U, 0x1861U, 0x1A61U,
-      0x1C60U, 0x1D60U, 0x1F5FU, 0x215FU, 0x225EU, 0x245DU, 0x255DU, 0x275CU, 0x295BU, 0x2A5BU, 0x2C5AU, 0x2D59U, 0x2F58U, 0x3057U, 0x3257U, 0x3456U,
-      0x3555U, 0x3654U, 0x3853U, 0x3952U, 0x3B51U, 0x3C50U, 0x3E4FU, 0x3F4EU, 0x404DU, 0x424BU, 0x434AU, 0x4449U, 0x4548U, 0x4747U, 0x4845U, 0x4944U,
-      0x4A43U, 0x4B42U, 0x4D40U, 0x4E3FU, 0x4F3EU, 0x503CU, 0x513BU, 0x5239U, 0x5338U, 0x5436U, 0x5535U, 0x5634U, 0x5732U, 0x5730U, 0x582FU, 0x592DU,
-      0x5A2CU, 0x5B2AU, 0x5B29U, 0x5C27U, 0x5D25U, 0x5D24U, 0x5E22U, 0x5F21U, 0x5F1FU, 0x601DU, 0x601CU, 0x611AU, 0x6118U, 0x6116U, 0x6215U, 0x6213U,
-      0x6211U, 0x6310U, 0x630EU, 0x630CU, 0x630AU, 0x6409U, 0x6407U, 0x6405U, 0x6403U, 0x6402U, 0x6400U
-    };
-    return angle <= 90 ? angle_to_xy[angle] : 0U;   // out of bounds returns 0
-  }
 
   // non copyable
   const gpr& operator=(const gpr& rhs) { return rhs; }
