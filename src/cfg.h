@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2014, PALANDesign Hannover, Germany
+//             2001-2016, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -30,18 +30,5 @@
 #ifndef _VGX_CFG_H_
 #define _VGX_CFG_H_
 
-//////////////////////////////////////////////////////////////////////////
-// L I B R A R Y   S U P P O R T
-
-// library font and text rendering support (include fonts and text rendering functions)
-// This can be undefined when using alpha char displays
-#define VGX_CFG_FONT
-
-// library anti aliasing support (include AA functions)
-#define VGX_CFG_ANTIALIASING
-
-// Future feature: theme support for controls
-// Define this if you are using controls
-#define VGX_CFG_THEME
 
 #endif  // _VGX_CFG_H_
