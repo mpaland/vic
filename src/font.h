@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2017, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -23,79 +23,77 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Font support structures
+// \brief Font support structures and definitions
 //
 ///////////////////////////////////////////////////////////////////////////////
 
 #ifndef _VGX_FONT_H_
 #define _VGX_FONT_H_
 
-#include <vgx_cfg.h>
-
-#if defined(VGX_CFG_FONT)
-
 #include <cstdint>
 
 
 namespace vgx {
+namespace font {
+
 
 // standard character info (prop font)
-typedef struct struct_font_charinfo_type {
+typedef struct struct_charinfo_type {
   std::uint8_t xsize;             // x-size to render in pixel 
   std::uint8_t xdist;             // x-distance (cursor movement)
   std::uint8_t bytes_per_line;    // bytes to store the char line
   const std::uint8_t* data;       // char data
-} font_charinfo_type;
+} charinfo_type;
 
 // extended character info (prop font)
-typedef struct struct_font_charinfo_ext_type {
+typedef struct struct_charinfo_ext_type {
   std::uint8_t xsize;             // x-size to render in pixel
   std::uint8_t ysize;             // y-size to render in pixel
   std::int8_t  xpos;              // x-start position
   std::int8_t  ypos;              // y-start position
   std::uint8_t xdist;             // x-distance (cursor movement)
   const std::uint8_t* data;       // char data
-} font_charinfo_ext_type;
+} charinfo_ext_type;
 
 // standard mono font (ASCII/ANSI support)
-typedef struct struct_font_mono_type {
+typedef struct struct_mono_type {
   std::uint8_t first;             // first char code
   std::uint8_t last;              // last char code
   std::uint8_t xsize;             // x-size of the char in pixel 
   std::uint8_t bytes_per_line;    // bytes to store the char line
   const std::uint8_t* data;       // char data
-} font_mono_type;
+} mono_type;
 
 // standard prop font (ASCII/ANSI support)
-typedef struct struct_font_prop_type {
+typedef struct struct_prop_type {
   std::uint8_t first;
   std::uint8_t last;
-  const font_charinfo_type*           char_info;
-  const struct struct_font_prop_type* next;
-} font_prop_type;
+  const charinfo_type*           char_info;
+  const struct struct_prop_type* next;
+} prop_type;
 
 // extended prop font (UNICODE support)
-typedef struct struct_font_prop_ext_type {
+typedef struct struct_prop_ext_type {
   std::uint16_t first;
   std::uint16_t last;
-  const font_charinfo_ext_type*           char_info_ext;
-  const struct struct_font_prop_ext_type* next;
-} font_prop_ext_type;
+  const charinfo_ext_type*           char_info_ext;
+  const struct struct_prop_ext_type* next;
+} prop_ext_type;
 
 // font info
 typedef struct struct_font_type {
-  std::uint8_t font_attr;               // font attributes
-  std::uint8_t ysize;                   // y-size to render in pixel
-  std::uint8_t ydist;                   // y-distance (cursor movement for \n)
-  std::uint8_t baseline;                // reserved
+  std::uint8_t attr;              // font attributes
+  std::uint8_t ysize;             // y-size to render in pixel
+  std::uint8_t ydist;             // y-distance (cursor movement for \n)
+  std::uint8_t baseline;          // reserved
   union union_font_type_type {
-    const font_mono_type*     font_mono;
-    const font_prop_type*     font_prop;
-    const font_prop_ext_type* font_prop_ext;
-    union_font_type_type() : font_prop(nullptr) { }
-    union_font_type_type(const font_mono_type* p)     : font_mono(p) { }
-    union_font_type_type(const font_prop_type* p)     : font_prop(p) { }
-    union_font_type_type(const font_prop_ext_type* p) : font_prop_ext(p) { }
+    const mono_type*     mono;
+    const prop_type*     prop;
+    const prop_ext_type* prop_ext;
+    union_font_type_type()                       : prop(nullptr) { }
+    union_font_type_type(const mono_type* p)     : mono(p) { }
+    union_font_type_type(const prop_type* p)     : prop(p) { }
+    union_font_type_type(const prop_ext_type* p) : prop_ext(p) { }
   } font_type_type;
 } font_type;
 
@@ -116,6 +114,7 @@ typedef struct struct_font_type {
 #define VGX_FONT_TYPE_PROP          0x20U   // proportional font
 
 
+#if (0)
 ////////////////////////////////////////////////////////////////
 // AVAILABLE FONTS
 //
@@ -128,9 +127,10 @@ extern const font_type              font_Consolas_16;
 extern const font_type              font_Arial_num_16x24_aa4;
 extern const font_type              font_Arial_15;
 extern const font_type              font_9x15;
-extern const font_type              font_LCD_6x8;
-extern const font_type              font_LCD_6x10;
-extern const font_type              font_LCD_8x8;
+ extern const font_type              font_LCD_6x8;
+ extern const font_type              font_LCD_6x10;
+ extern const font_type              font_LCD_8x8;
+#endif
 
 
 ////////////////////////////////////////////////////////////////
@@ -394,7 +394,7 @@ extern const font_type              font_LCD_8x8;
 #define XXXXXXX_  0xFEU
 #define XXXXXXXX  0xFFU
 
+} // namespace font
 } // namespace vgx
 
-#endif  // VGX_CFG_FONT
 #endif  // _VGX_FONT_H_

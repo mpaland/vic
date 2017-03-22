@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2014, PALANDesign Hannover, Germany
+//             2001-2016, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -27,12 +27,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "vgx_fonts.h"
+#include "Arial_num_16x24_AA4.h"
 
 
 namespace vgx {
+namespace font {
 
-const std::uint8_t font_Arial_num_16x24_aa4_0021[] = { /* code 0021 */
+const std::uint8_t Arial_num_16x24_aa4_0021[] = { /* code 0021 */
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x06, 0xFF, 0xFF, 0x60,
@@ -59,7 +60,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0021[] = { /* code 0021 */
   0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_002B[] = { /* code 002B */
+const std::uint8_t Arial_num_16x24_aa4_002B[] = { /* code 002B */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -86,7 +87,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_002B[] = { /* code 002B */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_002C[] = { /* code 002C */
+const std::uint8_t Arial_num_16x24_aa4_002C[] = { /* code 002C */
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
@@ -113,7 +114,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_002C[] = { /* code 002C */
   0xFF, 0xC0, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_002D[] = { /* code 002D */
+const std::uint8_t Arial_num_16x24_aa4_002D[] = { /* code 002D */
   0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00,
@@ -140,7 +141,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_002D[] = { /* code 002D */
   0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_002E[] = { /* code 002E */
+const std::uint8_t Arial_num_16x24_aa4_002E[] = { /* code 002E */
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
@@ -167,7 +168,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_002E[] = { /* code 002E */
   0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_002F[] = { /* code 002F */
+const std::uint8_t Arial_num_16x24_aa4_002F[] = { /* code 002F */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x06, 0xFF, 0xF3, 0x00,
   0x00, 0x00, 0x00, 0x09, 0xFF, 0xE0, 0x00,
@@ -194,7 +195,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_002F[] = { /* code 002F */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0030[] = { /* code 0030 */
+const std::uint8_t Arial_num_16x24_aa4_0030[] = { /* code 0030 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x9F, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
@@ -221,7 +222,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0030[] = { /* code 0030 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0031[] = { /* code 0031 */
+const std::uint8_t Arial_num_16x24_aa4_0031[] = { /* code 0031 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x02, 0xEF, 0xFE, 0x20, 0x00, 0x00,
@@ -248,7 +249,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0031[] = { /* code 0031 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0032[] = { /* code 0032 */
+const std::uint8_t Arial_num_16x24_aa4_0032[] = { /* code 0032 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x06, 0xFF, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
@@ -275,7 +276,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0032[] = { /* code 0032 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0033[] = { /* code 0033 */
+const std::uint8_t Arial_num_16x24_aa4_0033[] = { /* code 0033 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x0C, 0xFF, 0xFF, 0xFF, 0xC0, 0x00, 0x00,
@@ -302,7 +303,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0033[] = { /* code 0033 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0034[] = { /* code 0034 */
+const std::uint8_t Arial_num_16x24_aa4_0034[] = { /* code 0034 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x09, 0xFF, 0xFF, 0x60, 0x00,
@@ -329,7 +330,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0034[] = { /* code 0034 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0035[] = { /* code 0035 */
+const std::uint8_t Arial_num_16x24_aa4_0035[] = { /* code 0035 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x02, 0xEF, 0xFF, 0xFF, 0xFF, 0xFF, 0xF9, 0x00,
@@ -356,7 +357,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0035[] = { /* code 0035 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0036[] = { /* code 0036 */
+const std::uint8_t Arial_num_16x24_aa4_0036[] = { /* code 0036 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0xCF, 0xFF, 0xFF, 0xE2, 0x00,
@@ -383,7 +384,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0036[] = { /* code 0036 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0037[] = { /* code 0037 */
+const std::uint8_t Arial_num_16x24_aa4_0037[] = { /* code 0037 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x0E, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x30,
@@ -410,7 +411,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0037[] = { /* code 0037 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0038[] = { /* code 0038 */
+const std::uint8_t Arial_num_16x24_aa4_0038[] = { /* code 0038 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0xEF, 0xFF, 0xFF, 0xE2, 0x00, 0x00,
@@ -437,7 +438,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0038[] = { /* code 0038 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_0039[] = { /* code 0039 */
+const std::uint8_t Arial_num_16x24_aa4_0039[] = { /* code 0039 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0xEF, 0xFF, 0xFF, 0x60, 0x00, 0x00,
@@ -464,7 +465,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_0039[] = { /* code 0039 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_003A[] = { /* code 003A */
+const std::uint8_t Arial_num_16x24_aa4_003A[] = { /* code 003A */
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00,
@@ -491,7 +492,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_003A[] = { /* code 003A */
   0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_003D[] = { /* code 003D */
+const std::uint8_t Arial_num_16x24_aa4_003D[] = { /* code 003D */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -518,7 +519,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_003D[] = { /* code 003D */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_00B0[] = { /* code 00B0 */
+const std::uint8_t Arial_num_16x24_aa4_00B0[] = { /* code 00B0 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x06, 0xFF, 0xFF, 0x60, 0x00,
@@ -545,7 +546,7 @@ const std::uint8_t font_Arial_num_16x24_aa4_00B0[] = { /* code 00B0 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
-const std::uint8_t font_Arial_num_16x24_aa4_00B1[] = { /* code 00B1 */
+const std::uint8_t Arial_num_16x24_aa4_00B1[] = { /* code 00B1 */
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
   0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -573,65 +574,66 @@ const std::uint8_t font_Arial_num_16x24_aa4_00B1[] = { /* code 00B1 */
 };
 
 
-const font_charinfo_type font_Arial_num_16x24_aa4_charinfo[20] = {
-   {   8,   8,  4, font_Arial_num_16x24_aa4_0021 } /* code 0021 */
-  ,{  18,  18,  9, font_Arial_num_16x24_aa4_002B } /* code 002B */
-  ,{   7,   7,  4, font_Arial_num_16x24_aa4_002C } /* code 002C */
-  ,{  10,  10,  5, font_Arial_num_16x24_aa4_002D } /* code 002D */
-  ,{   7,   7,  4, font_Arial_num_16x24_aa4_002E } /* code 002E */
-  ,{  13,  13,  7, font_Arial_num_16x24_aa4_002F } /* code 002F */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0030 } /* code 0030 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0031 } /* code 0031 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0032 } /* code 0032 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0033 } /* code 0033 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0034 } /* code 0034 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0035 } /* code 0035 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0036 } /* code 0036 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0037 } /* code 0037 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0038 } /* code 0038 */
-  ,{  16,  16,  8, font_Arial_num_16x24_aa4_0039 } /* code 0039 */
-  ,{   8,   8,  4, font_Arial_num_16x24_aa4_003A } /* code 003A */
-  ,{  17,  17,  9, font_Arial_num_16x24_aa4_003D } /* code 003D */
-  ,{  12,  12,  6, font_Arial_num_16x24_aa4_00B0 } /* code 00B0 */
-  ,{  18,  18,  9, font_Arial_num_16x24_aa4_00B1 } /* code 00B1 */
+const charinfo_type Arial_num_16x24_aa4_charinfo[20] = {
+   {   8,   8,  4, Arial_num_16x24_aa4_0021 } /* code 0021 */
+  ,{  18,  18,  9, Arial_num_16x24_aa4_002B } /* code 002B */
+  ,{   7,   7,  4, Arial_num_16x24_aa4_002C } /* code 002C */
+  ,{  10,  10,  5, Arial_num_16x24_aa4_002D } /* code 002D */
+  ,{   7,   7,  4, Arial_num_16x24_aa4_002E } /* code 002E */
+  ,{  13,  13,  7, Arial_num_16x24_aa4_002F } /* code 002F */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0030 } /* code 0030 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0031 } /* code 0031 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0032 } /* code 0032 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0033 } /* code 0033 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0034 } /* code 0034 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0035 } /* code 0035 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0036 } /* code 0036 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0037 } /* code 0037 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0038 } /* code 0038 */
+  ,{  16,  16,  8, Arial_num_16x24_aa4_0039 } /* code 0039 */
+  ,{   8,   8,  4, Arial_num_16x24_aa4_003A } /* code 003A */
+  ,{  17,  17,  9, Arial_num_16x24_aa4_003D } /* code 003D */
+  ,{  12,  12,  6, Arial_num_16x24_aa4_00B0 } /* code 00B0 */
+  ,{  18,  18,  9, Arial_num_16x24_aa4_00B1 } /* code 00B1 */
 };
 
 
-const font_prop_type font_Arial_num_16x24_aa4_Prop4 = {
+const prop_type Arial_num_16x24_aa4_Prop4 = {
    0xB0                                     // first character
   ,0xB1                                     // last character
-  ,&font_Arial_num_16x24_aa4_charinfo[18U]  // address of first character
-  ,nullptr                                  // pointer to next font_prop_type
+  ,&Arial_num_16x24_aa4_charinfo[18U]       // address of first character
+  ,nullptr                                  // pointer to next prop_type
 };
 
-const font_prop_type font_Arial_num_16x24_aa4_Prop3 = {
+const prop_type Arial_num_16x24_aa4_Prop3 = {
    0x3D
   ,0x3D
-  ,&font_Arial_num_16x24_aa4_charinfo[17U]
-  ,&font_Arial_num_16x24_aa4_Prop4
+  ,&Arial_num_16x24_aa4_charinfo[17U]
+  ,&Arial_num_16x24_aa4_Prop4
 };
 
-const font_prop_type font_Arial_num_16x24_aa4_Prop2 = {
+const prop_type Arial_num_16x24_aa4_Prop2 = {
    0x2B
   ,0x3A
-  ,&font_Arial_num_16x24_aa4_charinfo[1U]
-  ,&font_Arial_num_16x24_aa4_Prop3
+  ,&Arial_num_16x24_aa4_charinfo[1U]
+  ,&Arial_num_16x24_aa4_Prop3
 };
 
-const font_prop_type font_Arial_num_16x24_aa4_Prop1 = {
+const prop_type Arial_num_16x24_aa4_Prop1 = {
    0x21
   ,0x21
-  ,&font_Arial_num_16x24_aa4_charinfo[0U]
-  ,&font_Arial_num_16x24_aa4_Prop2
+  ,&Arial_num_16x24_aa4_charinfo[0U]
+  ,&Arial_num_16x24_aa4_Prop2
 };
 
 
-const font_type font_Arial_num_16x24_aa4 = {
+const font_type Arial_num_16x24_aa4 = {
   VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_4 | VGX_FONT_TYPE_PROP  // type of font
   ,24   // height of font
   ,24   // y space of font
   ,23   // Baseline
-  ,&font_Arial_num_16x24_aa4_Prop1
+  ,&Arial_num_16x24_aa4_Prop1
 };
 
+} // namespace font
 } // namespace vgx

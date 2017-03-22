@@ -23,16 +23,17 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief LCD font 6x10, monospace, chars 0x20 - 0xFE
+// \brief LCD font 6x8, monospace, chars 0x20 - 0xFE
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "vgx_fonts.h"
+#include "LCD_6x8.h"
 
 
 namespace vgx {
+namespace font {
 
-const std::uint8_t font_LCD_6x8_data[] = {
+static const std::uint8_t LCD_6x8_data[] = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
   0x10,0x38,0x38,0x10,0x10,0x00,0x10,0x00,
   0x6C,0x6C,0x48,0x00,0x00,0x00,0x00,0x00,
@@ -258,20 +259,21 @@ const std::uint8_t font_LCD_6x8_data[] = {
   0x00,0x00,0x78,0x78,0x78,0x78,0x00,0x00
 };
 
-const font_mono_type font_LCD_6x8_mono = {
+static const mono_type LCD_6x8_mono = {
   0x20U,
   0xFEU,
-  6,
-  1,
-  font_LCD_6x8_data
+  6U,
+  1U,
+  LCD_6x8_data
 };
 
-const font_type font_LCD_6x8 = {
-  VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_NONE | VGX_FONT_TYPE_MONO   // type of font
-  ,8    // height of font
-  ,8    // space of font y
-  ,0    // baseline
-  ,&font_LCD_6x8_mono
+const font_type LCD_6x8 = {
+  VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_NONE | VGX_FONT_TYPE_MONO,  // type of font
+  8U,                                                               // height of font
+  8U,                                                               // space of font y
+  0U,                                                               // baseline
+  &LCD_6x8_mono                                                     // font type
 };
 
+} // namespace font
 } // namespace vgx

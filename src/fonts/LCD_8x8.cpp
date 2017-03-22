@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2014, PALANDesign Hannover, Germany
+//             2001-2016, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -27,12 +27,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "vgx_fonts.h"
+#include "LCD_8x8.h"
 
 
 namespace vgx {
+namespace font {
 
-const std::uint8_t font_LCD_8x8_data[] = {
+static const std::uint8_t LCD_8x8_data[] = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
   0x30,0x78,0x78,0x30,0x30,0x00,0x30,0x00,
   0x6C,0x6C,0x6C,0x00,0x00,0x00,0x00,0x00,
@@ -259,20 +260,21 @@ const std::uint8_t font_LCD_8x8_data[] = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00
 };
 
-const font_mono_type font_LCD_8x8_mono = {
+static const mono_type LCD_8x8_mono = {
   0x20U,
   0xFEU,
-  8,
-  1,
-  font_LCD_8x8_data
+  8U,
+  1U,
+  LCD_8x8_data
 };
 
-const font_type font_LCD_8x8 = {
-  VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_NONE | VGX_FONT_TYPE_MONO   // type of font
-  ,8   // height of font
-  ,8   // space of font y
-  ,0   // baseline
-  ,&font_LCD_8x8_mono
+const font_type LCD_8x8 = {
+  VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_NONE | VGX_FONT_TYPE_MONO,    // type of font
+  8U,                                                                 // height of font
+  8U,                                                                 // space of font y
+  0U,                                                                 // baseline
+  &LCD_8x8_mono                                                       // font type
 };
 
+} // namespace font
 } // namespace vgx

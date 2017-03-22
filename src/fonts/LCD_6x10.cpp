@@ -27,12 +27,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "vgx_fonts.h"
+#include "LCD_6x10.h"
 
 
 namespace vgx {
+namespace font {
 
-const std::uint8_t font_LCD_6x10_data[] = {
+static const std::uint8_t LCD_6x10_data[] = {
   0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
   0x00,0x20,0x20,0x20,0x20,0x20,0x00,0x20,0x00,0x00,
   0x50,0x50,0x50,0x00,0x00,0x00,0x00,0x00,0x00,0x00,
@@ -258,20 +259,21 @@ const std::uint8_t font_LCD_6x10_data[] = {
   0x00,0x00,0x00,0xFC,0xFC,0xFC,0xFC,0xFC,0x00,0x00
 };
 
-const font_mono_type font_LCD_6x10_mono = {
+static const mono_type LCD_6x10_mono = {
   0x20U,
   0xFEU,
   6,
   1,
-  font_LCD_6x10_data
+  LCD_6x10_data
 };
 
-const font_type font_LCD_6x10 = {
+const font_type LCD_6x10 = {
   VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_NONE | VGX_FONT_TYPE_MONO   // type of font
   ,10   // height of font
   ,10   // space of font y
   ,0    // baseline
-  ,&font_LCD_6x10_mono
+  ,&LCD_6x10_mono
 };
 
+} // namesapce font
 } // namespace vgx
