@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2015, PALANDesign Hannover, Germany
+//             2014-2016, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -30,7 +30,7 @@
 #ifndef _VGX_CTRL_PROGRESS_BAR_H_
 #define _VGX_CTRL_PROGRESS_BAR_H_
 
-#include "../vgx_ctrl.h"
+#include "ctrl.h"
 
 
 namespace vgx {
@@ -128,7 +128,7 @@ private:
                               (pos - config_.range_lower)) / (config_.range_upper - config_.range_lower));
     std::int16_t offset_old = static_cast<std::int16_t>((std::int32_t)(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? config_.width : config_.height) *
                               (pos_ - config_.range_lower)) / (config_.range_upper - config_.range_lower));
-    std::uint32_t color_old = head_.color_get();
+    std::uint32_t color_old = head_.color_pen_get();
 
     if (!refresh) {
       // incremental drawing
@@ -136,7 +136,8 @@ private:
         // nothing to do
         return;
       }
-      head_.color_set(pos > pos_ ? config_.color : config_.bg_color);
+      head_.color_pen_set(pos > pos_ ? config_.color : config_.bg_color);
+/*
       switch (config_.orientation) {
         case left_to_right :
           head_.box(config_.x + offset_old, config_.y, config_.x + offset_new, config_.y + config_.height);
@@ -153,10 +154,12 @@ private:
         default:
           break;
       }
+*/
     }
     else {
       // full refresh
-      head_.color_set(config_.bg_color);
+      head_.color_pen_set(config_.bg_color);
+/*
       switch (config_.orientation) {
         case left_to_right :
           head_.box(config_.x + offset_new, config_.y, config_.x + config_.width, config_.y + config_.height);
@@ -189,8 +192,9 @@ private:
         default:
           break;
       }
+*/
     }
-    head_.color_set(color_old);
+    head_.color_pen_set(color_old);
 
     // set new position
     pos_ = pos;

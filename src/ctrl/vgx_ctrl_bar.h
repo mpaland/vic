@@ -30,7 +30,7 @@
 #ifndef _VGX_CTRL_BAR_H_
 #define _VGX_CTRL_BAR_H_
 
-#include "../vgx_ctrl.h"
+#include "vgx_ctrl.h"
 
 
 namespace vgx {
@@ -132,8 +132,8 @@ public:
     mark*             color_mark;         // array of color marks
     tick_mark_type*   tick_mark;          // array of tick marks
     std::uint16_t     tick_mark_count;    // number of tick marks
-    const font_type*  font_tick;          // font for the ticks
-    const font_type*  font_marker;        // font for the marker character
+    const font::font_type*  font_tick;    // font for the ticks
+    const font::font_type*  font_marker;  // font for the marker character
   } config_type;
 
   /**

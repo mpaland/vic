@@ -30,7 +30,7 @@
 #ifndef _VGX_CTRL_RADIO_H_
 #define _VGX_CTRL_RADIO_H_
 
-#include "../vgx_ctrl.h"
+#include "ctrl.h"
 
 
 namespace vgx {
@@ -88,23 +88,23 @@ private:
   // render the control
   void render()
   {
-    std::uint32_t color_old = head_.color_get();
+    std::uint32_t color_old = head_.color_pen_get();
 
-    head_.color_set(state_ == disabled ? config_.color_disabled : config_.color_frame);
-    head_.circle(config_.x, config_.y, config_.radius);
+    head_.color_pen_set(state_ == disabled ? config_.color_disabled : config_.color_frame);
+    head_.circle({config_.x, config_.y}, config_.radius);
 
-    head_.color_set(config_.color_bg);
-    head_.circle(config_.x, config_.y, config_.radius - 1U);
+    head_.color_pen_set(config_.color_bg);
+    head_.circle({config_.x, config_.y}, config_.radius - 1U);
 
     switch (state_) {
-      case inactive : head_.color_set(config_.color_bg);     break;
-      case active   : head_.color_set(config_.color_active); break;
-      case hover    : head_.color_set(config_.color_hover);  break;
-      case disabled : head_.color_set(config_.color_bg);     break;
+      case inactive : head_.color_pen_set(config_.color_bg);     break;
+      case active   : head_.color_pen_set(config_.color_active); break;
+      case hover    : head_.color_pen_set(config_.color_hover);  break;
+      case disabled : head_.color_pen_set(config_.color_bg);     break;
       default: break;
     }
-    head_.disc(config_.x, config_.y, config_.radius - 2U);
-    head_.color_set(color_old);
+    head_.disc({config_.x, config_.y}, config_.radius - 2U);
+    head_.color_pen_set(color_old);
   }
 
   config_type config_;  // configuration
