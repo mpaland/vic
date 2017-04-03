@@ -95,7 +95,7 @@ public:
       case color::format_L1 :
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           std::uint16_t bit = 0U;
-          std::uint8_t  data;
+          std::uint8_t  data = *bitmap;
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x) {
             if ((bit++ & 0x07U) == 0x00U) {
               data = *bitmap++;
