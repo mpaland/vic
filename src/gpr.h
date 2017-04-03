@@ -152,18 +152,20 @@ protected:
 
   class anti_aliasing
   {
-    gpr* gpr_;
+    gpr&        gpr_;
     vertex_type pipe_[3];   // 3 pixel pipe
+    std::size_t pipe_idx_;
 
   public:
-    anti_aliasing(gpr* _gpr)
+    anti_aliasing(gpr& _gpr)
       : gpr_(_gpr)
-      , pipe_()
+      , pipe_idx_(0)
     { }
 
     inline void render(vertex_type v)
     {
-      gpr_->drv_pixel_set_color({v.x, v.y}, color::yellow);
+//WIP
+      gpr_.drv_pixel_set_color({v.x, v.y}, color::yellow);
 
       // put the new vertex in the pipe
       pipe_[0] = pipe_[1];
@@ -175,7 +177,7 @@ protected:
       const std::int16_t dy = util::abs<std::int16_t>(pipe_[2].y - pipe_[1].y);
       if (dx > 1 && dy > 1) {
         // antialising not possible, distance too far
-        gpr_->drv_pixel_set_color({ v.x, v.y }, color::brightred);
+        gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightred);
         return;
       }
 /*
@@ -251,6 +253,40 @@ public:
 
 
   /**
+   * Set pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color
+   * Uncommon to override this function, but may be done for in case of a monochrome displays
+   * \param point Vertex to set
+   */
+  inline virtual void pixel_set(vertex_type point)
+  {
+    drv_pixel_set_color(point, color_pen_get(point));
+  }
+
+
+  /**
+   * Set pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color
+   * Uncommon to override this function, but may be done for in case of a monochrome displays
+   * \param point Vertex to set
+   * \param color Color of the pixel
+   */
+  inline virtual void pixel_set(vertex_type point, color::value_type color)
+  {
+    drv_pixel_set_color(point, color);
+  }
+
+
+  /**
+   * Return the color of the pixel (is a slim wrapper for drv_pixel_get)
+   * \param point Vertex of the pixel
+   * \return Color of pixel in ARGB format
+   */
+  inline virtual color::value_type pixel_get(vertex_type point) const
+  {
+    return drv_pixel_get(point);
+  }
+
+
+  /**
    * Plot a point in the actual drawing (pen) color
    * \param point Vertex to plot
    */
@@ -305,7 +341,7 @@ public:
       }
     }
     else if (anti_aliasing_) {
-      anti_aliasing aa(this);
+      anti_aliasing aa(*this);
       for (;;) {
         aa.render(v0);
         if (v0.x == v1.x && v0.y == v1.y) {
@@ -502,7 +538,7 @@ public:
     std::int16_t w1_row = orient_2d(v2, v0, p);
     std::int16_t w2_row = orient_2d(v0, v1, p);
 
-    anti_aliasing aa_left(this), aa_right(this);
+    anti_aliasing aa_left(*this), aa_right(*this);
 
     // rasterize
     for (p.y = min_y; p.y <= max_y; ++p.y) {
@@ -560,7 +596,7 @@ public:
     std::int16_t sx = v2.x - v1.x, sy = v2.y - v1.y;
     std::int32_t xx = v0.x - v1.x, yy = v0.y - v1.y, xy;  // relative values for checks
     std::int32_t dx, dy, err, cur = xx * sy - yy * sx;    // curvature
-    anti_aliasing aa(this);
+    anti_aliasing aa(*this);
 
     // sign of gradient must not change
     if (xx * sx > 0 || yy * sy > 0) {
@@ -637,7 +673,7 @@ public:
     }
     else if (anti_aliasing_) {
       // render antialiased
-      anti_aliasing aa(this);
+      anti_aliasing aa(*this);
 // TBD 8 aa renders needed!
       while (xo >= yo) {
         aa.render({ center.x + xo, center.y + yo });  // q4
