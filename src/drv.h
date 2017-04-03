@@ -259,20 +259,27 @@ public:
 
 
   /**
-   * Set alpha blending level of framebuffer/plane. If driver has no alpha support,
-   * activate the according framebuffer/plane
-   * \param index The index of the framebuffer/plane, 0 for 1st
+   * Set the given framebuffer plane index as active display
+   * \param plane The index of the framebuffer/plane to display, 0 for 1st
    * \param alpha Alpha level, 0 = opaque/active, 255 = complete transparent/disabled
    */
-  virtual bool framebuffer_set(std::uint8_t index, std::uint8_t alpha)
-  { (void)index; (void)alpha; return false; }
+  virtual bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0U)
+  { (void)plane; (void)alpha; return false; }
+
+
+ /**
+   * Use the given framebuffer plane as as read/write buffer
+   * \param plane The index of the framebuffer/plane to access, 0 for 1st
+   */
+  virtual bool framebuffer_set_access(std::size_t plane)
+  { (void)plane; return false; }
 
 
   /**
    * Returns the number of available framebuffers/planes. 1 if no framebuffer support (so just one buffer)
    * \return Number of frame buffers
    */
-  virtual std::uint8_t framebuffer_get_count() const
+  virtual std::size_t framebuffer_get_count() const
   { return 1U; }
 
 
