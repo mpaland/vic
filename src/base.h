@@ -122,17 +122,6 @@ public:
 //
 
   /**
-   * Set pixel in the actual pen color
-   * Uncommon to override this function, but may be done for in case of a monochrome displays
-   * \param point Pixel coordinates
-   */
-  inline virtual void pixel_set(vertex_type point)
-  {
-    drv_pixel_set_color(point, color_pen_get(point));
-  }
-
-
-  /**
    * Primitive rendering is done. Display (frame) buffer is copied to real screen.
    * Not all devices may support this function, especially not, when there's no separate
    * screen / frame buffer
@@ -205,7 +194,7 @@ protected:
 
   /**
    * Return the color of the pixel
-   * \param point Coordinates of the pixel
+   * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
   virtual color::value_type drv_pixel_get(vertex_type point) const = 0;
