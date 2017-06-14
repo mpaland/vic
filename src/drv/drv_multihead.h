@@ -64,9 +64,15 @@ template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
          std::size_t HEAD_COUNT>
   class multihead : public drv
 {
+  typedef struct tag_multihead_head_type {
+    multihead*    head;
+    vertex_type   viewport;
+  } multihead_head_type;
+
+  multihead_head_type head_[HEAD_COUNT];  // registered heads
+  bool                is_graphic_;        // true if this is a graphic head, false for alpha numeric multihead
+
 public:
-  /////////////////////////////////////////////////////////////////////////////
-  // M A N D A T O R Y   F U N C T I O N S
 
     /**
      * Head definition for initializer list of ctor
@@ -80,6 +86,9 @@ public:
     { }
   } head_type;
 
+
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   F U N C T I O N S
 
   /**
    * ctor
@@ -135,13 +144,13 @@ protected:
 
 
   // get driver name and version
-  inline virtual const char* drv_version() const
+  inline virtual const char* drv_version() const final
   {
     return (const char*)VGX_DRV_MULTIHEAD_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const
+  inline virtual bool drv_is_graphic() const final
   {
     return is_graphic_;
   }
@@ -215,8 +224,8 @@ protected:
   {
     // select to right head and read the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y })) {
-        return head_[i].head->color_pen_get({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y });
+      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
+        return head_[i].head->color_pen_get({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
       }
     }
     return base::color_pen_get(point);
@@ -254,8 +263,8 @@ protected:
 
     // select to right head and set the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y })) {
-        head_[i].head->drv_pixel_set_color({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y }, color);
+      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
+        head_[i].head->drv_pixel_set_color({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) }, color);
       }
     }
   }
@@ -266,12 +275,12 @@ protected:
    * \param point Coordinates of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type drv_pixel_get(vertex_type point) const
+  inline virtual color::value_type drv_pixel_get(vertex_type point)
   {
     // select to right head and read the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y })) {
-        return head_[i].head->drv_pixel_get({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y });
+      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
+        return head_[i].head->drv_pixel_get({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
       }
     }
     // pixel not found
@@ -287,8 +296,8 @@ protected:
   {
     // select to right head and set the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y })) {
-        head_[i].head->pixel_set({ point.x - head_[i].viewport.x, point.y - head_[i].viewport.y });
+      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
+        head_[i].head->pixel_set({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
       }
     }
   }
@@ -331,7 +340,7 @@ protected:
   {
     // set the individual position on every head
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->text_pos({ pos.x - head_[i].viewport.x, pos.y - head_[i].viewport.y });
+      head_[i].head->text_pos({ static_cast<std::int16_t>(pos.x - head_[i].viewport.x), static_cast<std::int16_t>(pos.y - head_[i].viewport.y) });
     }
   }
 
@@ -364,15 +373,6 @@ protected:
     return cnt;
   }
 
-
-private:
-  typedef struct tag_multihead_head_type {
-    multihead*    head;
-    vertex_type   viewport;
-  } multihead_head_type;
-
-  multihead_head_type head_[HEAD_COUNT];  // registered heads
-  bool                is_graphic_;        // true if this is a graphic head, false for alpha numeric multihead
 };
 
 } // namespace head

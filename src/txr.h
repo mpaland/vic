@@ -114,7 +114,6 @@ public:
    * Output a single ASCII/UNICODE char at the actual cursor position
    * The cursor position is moved by the char width (distance)
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
-   * \return The x size (distance) in pixel of the rendered char, 1 on alpha text heads, 0 for invalid char
    */
   virtual void text_char(std::uint16_t ch)
   {
@@ -140,13 +139,12 @@ public:
               std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
-                drv_pixel_set_color({ text_x_act_ + info->xpos + x, text_y_act_ + info->ypos + y }, color::set_alpha(color_pen_get(), static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(color_pen_get()) * (255U - intensity) / 255U)));
+                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + info->xpos + x), static_cast<std::int16_t>(text_y_act_ + info->ypos + y) }, color::set_alpha(color_pen_get(), static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(color_pen_get()) * (255U - intensity) / 255U)));
               }
             }
           }
           text_x_act_ += info->xdist;
           return;
-//          return info->xdist;
         }
         font_prop_ext = font_prop_ext->next;
       } while (font_prop_ext);
@@ -168,19 +166,17 @@ public:
                 std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {
                   intensity = ((intensity + 1U) << color_shift) - 1U;
-                  drv_pixel_set_color({ text_x_act_ + x, text_y_act_ + y }, color::set_alpha(color_pen_get(), 255U - static_cast<std::uint8_t>(static_cast<std::uint16_t>(255U - color::get_alpha(color_pen_get())) * intensity / 255U)));
+                  drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + x), static_cast<std::int16_t>(text_y_act_ + y) }, color::set_alpha(color_pen_get(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_pen_get())) * intensity / 255U)));
                 }
               }
             }
             text_x_act_ += info->xdist;
             return;
-//            return info->xdist;
           }
           font_prop = font_prop->next;
         } while (font_prop);
         // char not found
         return;
-//        return 0U;
       }
       else {
         // mono font
@@ -192,17 +188,15 @@ public:
               std::uint16_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
-                drv_pixel_set_color({ text_x_act_ + x, text_y_act_ + y }, color::set_alpha(color_pen_get(), 255U - static_cast<std::uint8_t>(static_cast<std::uint16_t>(255U - color::get_alpha(color_pen_get())) * intensity / 255U)));
+                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + x), static_cast<std::int16_t>(text_y_act_ + y) }, color::set_alpha(color_pen_get(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_pen_get())) * intensity / 255U)));
               }
             }
           }
           text_x_act_ += font_mono->xsize;
           return;
-//          return font_mono->xsize;   // x-distance is xsize
         }
       }
     }
-//    return 0U;
   }
 
 
@@ -245,9 +239,9 @@ public:
         // CR: X = 0
         text_x_act_ = text_x_set_;
       }
-//      else {
-//        text_x_act_ += text_char(ch);
-//      }
+      else {
+        text_char(ch);
+      }
       cnt++;
     }
     present();

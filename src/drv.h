@@ -146,8 +146,8 @@ protected:
     , screen_size_y_(screen_size_y)
     , viewport_size_x_(viewport_size_x)
     , viewport_size_y_(viewport_size_y)
-    , viewport_({ viewport_x, viewport_y })
     , orientation_(orientation)
+    , viewport_({ viewport_x, viewport_y })
   { }
 
 
@@ -156,26 +156,24 @@ protected:
 //
 public:
 
+  // wrapper for low level driver 'init'
   inline void init()
-  {
-    drv_init();
-  }
+  { drv_init(); }
 
 
+  // wrapper for low level driver 'shutdown'
   inline void shutdown()
-  {
-    drv_shutdown();
-  }
+  { drv_shutdown(); }
 
 
+  // wrapper for low level driver 'version'
   inline const char* version() const
-  {
-    return drv_version();
-  }
+  { return drv_version(); }
 
 
   /**
    * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * wrapper for low level driver 'cls'
    */
   inline void cls()
   {
@@ -282,6 +280,17 @@ public:
   virtual std::size_t framebuffer_get_count() const
   { return 1U; }
 
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // D I S P L A Y   C O N T R O L
+  //
+
+  /**
+   * Enable / disable the display
+   * \param enable True to switch the display on, false to switch it off
+   */
+  virtual void display_enable(bool enable = true)
+  { (void)enable; }
 
   /**
    * Set display or backlight brightness
@@ -391,10 +400,9 @@ protected:
   const std::uint16_t screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
   const std::uint16_t viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
   const std::uint16_t viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
+  const orientation_type  orientation_;       // hardware orientation/rotation  of the display
   vertex_type         viewport_;          // viewport top/left corner (x offset to screen)
-  orientation_type    orientation_;       // orientation of the display
   clipping_type       clipping_;          // clipping region
-  drv_io              io;                 // driver IO access
 };
 
 } // namespace vgx

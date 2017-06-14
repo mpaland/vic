@@ -54,89 +54,39 @@ class gpr : virtual public base
 protected:
 
   /**
-   * Helper function to calculate (lookup) sin(x) normalized to 10000
-   * \param angle Angle in degree, valid range from 0ï¿½ to 360ï¿½
-   * \return sin(x) * 10000 in upper int16
-   */
-  std::int16_t sin(std::uint16_t angle) const   // sin(x) helper function
-  {
-    const std::uint16_t val[90] = { 8989 
-// TBD 
-    
-    };
-    return angle <= 180U ? val[angle % 90U] : -val[angle % 90U];
-  }
-
-  /**
-   * Helper function to calculate (lookup) cos(x) normalized to 10000
-   * \param angle Angle in degree, valid range from 0ï¿½ to 360ï¿½
-   * \return cos(x) * 10000 in upper int16
-   */
-  std::int16_t cos(std::uint16_t angle) const   // sin(x) helper function
-  {
-    const std::uint16_t val[90] = { 8989 
-// TBD 
-    };
-    return (angle <= 90U || angle >= 270) ? val[angle % 90U] : -val[angle % 90U];
-  }
-
-  /**
-   * Helper function to calculate (lookup) sin(x) and cos(x), normalized to 100
-   * \param angle Angle in degree, valid range from 0ï¿½ to 90ï¿½
-   * \return sin(x) * 100 in upper byte, cos(x) * 100 in lower byte
-   */
-/*
-  inline std::uint16_t sin(std::uint8_t angle) const   // sin(x) helper function
-  {
-    const std::uint16_t angle_to_xy[91U] = {
-      0x0064U, 0x0264U, 0x0364U, 0x0564U, 0x0764U, 0x0964U, 0x0A63U, 0x0C63U, 0x0E63U, 0x1063U, 0x1162U, 0x1362U, 0x1562U, 0x1661U, 0x1861U, 0x1A61U,
-      0x1C60U, 0x1D60U, 0x1F5FU, 0x215FU, 0x225EU, 0x245DU, 0x255DU, 0x275CU, 0x295BU, 0x2A5BU, 0x2C5AU, 0x2D59U, 0x2F58U, 0x3057U, 0x3257U, 0x3456U,
-      0x3555U, 0x3654U, 0x3853U, 0x3952U, 0x3B51U, 0x3C50U, 0x3E4FU, 0x3F4EU, 0x404DU, 0x424BU, 0x434AU, 0x4449U, 0x4548U, 0x4747U, 0x4845U, 0x4944U,
-      0x4A43U, 0x4B42U, 0x4D40U, 0x4E3FU, 0x4F3EU, 0x503CU, 0x513BU, 0x5239U, 0x5338U, 0x5436U, 0x5535U, 0x5634U, 0x5732U, 0x5730U, 0x582FU, 0x592DU,
-      0x5A2CU, 0x5B2AU, 0x5B29U, 0x5C27U, 0x5D25U, 0x5D24U, 0x5E22U, 0x5F21U, 0x5F1FU, 0x601DU, 0x601CU, 0x611AU, 0x6118U, 0x6116U, 0x6215U, 0x6213U,
-      0x6211U, 0x6310U, 0x630EU, 0x630CU, 0x630AU, 0x6409U, 0x6407U, 0x6405U, 0x6403U, 0x6402U, 0x6400U
-    };
-    return angle <= 90U ? angle_to_xy[angle] : 0U;   // out of bounds returns 0
-  }
-*/
-
-
-  inline std::int16_t orient_2d(vertex_type a, vertex_type b, vertex_type c) const
-  {
-    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
-  }
-
-
-  /**
    * Helper function to swap two vertexes (as coordinates)
    * \param v0 First vertex
    * \param v1 Second vertex
    */
   inline void vertex_swap(vertex_type& v0, vertex_type& v1) const
   {
-    const vertex_type t = v0;
+    const vertex_type vt = v0;
     v0 = v1;
-    v1 = t; 
+    v1 = vt;
   }
 
   /**
-   * Helper function to rotate a point of a given angle in respect to given center
+   * Helper function to swap two vertexes so that first vertex contains min x
+   * \param v_min_x vertex
+   * \param v_max_x vertex
    */
-  inline vertex_type vertex_rotate(vertex_type center, vertex_type point, std::int16_t angle) const
+  inline void vertex_min_x(vertex_type& v_min_x, vertex_type& v_max_x) const
   {
-    const std::int32_t s = sin(angle);
-    const std::int32_t c = cos(angle);
-  
-    // translate point to center
-    point.x -= center.x;
-    point.y -= center.y;
+    if (v_min_x.x > v_max_x.x) {
+      vertex_swap(v_min_x, v_max_x);
+    }
+  }
 
-    // rotate point and translate back
-    vertex_type rp;
-    rp.x = static_cast<std::int16_t>(((std::int32_t)point.x * c - (std::int32_t)point.y * s) / 10000) + center.x;
-    rp.y = static_cast<std::int16_t>(((std::int32_t)point.x * s - (std::int32_t)point.y * c) / 10000) + center.y;
-
-    return rp;
+  /**
+   * Helper function to swap two vertexes that first vertex contains min y
+   * \param v_min_y vertex
+   * \param v_max_y vertex
+   */
+  inline void vertex_min_y(vertex_type& v_min_y, vertex_type& v_max_y) const
+  {
+    if (v_min_y.y > v_max_y.y) {
+      vertex_swap(v_min_y, v_max_y);
+  }
   }
 
 
@@ -144,7 +94,7 @@ protected:
   {
     std::size_t i = 0U;
     do {
-      const vertex_type v = { center.x + pen_shape_[i].x, center.y + pen_shape_[i].y };
+      const vertex_type v = { static_cast<std::int16_t>(center.x + pen_shape_[i].x), static_cast<std::int16_t>(center.y + pen_shape_[i].y) };
       drv_pixel_set_color(v, pen_shape_[i].alpha == 0U ? color_pen_get(v) : color::mix(drv_pixel_get(v), color_pen_get(v), pen_shape_[i].alpha));
     } while (pen_shape_[i++].next);
   }
@@ -167,19 +117,97 @@ protected:
 //WIP
       gpr_.drv_pixel_set_color({v.x, v.y}, color::yellow);
 
+      // calculate gradient
+      const std::int16_t dx = v.x - pipe_[0].x;
+      const std::int16_t dy = v.y - pipe_[0].y;
+
       // put the new vertex in the pipe
       pipe_[0] = pipe_[1];
-      pipe_[1] = pipe_[2];
-      pipe_[2] = v;
+      pipe_[1] = v;
 
-      // check the distance
-      const std::int16_t dx = util::abs<std::int16_t>(pipe_[2].x - pipe_[1].x);
-      const std::int16_t dy = util::abs<std::int16_t>(pipe_[2].y - pipe_[1].y);
-      if (dx > 1 && dy > 1) {
+      // check conditions
+      if (util::abs<std::int16_t>(dx) > 2 || util::abs<std::int16_t>(dy) > 2) {
         // antialising not possible, distance too far
         gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightred);
         return;
       }
+      if (dx == 0 || dy == 0) {
+        // antialising not necessary, 90° or 180°
+        gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightgreen);
+        return;
+      }
+
+#if 0
+      // ---->
+      // |
+      // v
+
+      //  0
+      //    V
+      if (dx == 1 && dy == 1) {
+        pixel_set(v.x - 1, v.y, 50 % );
+        pixel_set(v.x, v.y - 1, 50 % );
+      }
+
+      //  V
+      //    0
+      if (dx == -1 && dy == -1) {
+        pixel_set(v.x + 1, v.y, 50 % );
+        pixel_set(v.x, v.y + 1, 50 % );
+      }
+
+      //    V
+      //  0
+      if (dx == 1 && dy == -1) {
+        pixel_set(v.x - 1, v.y, 50 % );
+        pixel_set(v.x, v.y + 1, 50 % );
+      }
+
+      //    0
+      //  V
+      if (dx == -1 && dy == 1) {
+        pixel_set(v.x + 1, v.y, 50 % );
+        pixel_set(v.x, v.y - 1, 50 % );
+      }
+
+      //  0
+      //  1
+      //    V
+      if (dx == 1 && dy == 2) {
+        pixel_set(v.x - 1, v.y, 50 % );
+        pixel_set(v.x, v.y - 1, 50 % );
+      }
+
+ // table
+//    []   []
+//    dx   dy   p1.x   p1.y   p1.m   p2.x   p2.y   p2.m   p3.x   p3.y   p3.m
+       1,   1,   -1,    0,     50,    0,     -1,    50,    0,     0,      0,
+      -1,  -1,    1,    0,     50,    0,      1,    50,    0,     0,      0,
+       1,  -1,   -1,    0,     50,    0,      1,    50,    0,     0,      0,
+      -1,   1,    1,    0,     50,    0,     -1,    50,    0,     0,      0,
+
+       2,   2,   -1,    0,     50,    0,     -1,    50,    0,     -1,    50,
+      -2,  -2,    1,    0,     50,    0,      1,    50,    0,      1,    50,
+       2,  -2,   -1,    0,     50,    0,      1,    50,    0,      1,    50,
+      -2,   2,    1,    0,     50,    0,     -1,    50,    0,     -1,    50,
+
+       1,   2,   -1,    0,     50,    0,     -1,    50,    0,     -1,    50,
+      -1,  -2,    1,    0,     50,    0,      1,    50,    0,      1,    50,
+       1,  -2,   -1,    0,     50,    0,      1,    50,    0,      1,    50,
+      -1,   2,    1,    0,     50,    0,     -1,    50,    0,     -1,    50,
+
+       2,   1,   -1,    0,     50,    0,     -1,    50,    0,     -1,    50,
+      -2,  -1,    1,    0,     50,    0,      1,    50,    0,      1,    50,
+       2,  -1,   -1,    0,     50,    0,      1,    50,    0,      1,    50,
+      -2,   1,    1,    0,     50,    0,     -1,    50,    0,     -1,    50,
+
+
+    drv_pixel_set_color(v.x + p1.x, v.y + p1.y, color::mix(color_, drv_pixel_get(v.x + p1.x, v.y + p1.y), p1.m));
+
+#endif
+
+
+
 /*
 
       // calculate the gradient for "bluring the tail"
@@ -187,16 +215,16 @@ protected:
       std::int16_t dy = abs<std::int16_t>(pipe_[2].y - pipe_[0].y);
 
       if (dy * 2 <= dx) {
-        // 0 - 30ï¿½
+        // 0 - 30°
       }
       if (dy <= dx) {
-        // 30 - 45ï¿½
+        // 30 - 45°
       }
       if (dx * 2 <= dy) {
-        // 90 - 75ï¿½
+        // 90 - 75°
       }
       if (dx <= dy) {
-        // 45 - 30ï¿½
+        // 45 - 30°
       }
 
 
@@ -246,9 +274,28 @@ public:
    * Select the actual drawing pen
    * \param pen_shape Set the actual pen shape or nullptr for 1 pixel default pen (fastest)
    */
-  void pen_set(const pen_type* pen_shape)
+  inline void pen_set(const pen_type* pen_shape)
   {
     pen_shape_ = pen_shape;
+  }
+
+
+  /**
+   * Return a stock pen
+   * \param width Pen width
+   */
+  inline const pen_type* pen_get_stock(std::uint8_t width) const
+  {
+    // stock pens
+    static const pen_type    pen_shape_width_1[1] = { { 0, 0, 0, 0 } };                                   // one pixel pen
+    static const pen_type    pen_shape_width_2[4] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 },
+                                                      { 0, 1, 0, 1 }, { 1, 1, 0, 0 } };                   // two pixel pen
+    static const pen_type    pen_shape_width_3[9] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 }, { 2, 0, 0, 1 },
+                                                      { 0, 1, 0, 1 }, { 1, 1, 0, 1 }, { 2, 1, 0, 1 },
+                                                      { 0, 2, 0, 1 }, { 1, 2, 0, 1 }, { 2, 2, 0, 0 } };   // three pixel pen
+
+    const pen_type* stock_pen[4] = { nullptr, pen_shape_width_1, pen_shape_width_2, pen_shape_width_3 };
+    return stock_pen[width];
   }
 
 
@@ -280,7 +327,7 @@ public:
    * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type pixel_get(vertex_type point) const
+  inline virtual color::value_type pixel_get(vertex_type point)
   {
     return drv_pixel_get(point);
   }
@@ -316,6 +363,7 @@ public:
    */
   void line(vertex_type v0, vertex_type v1)
   {
+    // precalc constants
     const std::int16_t dx = v1.x > v0.x ? v1.x - v0.x : v0.x - v1.x;
     const std::int16_t dy = v1.y > v0.y ? v1.y - v0.y : v0.y - v1.y;
     const std::int16_t sx = v1.x > v0.x ? 1 : -1;
@@ -326,7 +374,7 @@ public:
     if (pen_shape_) {
       for (;;) {
         render_pen(v0);
-        if (v0.x == v1.x && v0.y == v1.y) {
+        if (v0 == v1) {
           break;
         }
         std::int16_t er2 = er * 2;
@@ -344,7 +392,7 @@ public:
       anti_aliasing aa(*this);
       for (;;) {
         aa.render(v0);
-        if (v0.x == v1.x && v0.y == v1.y) {
+        if (v0 == v1) {
           break;
         }
         std::int16_t er2 = er * 2;
@@ -361,7 +409,7 @@ public:
     else {
       for (;;) {
         pixel_set(v0);
-        if (v0.x == v1.x && v0.y == v1.y) {
+        if (v0 == v1) {
           break;
         }
         std::int16_t er2 = er * 2;
@@ -380,21 +428,24 @@ public:
 
 
   /**
-   * Draw a horizontal line, width is one pixel, no pen support
+   * Draw a horizontal line, width is one pixel, no pen style support
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
    * \return true if successful
    */
   virtual void line_horz(vertex_type v0, vertex_type v1)
   {
-    if (v0.x < v1.x) {
+    // set v0 to min x
+    vertex_min_x(v0, v1);
+
+    if (color_pen_is_function()) {
       for (; v0.x <= v1.x; ++v0.x) {
         pixel_set(v0);
       }
     }
     else {
-      for (; v1.x <= v0.x; ++v1.x) {
-        pixel_set(v1);
+      for (; v0.x <= v1.x; ++v0.x) {
+        pixel_set(v0, color_pen_get());
       }
     }
     present();
@@ -402,20 +453,23 @@ public:
 
 
   /**
-   * Draw a vertical line, width is one pixel, no pen support
+   * Draw a vertical line, width is one pixel, no pen style support
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
    */
   virtual void line_vert(vertex_type v0, vertex_type v1)
   {
-    if (v0.y < v1.y) {
+    // set v0 to min y
+    vertex_min_y(v0, v1);
+
+    if (color_pen_is_function()) {
       for (; v0.y <= v1.y; ++v0.y) {
         pixel_set(v0);
       }
     }
     else {
-      for (; v1.y <= v0.y; ++v1.y) {
-        pixel_set(v1);
+      for (; v0.y <= v1.y; ++v0.y) {
+        pixel_set(v0, color_pen_get());
       }
     }
     present();
@@ -430,7 +484,7 @@ public:
    * \param y1 Y end value, included in rect
    * \return true if successful
    */
-  virtual void rect(vertex_type v0, vertex_type v1)
+  virtual void rectangle(vertex_type v0, vertex_type v1)
   {
     present_lock();
     line(v0, { v1.x, v0.y });
@@ -451,15 +505,14 @@ public:
    */
   virtual void box(vertex_type v0, vertex_type v1)
   {
-    if (v0.x > v1.x) { std::int16_t t = v0.x; v0.x = v1.x; v1.x = t; }
-    if (v0.y > v1.y) { std::int16_t t = v0.y; v0.y = v1.y; v1.y = t; }
+    // set v0 to min y
+    vertex_min_y(v0, v1);
+
+    present_lock();
     for (; v0.y <= v1.y; ++v0.y) {
-      const std::int16_t t = v0.x;
-      for (v0.x = t; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0);
-      }
+      line_horz(v0, v1);
     }
-    present();
+    present_lock(false);    // unlock and present
   }
 
 
@@ -505,11 +558,13 @@ public:
    */
   void triangle_solid(vertex_type v0, vertex_type v1, vertex_type v2)
   {
+    present_lock();
+
     // check if triangle is a horizontal line
     if ((v0.y == v1.y) && (v1.y == v2.y)) {
       line_horz(v0, v1);
       line_horz(v1, v2);
-      present();
+      present_lock(false);
       return;
     }
 
@@ -517,7 +572,7 @@ public:
     if ((v0.x == v1.x) && (v1.x == v2.x)) {
       line_vert(v0, v1);
       line_vert(v1, v2);
-      present();
+      present_lock(false);
       return;
     }
 
@@ -534,40 +589,30 @@ public:
 
     // Barycentric coordinates at minX/minY corner
     vertex_type p = { min_x, min_y };
-    std::int16_t w0_row = orient_2d(v1, v2, p);
-    std::int16_t w1_row = orient_2d(v2, v0, p);
-    std::int16_t w2_row = orient_2d(v0, v1, p);
-
-    anti_aliasing aa_left(*this), aa_right(*this);
+    std::int16_t w0_row = util::orient_2d(v1, v2, p);
+    std::int16_t w1_row = util::orient_2d(v2, v0, p);
+    std::int16_t w2_row = util::orient_2d(v0, v1, p);
 
     // rasterize
+    anti_aliasing aa0(*this), aa1(*this);
     for (p.y = min_y; p.y <= max_y; ++p.y) {
       // Barycentric coordinates at start of row
-      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row;
-      bool aa_inside = false;
+      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row, l_x;
+      bool inside = false;
       for (p.x = min_x; p.x <= max_x; ++p.x) {
         // if p is on or inside all edges, render the pixel
-        if (w0 <= 0 && w1 <= 0 && w2 <= 0) {
+        if (!inside && w0 <= 0 && w1 <= 0 && w2 <= 0) {
           // if (w0 & w1 & w2 & 0x8000) {
+          inside = true;
+          l_x = p.x;
+        }
+        if (inside && (w0 + a12 > 0 || w1 + a20 > 0 || w2 + a01 > 0)) {
+          line_horz({ l_x, p.y }, { p.x, p.y });
           if (anti_aliasing_) {
-            // AA dedection
-            if (!aa_inside) {
-              aa_inside = true;
-              aa_left.render(p);
-            }
-            else {
-              if (w0 + a12 > 0 || w1 + a20 > 0 || w2 + a01 > 0) {
-                aa_inside = false;
-                aa_right.render(p);
-              }
-              else {
-                pixel_set(p);
-              }
-            }
+            aa0.render({ l_x, p.y });
+            aa1.render({ p.x, p.y });
           }
-          else {
-            pixel_set(p);
-          }
+          break;
         }
         // one step to the right
         w0 += a12; w1 += a20; w2 += a01;
@@ -575,7 +620,7 @@ public:
       // one row step
       w0_row += B12; w1_row += B20; w2_row += B01;
     }
-    present();
+    present_lock(false);
   }
 
 
@@ -641,49 +686,24 @@ public:
 
   /**
    * Draw a circle
-   * \param x X center value
-   * \param y Y center value
+   * \param center Center vertex
    * \param radius Circle radius
-   * \return true if successful
    */
   void circle(vertex_type center, std::uint16_t radius)
   {
     std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
 
-    if (pen_shape_) {
+    if (pen_shape_ || !anti_aliasing_) {
       // render with pen
       while (xo >= yo) {
-        render_pen({ center.x + xo, center.y + yo });  // q4
-        render_pen({ center.x + xo, center.y - yo });  // q1
-        render_pen({ center.x + yo, center.y + xo });  // q4
-        render_pen({ center.x + yo, center.y - xo });  // q1
-        render_pen({ center.x - xo, center.y + yo });  // q3
-        render_pen({ center.x - xo, center.y - yo });  // q2
-        render_pen({ center.x - yo, center.y + xo });  // q3
-        render_pen({ center.x - yo, center.y - xo });  // q2
-        yo++;
-        if (err < 0) {
-          err += 2 * yo + 1;
-        }
-        else {
-          xo--;
-          err += 2 * (yo - xo + 1);
-        }
-      }
-    }
-    else if (anti_aliasing_) {
-      // render antialiased
-      anti_aliasing aa(*this);
-// TBD 8 aa renders needed!
-      while (xo >= yo) {
-        aa.render({ center.x + xo, center.y + yo });  // q4
-        aa.render({ center.x + xo, center.y - yo });  // q1
-        aa.render({ center.x + yo, center.y + xo });  // q4
-        aa.render({ center.x + yo, center.y - xo });  // q1
-        aa.render({ center.x - xo, center.y + yo });  // q3
-        aa.render({ center.x - xo, center.y - yo });  // q2
-        aa.render({ center.x - yo, center.y + xo });  // q3
-        aa.render({ center.x - yo, center.y - xo });  // q2
+        render_pen({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y + yo) });  // q4
+        render_pen({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y - yo) });  // q1
+        render_pen({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y + xo) });  // q4
+        render_pen({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y - xo) });  // q1
+        render_pen({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y + yo) });  // q3
+        render_pen({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y - yo) });  // q2
+        render_pen({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y + xo) });  // q3
+        render_pen({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y - xo) });  // q2
         yo++;
         if (err < 0) {
           err += 2 * yo + 1;
@@ -695,15 +715,18 @@ public:
       }
     }
     else {
+      // render antialiased
+      anti_aliasing aa0(*this), aa1(*this), aa2(*this), aa3(*this),
+                    aa4(*this), aa5(*this), aa6(*this), aa7(*this);
       while (xo >= yo) {
-        pixel_set({ center.x + xo, center.y + yo });  // q4
-        pixel_set({ center.x + xo, center.y - yo });  // q1
-        pixel_set({ center.x + yo, center.y + xo });  // q4
-        pixel_set({ center.x + yo, center.y - xo });  // q1
-        pixel_set({ center.x - xo, center.y + yo });  // q3
-        pixel_set({ center.x - xo, center.y - yo });  // q2
-        pixel_set({ center.x - yo, center.y + xo });  // q3
-        pixel_set({ center.x - yo, center.y - xo });  // q2
+        aa0.render({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y + yo) });  // q4
+        aa1.render({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y - yo) });  // q1
+        aa2.render({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y + xo) });  // q4
+        aa3.render({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y - xo) });  // q1
+        aa4.render({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y + yo) });  // q3
+        aa5.render({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y - yo) });  // q2
+        aa6.render({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y + xo) });  // q3
+        aa7.render({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y - xo) });  // q2
         yo++;
         if (err < 0) {
           err += 2 * yo + 1;
@@ -722,24 +745,26 @@ public:
    * Draw a disc (filled circle)
    * \param center Center value
    * \param radius Disc radius
-   * \return true if successful
    */
   void disc(vertex_type center, std::uint16_t radius)
   {
-    std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
-// TBD: aa support
-    while (xo >= yo) {
-      line_horz({ center.x + xo, center.y + yo }, { center.x - xo, center.y });
-      line_horz({ center.x + yo, center.y + xo }, { center.x - yo, center.y });
-      line_horz({ center.x - xo, center.y - yo }, { center.x + xo, center.y });
-      line_horz({ center.x - yo, center.y - xo }, { center.x + yo, center.y });
-      yo++;
-      if (err < 0) {
-        err += 2 * yo + 1;
-      }
-      else {
-        xo--;
-        err += 2 * (yo - xo + 1);
+    anti_aliasing aa0(*this), aa1(*this), aa2(*this), aa3(*this);
+
+    radius++;
+    const std::int16_t radius_sqr = radius * radius;
+    for (std::int16_t y = -radius; y <= 0; ++y) {
+      for (std::int16_t x = -radius; x <= 0; ++x) {
+        if (x * x + y * y < radius_sqr) {
+          line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
+          line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+          if (anti_aliasing_) {
+            aa0.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
+            aa1.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
+            aa2.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+            aa3.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) });
+          }
+          break;
+        }
       }
     }
     present();
@@ -747,44 +772,50 @@ public:
 
 
   /**
-   * Draw a disc section (filled quarter circle)
+   * Draw a disc sector (filled quarter circle)
    * \param center Center value
-   * \param radius Disc section radius
-   * \param section Section number: 0: top/left, 1: top/right, 2: bottom/right, 3: bottom/left
-   * \return true if successful
+   * \param radius Disc radius
+   * \param sector Sector number: 0: top/left, 1: top/right, 2: bottom/right, 3: bottom/left
    */
-  void disc_section(vertex_type center, std::uint16_t radius, std::uint8_t section)
+  void disc_sector(vertex_type center, std::uint16_t radius, std::uint8_t sector)
   {
-    std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
-// TBD: aa suport
-    while (xo >= yo) {
-      switch (section) {
-      case 1U:
-        line_horz({ center.x, center.y - yo }, { center.x + xo, center.y });     // q1
-        line_horz({ center.x, center.y - xo }, { center.x + yo, center.y });     // q1
-        break;
-      case 2U:
-        line_horz({ center.x, center.y - yo }, { center.x - xo, center.y });     // q2
-        line_horz({ center.x, center.y - xo }, { center.x - yo, center.y });     // q2
-        break;
-      case 3U:
-        line_horz({ center.x, center.y + yo }, { center.x - xo, center.y });     // q3
-        line_horz({ center.x, center.y + xo }, { center.x - yo, center.y });     // q3
-        break;
-      case 4U:
-        line_horz({ center.x, center.y + yo }, { center.x + xo, center.y });     // q4
-        line_horz({ center.x, center.y + xo }, { center.x + yo, center.y });     // q4
-        break;
-      default:
-        break;
-      }
-      yo++;
-      if (err < 0) {
-        err += 2 * yo + 1;
-      }
-      else {
-        xo--;
-        err += 2 * (yo - xo + 1);
+    anti_aliasing aa(*this);
+
+    radius++;
+    const std::int16_t radius_sqr = radius * radius;
+    for (std::int16_t y = -radius; y <= 0; ++y) {
+      for (std::int16_t x = -radius; x <= 0; ++x) {
+        if (x * x + y * y < radius_sqr) {
+          switch (sector) {
+            case 0 :
+              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
+              if (anti_aliasing_) {
+                aa.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
+              }
+              break;
+            case 1 :
+              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
+              if (anti_aliasing_) {
+                aa.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
+              }
+              break;
+            case 2 :
+              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+              if (anti_aliasing_) {
+                aa.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+              }
+              break;
+            case 3 :
+              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) });
+              if (anti_aliasing_) {
+                aa.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) });
+              }
+              break;
+            default :
+              break;
+          }
+          break;
+        }
       }
     }
     present();
@@ -796,37 +827,36 @@ public:
    * \param center Center value
    * \param inner_radius Inner sector radius
    * \param outer_radius Outer sector radius
-   * \param start_angle Start angle in degree, 0ï¿½ is horizontal right, counting anticlockwise
+   * \param start_angle Start angle in degree, 0° is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
-   * \return true if successful
    */
   void sector(vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
   {
     // angle:
-    // 0ï¿½ = 3 o'clock
-    //   0ï¿½ -  89ï¿½: Q1 (top/right)
-    //  90ï¿½ - 179ï¿½: Q2 (top/left)
-    // 180ï¿½ - 269ï¿½: Q3 (bottom/left)
-    // 270ï¿½ - 359ï¿½: Q4 (bottom/right)
+    //   0° = 3 o'clock
+    //   0° -  89°: Q1 (top/right)
+    //  90° - 179°: Q2 (top/left)
+    // 180° - 269°: Q3 (bottom/left)
+    // 270° - 359°: Q4 (bottom/right)
 
     bool second_half;
     std::uint16_t end_angle2 = end_angle;
     if ((end_angle > start_angle && end_angle > start_angle + 180U) ||
       (start_angle > end_angle && end_angle + 180U > start_angle)) {
-      // more than 180ï¿½
+      // more than 180°
       end_angle = (start_angle + 180U) % 360U;
     }
-
+// TBD: sine calc and AA
     do {
       bool q14s = (start_angle < 90U) || (start_angle >= 270U);
       bool q14e = (end_angle < 90U) || (end_angle >= 270U);
       bool q24s = (start_angle >= 90U && start_angle < 180U) || (start_angle >= 270U);
       bool q24e = (end_angle >= 90U && end_angle < 180U) || (end_angle >= 270U);
 
-      std::int16_t xss = (std::uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 8U : 0U)) * (std::int16_t)(q14s ? 1 : -1);
-      std::int16_t yss = (std::uint8_t)(sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 0U : 8U)) * (std::int16_t)((start_angle < 180U) ? 1 : -1);
-      std::int16_t xse = (std::uint8_t)(sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 8U : 0U)) * (std::int16_t)(q14e ? 1 : -1);
-      std::int16_t yse = (std::uint8_t)(sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 0U : 8U)) * (std::int16_t)((end_angle < 180U) ? 1 : -1);
+      std::int16_t xss = (std::uint8_t)(util::sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 8U : 0U)) * (std::int16_t)(q14s ? 1 : -1);
+      std::int16_t yss = (std::uint8_t)(util::sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 0U : 8U)) * (std::int16_t)((start_angle < 180U) ? 1 : -1);
+      std::int16_t xse = (std::uint8_t)(util::sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 8U : 0U)) * (std::int16_t)(q14e ? 1 : -1);
+      std::int16_t yse = (std::uint8_t)(util::sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 0U : 8U)) * (std::int16_t)((end_angle < 180U) ? 1 : -1);
 
       for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; yp++) {
         for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; xp++) {
@@ -881,35 +911,35 @@ public:
    */
   virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
   {
-    std::int16_t w, h;
+    std::uint16_t w, h;
     if (source.x < destination.x) {
       if (source.y < destination.y) {
-        for (h = height; h != 0; --h) {
-          for (w = width; w != 0; --w) {
-            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+        for (h = height; h != 0U; --h) {
+          for (w = width; w != 0U; --w) {
+            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
           }
         }
       }
       else {
-        for (h = 0; h < height; ++h) {
-          for (w = width; w != 0; --w) {
-            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+        for (h = 0U; h < height; ++h) {
+          for (w = width; w != 0U; --w) {
+            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
           }
         }
       }
     }
     else {
       if (source.y < destination.y) {
-        for (h = height; h != 0; --h) {
-          for (w = 0; w < width; ++w) {
-            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+        for (h = height; h != 0U; --h) {
+          for (w = 0U; w < width; ++w) {
+            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
           }
         }
       }
       else {
-        for (h = 0; h < height; ++h) {
-          for (w = 0; w < width; ++w) {
-            drv_pixel_set_color({ destination.x + w, destination.y + h }, drv_pixel_get({ source.x + w, source.y + h }));
+        for (h = 0U; h < height; ++h) {
+          for (w = 0U; w < width; ++w) {
+            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
           }
         }
       }
@@ -935,14 +965,6 @@ protected:
   bool              anti_aliasing_;   // true if AA is enabled
 
   const pen_type*   pen_shape_;       // actual selected drawing pen
-
-  // default pens
-  const pen_type    pen_shape_width_1[1] = { { 0, 0, 0, 0 } };                                   // one pixel pen
-  const pen_type    pen_shape_width_2[4] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 },
-                                             { 0, 1, 0, 1 }, { 1, 1, 0, 0 } };                   // two pixel pen
-  const pen_type    pen_shape_width_3[9] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 }, { 2, 0, 0, 1 },
-                                             { 0, 1, 0, 1 }, { 1, 1, 0, 1 }, { 2, 1, 0, 1 },
-                                             { 0, 2, 0, 1 }, { 1, 2, 0, 1 }, { 2, 2, 0, 0 } };   // three pixel pen
 
 private:
 

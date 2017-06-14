@@ -38,7 +38,7 @@
 
 
 // defines the driver name and version
-#define VGX_DRV_WINDOWS_VERSION   "Windows driver 2.01"
+#define VGX_DRV_WINDOWS_VERSION   "Windows driver 3.00"
 
 namespace vgx {
 namespace head {
@@ -53,7 +53,7 @@ namespace head {
  */
 template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
          std::uint16_t Viewport_Size_X = Screen_Size_X, std::uint16_t Viewport_Size_Y = Screen_Size_Y>
-class windows : public drv
+class windows final : public drv
 {
 public:
   /**
@@ -172,7 +172,7 @@ protected:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type point) const
+  virtual inline color::value_type drv_pixel_get(vertex_type point)
   {
     // check limits and clipping
     if (!screen_is_inside(point)) {
@@ -293,7 +293,7 @@ public:
  */
 template<std::uint16_t COLUMNS, std::uint16_t ROWS,
          std::uint16_t Viewport_Size_X = COLUMNS, std::uint16_t Viewport_Size_Y = ROWS>
-class windows_text : public drv
+class windows_text final : public drv
 {
 public:
   /**
@@ -358,7 +358,6 @@ protected:
   {
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
-    return;
   }
 
 
@@ -388,19 +387,17 @@ protected:
  
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
-   * \param x X value
-   * \param y Y value
-   * \param color Color of pixel in ARGB format
+   * Unused
    */
   virtual inline void drv_pixel_set_color(vertex_type, color::value_type)
   { }
 
 
   /**
-   * Get pixel color
+   * Get pixel color - unsued
    * \return Dumy color (black)
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type) const
+  virtual inline color::value_type drv_pixel_get(vertex_type)
   { return color::black; }
 
 
@@ -438,8 +435,6 @@ protected:
         std::int16_t x = 2 * char_x_margin + (col * (font_width  + 2 * char_x_padding + 2 * char_x_margin));
         std::int16_t y =     char_y_margin + (row * (font_height + 2 * char_y_padding + 2 * char_y_margin));
 
-//        ::TextOut(hmemdc_, x + char_x_margin + char_x_padding, y + char_y_margin + char_y_padding, (LPCWSTR)&frame_buffer_[col][row], 1U);
-
         RECT rect = { x + char_x_margin + char_x_padding,
                       y + char_y_margin + char_y_padding,
                       x + char_x_margin + char_x_padding + font_width,
@@ -466,7 +461,6 @@ protected:
   /**
    * Output a single ASCII/UNICODE char at the actual cursor position
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
-   * \return 1 if the char is rendered, 0 if error/not rendered
    */
   virtual void text_char(std::uint16_t ch)
   {
@@ -480,6 +474,7 @@ protected:
       frame_buffer_[text_x_act_][text_y_act_] = ch;
     }
 
+    // always increment the text position
     text_x_act_++;
   }
 
@@ -492,7 +487,7 @@ protected:
 
     const HINSTANCE hInstance = ::GetModuleHandle(NULL);
     const LPCTSTR className = L"vgx_text_screen";
-    WNDCLASSEX wc = {};
+    WNDCLASSEX wc = { };
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = ::DefWindowProc; 
@@ -602,9 +597,6 @@ public:
   HDC           hmemdc_;
   HBITMAP       hbmp_;
 };
-
-
-
 
 } // namespace head
 } // namespace vgx
