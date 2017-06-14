@@ -35,7 +35,6 @@ If you need an advanced windowed GUI, there are many other cool libraries around
 ## To be done (and implemented)
 - Improve anti aliasing support for primitives
 - Implement fast fill algorithm
-- Implement PNG and BMP rendering support
 - Add more standard and high quality fonts
 
 
