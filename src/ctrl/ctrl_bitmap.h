@@ -251,9 +251,7 @@ private:
    */
   std::uint32_t strtol(const char* str, char** endptr, unsigned int base) const
   {
-    std::uint32_t res = 0U;
     std::size_t   i   = 0U;
-    std::uint8_t  digit;
 
     // skip whitspace(s)
     while (str[i] == ' ') {
@@ -261,12 +259,13 @@ private:
     }
 
     // parse value
+    std::uint32_t res = 0U;
     for (;;) {
-      digit = static_cast<std::uint8_t>(str[i++]);
+      std::uint8_t digit = static_cast<std::uint8_t>(str[i++]);
       if (digit >= 0x30U && digit <= 0x39U) {
         digit -= 0x30U;
       }
-      else if ((digit & 0xDFU) >= 0x41U && (digit & 0xDF) <= 0x5A) {
+      else if ((digit & 0xDFU) >= 0x41U && (digit & 0xDFU) <= 0x5AU) {
         digit -= 0x37U;
       }
       else {
