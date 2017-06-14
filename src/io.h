@@ -40,19 +40,91 @@
 
 
 namespace vgx {
+namespace io {
 
 
-typedef enum enum_interface_type
-{
-  interface_dio = 0,    // digital IO interface
-  interface_spi,        // SPI interface
-  interface_i2c,        // I²C interface
-  interface_can,        // CAN interface
-  interface_usb,        // USB interface
-  interface_serial,     // Serial/UART interface
-  intercace_cust        // custom interface (bit banging etc.)
-} interface_type;
+/**
+ * Delay
+ * \param time_to_delay Milliseconds [ms] to delay
+ */
+void delay(std::uint32_t time_to_delay);
 
+
+/////////////////////////////////////////////////////////////////////////////
+// D E V I C E   A C C E S S
+namespace dev {
+
+  // device handle
+  typedef const void* handle_type;
+
+  /**
+   * Init the interface
+   * \param device_handle Logical device handle
+   */
+  void init(handle_type device_handle);
+
+  /**
+   * IO write/read access to device
+   * \param device_handle Logical device handle
+   * \param option Optional data for the device like register selection
+   * \param data_out Data transmit buffer
+   * \param data_out_length Data length to send
+   * \param data_in Data receive buffer, may be used with bidirectional devices like SPI
+   * \param data_in_length Additional input length
+   * \param timeout Time in [ms] to wait for sending data, 0 = no waiting
+   * \return true if successful
+   */ 
+  bool write(handle_type device_handle,
+             std::uint32_t option,
+             const std::uint8_t* data_out, std::size_t data_out_length,
+             std::uint8_t* data_in, std::size_t data_in_length,
+             std::uint32_t timeout = 0U);
+
+  /**
+   * IO read access from device
+   * \param device_handle Logical device handle
+   * \param option Optional data for the device like register selection
+   * \param data_in Data receive buffer
+   * \param data_in_length Maximum buffer size on input, received chars on output
+   * \param timeout Time in [ms] to wait for receiving data, 0 = no waiting (fifo check)
+   * \return true if successful
+   */ 
+  bool read(handle_type device_handle,
+            std::uint32_t option,
+            std::uint8_t* data_in, std::size_t& data_in_length,
+            std::uint32_t timeout = 0U);
+
+} // namespace dev
+
+
+/////////////////////////////////////////////////////////////////////////////
+// M E M O R Y   A C C E S S
+namespace mem {
+
+  /**
+   * Direct memory access, write
+   * \param address The address to write to
+   * \param value The value (of type VALUE_TYPE) written to the address
+   */
+  template<typename VALUE_TYPE>
+  void write(void* const address, VALUE_TYPE value);
+
+  /**
+   * Direct memory access, read
+   * \param address The address to read from
+   * \return The value (of type VALUE_TYPE) read from address
+   */
+  template<typename VALUE_TYPE>
+  VALUE_TYPE read(const void* const address);
+
+} // namespace mem
+
+
+} // namespace io
+} // vgx
+
+
+#if 0
 
 /**
  * driver IO class
@@ -68,12 +140,60 @@ public:
   //
 
   /**
-   * Init the interfaces
-   * \param if_type Interface type
-   * \param device_id Logical device ID of the according interface
+   * Init the interface
+   * \param device_handle Logical device handle
    */
-  void init(interface_type if_type, std::uint32_t device_id);
+  void init(device_handle_type device_handle);
 
+
+  /**
+   * IO write/read access to device
+   * The bytes read are only valid on interfaces, where writing and reading is simultaneous, like SPI
+   * \param device_handle Logical device handle
+   * \param data_out Data transmit buffer
+   * \param data_out_length Data length to send
+   * \param data_in Data receive buffer
+   * \param data_in_length Additional input length
+   * \param timeout Time in [ms] to wait for sending data, 0 = no waiting
+   * \return true if successful
+   */ 
+  bool dev_set(device_handle_type device_handle,
+             const std::uint8_t* data_out, std::size_t data_out_length,
+             std::uint8_t* data_in, std::size_t data_in_length,
+             std::uint32_t timeout = 0U);
+
+
+  /**
+   * IO read access from device
+   * \param device_handle Logical device handle
+   * \param data_in Data receive buffer
+   * \param data_in_length Maximum buffer size on input, received chars on output
+   * \param timeout Time in [ms] to wait for receiving data, 0 = no waiting (fifo check)
+   * \return true if successful
+   */ 
+  bool dev_get(device_handle_type device_handle,
+            std::uint8_t* data_in, std::size_t& data_in_length,
+            std::uint32_t timeout = 0U);
+
+// TBD:
+// we need to read/write to a 8/16/32 bit port
+// we need to set/reset port pins directly
+
+
+  template<typename VALUE_TYPE>
+  void dio_port_set(std::uint8_t port, VALUE_TYPE value);
+
+  template<typename VALUE_TYPE>
+  VALUE_TYPE dio_port_get(std::uint8_t port);
+
+
+  void dio_pin_set(std::uint8_t pin, bool value);
+
+  bool dio_pin_get(std::uint8_t pin);
+
+
+  /////////////////////////////////////////////////////////////////////////////
+  // M E M O R Y   A C C E S S
 
   /**
    * Direct memory access, write
@@ -81,7 +201,7 @@ public:
    * \param value The value (of type VALUE_TYPE) written to the address
    */
   template<typename VALUE_TYPE>
-  inline void mem_set(void* const address, VALUE_TYPE value);
+  void mem_set(void* const address, VALUE_TYPE value);
 
 
   /**
@@ -90,41 +210,12 @@ public:
    * \return The value (of type VALUE_TYPE) read from address
    */
   template<typename VALUE_TYPE>
-  inline VALUE_TYPE mem_get(const void* const address) const;
+  VALUE_TYPE mem_get(const void* const address) const;
 
-
-  /**
-   * IO write/read access to device
-   * The bytes read are only valid on interfaces, where writing and reading is simultaneous, like SPI
-   * \param if_type Interface type
-   * \param device_id Logical device ID of the according interface
-   * \param data_out Data transmit buffer
-   * \param data_out_length Data length to send
-   * \param data_in Data receive buffer
-   * \param data_in_length Additional input length
-   * \param timeout Time in [ms] to wait for sending data, 0 = no waiting
-   * \return true if successful
-   */ 
-  bool dev_set(interface_type if_type, std::uint32_t device_id,
-               const std::uint8_t* data_out, std::size_t data_out_length,
-               std::uint8_t* data_in, std::size_t data_in_length,
-               std::uint32_t timeout = 0U);
-
-
-  /**
-   * IO read access from device
-   * \param if_type Interface type
-   * \param device_id Logical device ID of the according interface
-   * \param data_in Data receive buffer
-   * \param data_in_length Maximum buffer size on input, received chars on output
-   * \param timeout Time in [ms] to wait for receiving data, 0 = no waiting (fifo check)
-   * \return true if successful
-   */ 
-  bool dev_get(interface_type if_type, std::uint32_t device_id,
-               std::uint8_t* data_in, std::size_t& data_in_length,
-               std::uint32_t timeout = 0U);
 };
 
 } // namespace vgx
+
+#endif
 
 #endif  // _VGX_IO_H_
