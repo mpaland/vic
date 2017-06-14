@@ -81,7 +81,7 @@ public:
   }
 
   /**
-   * Set the callback function for dynmic pen color
+   * Set the callback function for dynamic pen color
    * \param pen_color_function Function for dynamic pen color
    */
   inline virtual void color_pen_set(color_pen_function_type pen_color_function)
@@ -100,7 +100,14 @@ public:
    * \return Actual drawing color in ARGB format
    */
   inline virtual color::value_type color_pen_get(vertex_type point) const
-  { return color_pen_function_ ? color_pen_function_(point) : color_pen_; }
+  { return !!color_pen_function_ ? color_pen_function_(point) : color_pen_; }
+
+  /**
+   * Return true if color pen is a function
+   * \return True if color pen is function, false if pen is solid
+   */
+  inline bool color_pen_is_function() const
+  { return !!color_pen_function_; }
 
   /**
    * Set the background color (e.g. for cls)
@@ -151,9 +158,9 @@ public:
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// D R I V E R   F U N C T I O N S
+// M A N D A T O R Y   D R I V E R   F U N C T I O N S
 //
-// All functions in this section are MANDATORY driver functions!
+// All functions in this section (marked with 'drv_' prefix are MANDATORY driver functions!
 // Every driver MUST implement them - even if not supported
 //
 protected:
@@ -197,7 +204,7 @@ protected:
    * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  virtual color::value_type drv_pixel_get(vertex_type point) const = 0;
+  virtual color::value_type drv_pixel_get(vertex_type point) = 0;
 
 
   /**
