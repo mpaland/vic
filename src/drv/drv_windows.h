@@ -31,14 +31,15 @@
 #ifndef _VGX_DRV_WINDOWS_H_
 #define _VGX_DRV_WINDOWS_H_
 
-#include "../drv.h"
-
 #include <Windows.h>
 #include <process.h>
 
+#include "../drv.h"
+
 
 // defines the driver name and version
-#define VGX_DRV_WINDOWS_VERSION   "Windows driver 3.00"
+#define VGX_DRV_WINDOWS_VERSION   "Windows driver 3.01"
+
 
 namespace vgx {
 namespace head {
@@ -86,12 +87,14 @@ public:
    * Shutdown the driver
    */
   ~windows()
-  { drv_shutdown(); }
+  {
+    drv_shutdown();
+  }
 
 
 protected:
 
-  virtual void drv_init()
+  virtual void drv_init() final
   {
     // create init event
     wnd_init_ev_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -111,28 +114,27 @@ protected:
   }
 
 
-  virtual void drv_shutdown()
+  virtual void drv_shutdown() final
   {
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
-    return;
   }
 
 
-  virtual inline const char* drv_version() const
+  inline virtual const char* drv_version() const final
   {
     return (const char*)VGX_DRV_WINDOWS_VERSION;
   }
 
 
-  virtual inline bool drv_is_graphic() const
+  inline virtual bool drv_is_graphic() const final
   {
     // This Windows driver is a graphic display
     return true;
   }
 
 
-  virtual void drv_cls()
+  virtual void drv_cls() final
   {
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
@@ -149,7 +151,7 @@ protected:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color)
+  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color) final
   {
     // check limits and clipping
     if (!screen_is_inside(point) || !clipping_.is_inside(point)) {
@@ -172,7 +174,7 @@ protected:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type point)
+  virtual inline color::value_type drv_pixel_get(vertex_type point) final
   {
     // check limits and clipping
     if (!screen_is_inside(point)) {
@@ -188,7 +190,7 @@ protected:
   /**
    * Rendering is done (copy RAM / frame buffer to screen)
    */
-  virtual void drv_present()
+  virtual void drv_present() final
   {
     // copy memory bitmap to viewport
     HDC hDC = ::GetDC(hwnd_);
@@ -312,12 +314,12 @@ public:
     , window_y_(window_y)
     , caption_(caption)
   {
-    font_height     = 50U;    // font height in pixel
-    font_width      = font_height * 40U / 75U;
-    char_x_margin   = 2U;
-    char_y_margin   = 2U;
-    char_x_padding  = 2U;
-    char_y_padding  = 1U;  
+    font_height_    = 50U;    // font height in pixel
+    font_width_     = font_height_ * 40U / 75U;
+    char_x_margin_  = 2U;
+    char_y_margin_  = 2U;
+    char_x_padding_ = 2U;
+    char_y_padding_ = 1U;  
   }
 
 
@@ -326,12 +328,14 @@ public:
    * Shutdown the driver
    */
   ~windows_text()
-  { drv_shutdown(); }
+  {
+    drv_shutdown();
+  }
 
 
 protected:
 
-  virtual void drv_init()
+  virtual void drv_init() final
   {
     // create init event
     wnd_init_ev_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -354,27 +358,27 @@ protected:
   }
 
 
-  virtual void drv_shutdown()
+  virtual void drv_shutdown() final
   {
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
   }
 
 
-  virtual inline const char* drv_version() const
+  virtual inline const char* drv_version() const final
   {
     return (const char*)VGX_DRV_WINDOWS_VERSION;
   }
 
 
-  virtual inline bool drv_is_graphic() const
+  virtual inline bool drv_is_graphic() const final
   {
     // This Windows text driver is an alpha numeric (text only) display
     return false;
   }
 
 
-  virtual void drv_cls()
+  virtual void drv_cls() final
   {
     for (std::int16_t y = 0; y < screen_height(); y++) {
       for (std::int16_t x = 0; x < screen_width(); x++) {
@@ -389,7 +393,7 @@ protected:
    * Set pixel in given color, the color doesn't change the actual drawing color
    * Unused
    */
-  virtual inline void drv_pixel_set_color(vertex_type, color::value_type)
+  virtual inline void drv_pixel_set_color(vertex_type, color::value_type) final
   { }
 
 
@@ -397,21 +401,23 @@ protected:
    * Get pixel color - unsued
    * \return Dumy color (black)
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type)
-  { return color::black; }
+  virtual inline color::value_type drv_pixel_get(vertex_type) final
+  {
+    return color::black;
+  }
 
 
   /**
    * Text mode is ignored, BA6x has no inverse video mode
    */
-  virtual void drv_text_mode(text_mode_type)
+  virtual void drv_text_mode(text_mode_type) final
   { }
 
 
   /**
    * Rendering is done (copy RAM / frame buffer to screen)
    */
-  virtual void drv_present()
+  virtual void drv_present() final
   {
     // render text
 
@@ -432,22 +438,22 @@ protected:
     for (std::int16_t col = _viewport.x; col < viewport_width() && col < screen_width(); col++) {
       for (std::int16_t row = _viewport.y; row < viewport_height() && row < screen_height(); row++) {
 
-        std::int16_t x = 2 * char_x_margin + (col * (font_width  + 2 * char_x_padding + 2 * char_x_margin));
-        std::int16_t y =     char_y_margin + (row * (font_height + 2 * char_y_padding + 2 * char_y_margin));
+        std::int16_t x = 2 * char_x_margin_ + (col * (font_width_  + 2 * char_x_padding_ + 2 * char_x_margin_));
+        std::int16_t y =     char_y_margin_ + (row * (font_height_ + 2 * char_y_padding_ + 2 * char_y_margin_));
 
-        RECT rect = { x + char_x_margin + char_x_padding,
-                      y + char_y_margin + char_y_padding,
-                      x + char_x_margin + char_x_padding + font_width,
-                      y + char_y_margin + char_y_padding + font_height
+        RECT rect = { x + char_x_margin_ + char_x_padding_,
+                      y + char_y_margin_ + char_y_padding_,
+                      x + char_x_margin_ + char_x_padding_ + font_width_,
+                      y + char_y_margin_ + char_y_padding_ + font_height_
                     };
         ::DrawText(hmemdc_, (LPCWSTR)&frame_buffer_[col][row], 1U, &rect, DT_CENTER | DT_TOP | DT_SINGLELINE);
 
         // draw a square around the char
-        POINT box[] = { {x + char_x_margin, y + char_y_margin},
-                        {x + char_x_margin + char_x_padding + font_width + char_x_padding, y + char_y_margin},
-                        {x + char_x_margin + char_x_padding + font_width + char_x_padding, y + char_y_margin + char_y_padding + font_height + char_y_padding},
-                        {x + char_x_margin, y + char_y_margin + char_y_padding + font_height + char_y_padding},
-                        {x + char_x_margin, y + char_y_margin } };
+        POINT box[] = {{ x + char_x_margin_, y + char_y_margin_ },
+                       { x + char_x_margin_ + char_x_padding_ + font_width_ + char_x_padding_, y + char_y_margin_ },
+                       { x + char_x_margin_ + char_x_padding_ + font_width_ + char_x_padding_, y + char_y_margin_ + char_y_padding_ + font_height_ + char_y_padding_ },
+                       { x + char_x_margin_, y + char_y_margin_ + char_y_padding_ + font_height_ + char_y_padding_ },
+                       { x + char_x_margin_, y + char_y_margin_ }};
         ::Polyline(hmemdc_, box, 5);
       }
     }
@@ -462,7 +468,7 @@ protected:
    * Output a single ASCII/UNICODE char at the actual cursor position
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
    */
-  virtual void text_char(std::uint16_t ch)
+  inline virtual void text_char(std::uint16_t ch) final
   {
     if (ch < 0x20U) {
       // ignore non characters
@@ -522,8 +528,8 @@ protected:
       return 0U;
     }
 
-    d->window_size_x_ = (d->font_width  + 2 * d->char_x_margin + 2 * d->char_x_padding) * d->viewport_width()  + 4 * d->char_x_margin;
-    d->window_size_y_ = (d->font_height + 2 * d->char_y_margin + 2 * d->char_y_padding) * d->viewport_height() + 2 * d->char_y_margin;
+    d->window_size_x_ = (d->font_width_  + 2U * d->char_x_margin_ + 2 * d->char_x_padding_) * d->viewport_width()  + 4U * d->char_x_margin_;
+    d->window_size_y_ = (d->font_height_ + 2U * d->char_y_margin_ + 2 * d->char_y_padding_) * d->viewport_height() + 2U * d->char_y_margin_;
 
     // resize window
     // adjust windows size to viewport width and height
@@ -547,7 +553,7 @@ protected:
 
     LOGFONT lf;
     memset(&lf, 0, sizeof(lf));
-    lf.lfHeight = -MulDiv(d->font_height * 60U / 75U * 72U / GetDeviceCaps(d->hmemdc_, LOGPIXELSY), GetDeviceCaps(d->hmemdc_, LOGPIXELSY), 72);
+    lf.lfHeight = -MulDiv(d->font_height_ * 60U / 75U * 72U / GetDeviceCaps(d->hmemdc_, LOGPIXELSY), GetDeviceCaps(d->hmemdc_, LOGPIXELSY), 72);
     lf.lfWeight = FW_NORMAL;
     lf.lfOutPrecision = OUT_TT_ONLY_PRECIS;
     wcscpy_s(lf.lfFaceName, L"Enhanced LED Board-7");
@@ -582,12 +588,12 @@ public:
 
   std::uint16_t frame_buffer_[COLUMNS][ROWS];
 
-  std::uint16_t font_height   ;           // font height in pixel
-  std::uint16_t font_width    ;
-  std::uint16_t char_x_margin ;
-  std::uint16_t char_y_margin ;
-  std::uint16_t char_x_padding;
-  std::uint16_t char_y_padding;
+  std::uint16_t font_height_;             // font height in pixel
+  std::uint16_t font_width_;
+  std::uint16_t char_x_margin_;
+  std::uint16_t char_y_margin_;
+  std::uint16_t char_x_padding_;
+  std::uint16_t char_y_padding_;
 
   std::int16_t  window_x_;                // x coordinate of output window
   std::int16_t  window_y_;                // y coordinate of output window
