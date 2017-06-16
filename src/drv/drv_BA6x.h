@@ -37,12 +37,13 @@
 #ifndef _VGX_DRV_BA6X_H_
 #define _VGX_DRV_BA6X_H_
 
-#include "../drv.h"
 #include <string.h>
+
+#include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_BA6X_VERSION  "Wincor BA6x driver 1.10"
+#define VGX_DRV_BA6X_VERSION  "Wincor BA6x driver 1.30"
 
 
 namespace vgx {
@@ -50,25 +51,24 @@ namespace head {
 
 
 // BA6x model
-typedef enum enum_ba6x_model_type {
+typedef enum tag_BA6x_model_type {
   BA60 = 0,   // 1 line,  16 chars
   BA63,       // 2 lines, 20 chars
   BA66        // 4 lines, 20 chars
-} ba6x_model_type;
+} BA6x_model_type;
 
 
 /**
  * BA6x head is the famous Wincor alpha numeric display
  * \param model Display model, BA60, BA63 and BA66 are possible options
  */
-template<ba6x_model_type MODEL>
+template<BA6x_model_type Model>
 class BA6x : public drv
 { 
-  static const std::uint8_t BA6X_MAX_CMD_LENGTH = 0x20U;  // maximum command length (device constant)
-  static const std::uint8_t ESC                 = 0x1BU;  // escape char
+  static const std::uint8_t BA6X_MAX_CMD_LENGTH = 0x20U;    // maximum command length (device constant)
+  static const std::uint8_t ESC                 = 0x1BU;    // escape char
 
-  interface_type  interface_;                             // used interface (uart or usb)
-  std::uint32_t   device_id_;                             // logical device ID (COM port number or USB ID)
+  const io::dev::handle_type device_handle_;                // logical device handle (uart or usb)
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -80,12 +80,11 @@ public:
    * \param iface Interface type, USB and UART are possible options
    * \param device_id Logical device ID (COM port number or USB ID)
    */
-  BA6x(interface_type _interface, std::uint32_t device_id)
-    : drv(MODEL == BA60 ? 16U : 20U, MODEL == BA60 ? 1U : MODEL == BA63 ? 2U : 4U,    // screen size
-          MODEL == BA60 ? 16U : 20U, MODEL == BA60 ? 1U : MODEL == BA63 ? 2U : 4U,    // viewport size (same as screen)
+  BA6x(io::dev::handle_type device_handle)
+    : drv(Model == BA60 ? 16U : 20U, Model == BA60 ? 1U : Model == BA63 ? 2U : 4U,    // screen size
+          Model == BA60 ? 16U : 20U, Model == BA60 ? 1U : Model == BA63 ? 2U : 4U,    // viewport size (same as screen)
           0, 0, orientation_0)
-    , interface_(_interface)
-    , device_id_(device_id)
+    , device_handle_(device_handle)
   { }
 
 
@@ -94,15 +93,20 @@ public:
    * Shutdown the driver
    */
   ~BA6x()
-  { drv_shutdown(); }
+  {
+    drv_shutdown();
+  }
 
 
 protected:
 
-  virtual void drv_init()
+  virtual void drv_init() final
   {
     // init the interface
-    io.init(interface_, device_id_);
+    io::dev::init(device_handle_);
+
+    // BX6x needs about 700 ms time to get ready
+    io::delay(750U);
 
     // clear display
     drv_cls();
@@ -112,59 +116,60 @@ protected:
   }
 
 
-  virtual void drv_shutdown()
+  virtual void drv_shutdown() final
   {
     // clear buffer
     drv_cls();
   }
 
 
-  inline virtual const char* drv_version() const
+  inline virtual const char* drv_version() const final
   {
     return (const char*)VGX_DRV_BA6X_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const
+  inline virtual bool drv_is_graphic() const final
   {
     // BA6x is an alpha numeric display
     return false;
   }
 
 
-  inline virtual void drv_cls()
+  inline virtual void drv_cls() final
   {
     // send 1B 5B 32 4A
     const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x32U, 0x4AU };
 
     // send command
-    write(cmd, 4U);
+    write_command(cmd, 4U);
   }
 
 
-  inline virtual void drv_pixel_set_color(vertex_type, color::value_type)
+  inline virtual void drv_pixel_set_color(vertex_type, color::value_type) final
   { }
 
 
-  inline virtual color::value_type drv_pixel_get(vertex_type) const
+  inline virtual color::value_type drv_pixel_get(vertex_type) final
   {
     return color::black; 
   }
 
 
-  inline virtual void drv_present()
+  inline virtual void drv_present() final
   { }
 
 
   /**
    * Set cursor
+   * \param pos New cursor position. 0,0 is left,top
    */
-  virtual void text_pos(vertex_type pos)
+  virtual void text_pos(vertex_type pos) final
   {
     txr::text_pos(pos);   // store pos via base class
 
-    if (pos.x < 0) {
-      pos.x = 0;          // if x is negative, start at position 0
+    if (pos.x < 0) {      // position cursor to col 0 if outside screen to get partial string offset right
+      pos.x = 0;
     }
 
     if (!screen_is_inside(pos)) {
@@ -195,24 +200,22 @@ protected:
     cmd[len++] = 0x48U;
 
     // send command
-    write(cmd, len);
+    write_command(cmd, len);
   }
 
 
   /**
    * Text mode is ignored, BA6x has no inverse video mode
    */
-  virtual void text_mode(text_mode_type)
+  virtual void text_mode(text_mode_type) final
   { }
 
 
   /**
    * Output one character at the actual position
-   * The cursor position IS and MUST NOT be changed by this function!
    * \param ch Output character in ASCII/UNICODE (NOT UTF-8) format
-   * \return 1 (char) if success, 0 on error
    */
-  inline virtual void text_char(std::uint16_t ch)
+  inline virtual void text_char(std::uint16_t ch) final
   {
     if (ch < 0x20U) {
       // ignore non characters
@@ -222,11 +225,12 @@ protected:
     // check limits
     if (screen_is_inside({ text_x_act_, text_y_act_ })) {
       // send command
-      write(&static_cast<std::uint8_t>(ch), 1U);
-      // inc x and reposition cursor if at end of line and implicit CR occured
-      if (++text_x_act_ == static_cast<std::int16_t>(screen_width())) {
-        text_pos({ text_x_act_, text_y_act_ });
-      }
+      write_command(reinterpret_cast<std::uint8_t*>(&ch), 1U);
+    }
+
+    // inc x and reposition cursor if at end of line and implicit CR occured
+    if (++text_x_act_ == static_cast<std::int16_t>(screen_width())) {
+      text_pos({ text_x_act_, text_y_act_ });
     }
   }
 
@@ -236,7 +240,7 @@ protected:
    * \param string Output string in UTF-8/ASCII format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  inline virtual std::uint16_t text_string(const std::uint8_t* string)
+  inline virtual std::uint16_t text_string(const std::uint8_t* string) final
   {
     // the base class function might be used, but the char by char write command overhead is too big,
     // so assemble the data here and pass it directly
@@ -263,7 +267,7 @@ protected:
       }
 
       // send command
-      write(string + off, len);
+      write_command(string + off, len);
       return len;
     }
     return 0U;
@@ -313,7 +317,7 @@ public:
     const std::uint8_t cmd[3] = { ESC, 0x52U, static_cast<std::uint8_t>(code) };
 
     // send command
-    write(cmd, 3U);
+    write_command(cmd, 3U);
   }
 
 
@@ -328,7 +332,7 @@ public:
     const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x30U, 0x4BU };
 
     // send command
-    write(cmd, 4U);
+    write_command(cmd, 4U);
   }
 
 
@@ -336,34 +340,48 @@ public:
    * Perform a display self test
    * \return true if successful
    */
-  bool self_test()
+  void self_test() const
   {
+    // wait that display is ready for command
+    for (std::uint8_t n = 0U; !device_ready() && (n < 10U); ++n);
+
     // command: 00H, 10H, 00H
     const std::uint8_t cmd[3] = { 0x00U, 0x10U, 0x00U };
 
-    // wait that display is ready for command
-    for (std::uint8_t n = 0U; !device_ready() && (n < 20U); ++n);
-
     // send data to display
-    io.dev_set(interface_, device_id_, cmd, 3U, nullptr, 0U);
+    io::dev::write(device_handle_, 0U, cmd, 3U, nullptr, 0U);
+  }
+
+
+  /**
+   * Check if display is ready
+   * \return true if display is ready
+   */
+  bool device_ready() const
+  {
+    // status request command: 00H, 20H, 00H, 00H
+    const std::uint8_t cmd[4] = { 0x00U, 0x20U, 0x00U, 0x00U };
+
+    // send command to display
+    io::dev::write(device_handle_, 0U, cmd, 4U, nullptr, 0U);
 
     // read and check status response
-    // expected response: 04H, Status Byte 0, Status Byte 1, Status Byte 2
+    // expected response: 04H, Status Byte 0, Status Byte 1, Status Byte 2 (SB0 oer SB1 != 0 is error)
     std::uint8_t response[4];
-    std::size_t len = 4U;
-    if (!raw_read(response, len) || response[0] != 0x04U || (response[1] & 0x20U)) {
-      // invalid response or hardware error
+    std::size_t  len = 4U;
+    if (!read_response(response, len) || len != 4 || response[0] != 0x04U || (response[1] & 0x0A0U)) {
+      // invalid response, error or device not ready
       return false;
     }
 
-    // test passed
+    // ready to receive commands
     return true;
   }
 
 
 private:
 
-  void write(const std::uint8_t* data, std::uint16_t data_count)
+  void write_command(const std::uint8_t* data, std::uint16_t data_count) const
   {
     // write data command is 02H, 00H, Data Count, Data Bytes
     // maximum length of one message the display can handle is BA6X_MAX_CMD_LENGTH
@@ -371,10 +389,7 @@ private:
     std::uint8_t   msg[BA6X_MAX_CMD_LENGTH];
 
     do {
-      // wait that display is ready for a new command
-      //for (std::uint8_t n = 0U; !device_ready() && (n < 20U); ++n);
- 
-      std::uint16_t blk_size = data_count - offset > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : data_count - offset;
+      const std::uint16_t blk_size = data_count - offset > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : data_count - offset;
 
       msg[0] = 0x02U;
       msg[1] = 0x00U;
@@ -382,14 +397,13 @@ private:
       memcpy(&msg[3], &data[offset], blk_size);
 
       // send data to display
-      bool res = false;
-      for (std::uint8_t n = 0U; !res && n < 10U; ++n) {
-        res = io.dev_set(interface_, device_id_, msg, blk_size + 3U, nullptr, 0U);
-        std::uint8_t response[4];
-        std::size_t len = 4;
-        res = res && read_response(response, len) && len == 4U && response[0] == 0x04U && !(response[1] & 0x0A0U);
+      bool res = io::dev::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
+      std::uint8_t response[4];
+      std::size_t  len = 4U;
+      if (!(res && read_response(response, len) && len == 4U && response[0] == 0x04U && !(response[1] & 0x0A0U))) {
+        // abort
+        return;
       }
-
       // process next command segment
       offset += blk_size;
     } while (offset < data_count);
@@ -401,13 +415,13 @@ private:
    * \param data_count On input the minimum chars to read, on return the available chars
    * \return true if response is positive/successful
    */
-  bool read_response(std::uint8_t* data, std::size_t& data_count)
+  bool read_response(std::uint8_t* data, std::size_t& data_count) const
   {
     std::size_t offset   = 0U;
     std::size_t max_size = data_count;
     std::size_t count    = max_size;
 
-    while (io.dev_get(interface_, device_id_, &data[offset], count, 100U)) {   // wait max. 50 ms for answer
+    while (io::dev::read(device_handle_, 0U, &data[offset], count, 100U)) {   // wait max. 100 ms for answer
       offset += (std::int16_t)count;
       count = max_size - offset;
       if (offset >= data_count) {
@@ -415,38 +429,10 @@ private:
         return true;
       }
     }
+
     // timeout or error
     return false;
   }
-
-
-  /**
-   * Read status response
-   * \return true if response is positive/successful
-   */
-  bool device_ready()
-  {
-    // status request command: 00H, 20H, 00H
-    const std::uint8_t cmd[4] = { 0x00U, 0x20U, 0x00U, 0x00U };
-
-    // send command to display
-    io.dev_set(interface_, device_id_, cmd, 4U, nullptr, 0U);
-
-    // read and check status response
-    // expected response: 04H, Status Byte 0, Status Byte 1, Status Byte 2 (SB0 oer SB1 != 0 is error)
-    std::uint8_t response[4];
-    std::size_t len = 4U;
-//    if (!raw_read(response, len) || len != 4 || response[0] != 0x04U || (response[1] & 0x0A0U)) {
-      // invalid response, error or device not ready
-//      return false;
-//    }
-
-    // ready to receive commands
-    return true;
-  }
-
-
-
 };
 
 } // namespace head
