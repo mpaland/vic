@@ -52,6 +52,7 @@ void delay(std::uint32_t time_to_delay);
 
 /////////////////////////////////////////////////////////////////////////////
 // D E V I C E   A C C E S S
+
 namespace dev {
 
   // device handle
@@ -99,6 +100,7 @@ namespace dev {
 
 /////////////////////////////////////////////////////////////////////////////
 // M E M O R Y   A C C E S S
+
 namespace mem {
 
   /**
@@ -122,100 +124,5 @@ namespace mem {
 
 } // namespace io
 } // vgx
-
-
-#if 0
-
-/**
- * driver IO class
- */
-class drv_io
-{
-public:
-
-  /////////////////////////////////////////////////////////////////////////////
-  // H A R D W A R E   A C C E S S
-  //
-  // Define all IO functions in your project
-  //
-
-  /**
-   * Init the interface
-   * \param device_handle Logical device handle
-   */
-  void init(device_handle_type device_handle);
-
-
-  /**
-   * IO write/read access to device
-   * The bytes read are only valid on interfaces, where writing and reading is simultaneous, like SPI
-   * \param device_handle Logical device handle
-   * \param data_out Data transmit buffer
-   * \param data_out_length Data length to send
-   * \param data_in Data receive buffer
-   * \param data_in_length Additional input length
-   * \param timeout Time in [ms] to wait for sending data, 0 = no waiting
-   * \return true if successful
-   */ 
-  bool dev_set(device_handle_type device_handle,
-             const std::uint8_t* data_out, std::size_t data_out_length,
-             std::uint8_t* data_in, std::size_t data_in_length,
-             std::uint32_t timeout = 0U);
-
-
-  /**
-   * IO read access from device
-   * \param device_handle Logical device handle
-   * \param data_in Data receive buffer
-   * \param data_in_length Maximum buffer size on input, received chars on output
-   * \param timeout Time in [ms] to wait for receiving data, 0 = no waiting (fifo check)
-   * \return true if successful
-   */ 
-  bool dev_get(device_handle_type device_handle,
-            std::uint8_t* data_in, std::size_t& data_in_length,
-            std::uint32_t timeout = 0U);
-
-// TBD:
-// we need to read/write to a 8/16/32 bit port
-// we need to set/reset port pins directly
-
-
-  template<typename VALUE_TYPE>
-  void dio_port_set(std::uint8_t port, VALUE_TYPE value);
-
-  template<typename VALUE_TYPE>
-  VALUE_TYPE dio_port_get(std::uint8_t port);
-
-
-  void dio_pin_set(std::uint8_t pin, bool value);
-
-  bool dio_pin_get(std::uint8_t pin);
-
-
-  /////////////////////////////////////////////////////////////////////////////
-  // M E M O R Y   A C C E S S
-
-  /**
-   * Direct memory access, write
-   * \param address The address to write to
-   * \param value The value (of type VALUE_TYPE) written to the address
-   */
-  template<typename VALUE_TYPE>
-  void mem_set(void* const address, VALUE_TYPE value);
-
-
-  /**
-   * Direct memory access, read
-   * \param address The address to read from
-   * \return The value (of type VALUE_TYPE) read from address
-   */
-  template<typename VALUE_TYPE>
-  VALUE_TYPE mem_get(const void* const address) const;
-
-};
-
-} // namespace vgx
-
-#endif
 
 #endif  // _VGX_IO_H_
