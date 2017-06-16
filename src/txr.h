@@ -133,9 +133,9 @@ public:
         if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
           // found char
           const font::charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
-          for (std::uint16_t y = 0U; y < info->ysize; ++y) {
+          for (std::uint_fast8_t y = 0U; y < info->ysize; ++y) {
             std::uint16_t d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
-            for (std::uint16_t x = 0U; x < info->xsize; ++x) {
+            for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
               std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
@@ -160,9 +160,9 @@ public:
           if (ch >= font_prop->first && ch <= font_prop->last) {
             // found char
             const font::charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
-            for (std::uint16_t y = 0U; y < text_font_->ysize; ++y) {
+            for (std::uint_fast8_t y = 0U; y < text_font_->ysize; ++y) {
               std::uint16_t d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
-              for (std::uint16_t x = 0U; x < info->xsize; ++x) {
+              for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
                 std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {
                   intensity = ((intensity + 1U) << color_shift) - 1U;
@@ -182,9 +182,9 @@ public:
         // mono font
         const font::mono_type* font_mono = text_font_->font_type_type.mono;
         if (ch >= font_mono->first && ch <= font_mono->last) {
-          for (std::uint16_t y = 0U; y < text_font_->ysize; ++y) {
+          for (std::uint_fast8_t y = 0U; y < text_font_->ysize; ++y) {
             std::uint16_t d = (ch - font_mono->first) * text_font_->ysize * font_mono->bytes_per_line + y * font_mono->bytes_per_line;
-            for (std::uint16_t x = 0U; x < font_mono->xsize; ++x) {
+            for (std::uint_fast8_t x = 0U; x < font_mono->xsize; ++x) {
               std::uint16_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
