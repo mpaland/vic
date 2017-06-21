@@ -667,7 +667,8 @@ public:
       err = dx + dy + xy;                             // error 1st step
       do {
         pen_shape_ ? render_pen(v0) : anti_aliasing_ ? aa.render(v0) : pixel_set(v0);
-        if (v0.x == v2.x && v0.y == v2.y) {
+        if (v0 == v2) {
+          present();
           return;                                     // curve finished
         }
         v1.y = 2 * err < dx;                          // save value for test of y step
@@ -985,7 +986,8 @@ protected:
 private:
 
   // non copyable
-  const gpr& operator=(const gpr& rhs) { return rhs; }
+  const gpr& operator=(const gpr& rhs)
+  { return rhs; }
 };
 
 } // namespace vgx
