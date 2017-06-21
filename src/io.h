@@ -109,7 +109,8 @@ namespace mem {
    * \param value The value (of type VALUE_TYPE) written to the address
    */
   template<typename VALUE_TYPE>
-  void write(void* const address, VALUE_TYPE value);
+  void write(const void* const address, VALUE_TYPE value)
+  { *static_cast<volatile VALUE_TYPE*>(address) = value; }
 
   /**
    * Direct memory access, read
@@ -117,7 +118,8 @@ namespace mem {
    * \return The value (of type VALUE_TYPE) read from address
    */
   template<typename VALUE_TYPE>
-  VALUE_TYPE read(const void* const address);
+  VALUE_TYPE read(const void* const address)
+  { return *static_cast<volatile VALUE_TYPE*>(address); }
 
 } // namespace mem
 
