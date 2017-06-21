@@ -597,7 +597,7 @@ public:
     anti_aliasing aa0(*this), aa1(*this);
     for (p.y = min_y; p.y <= max_y; ++p.y) {
       // Barycentric coordinates at start of row
-      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row, l_x;
+      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row, l_x = 0;
       bool inside = false;
       for (p.x = min_x; p.x <= max_x; ++p.x) {
         // if p is on or inside all edges, render the pixel
@@ -827,11 +827,13 @@ public:
    * \param center Center value
    * \param inner_radius Inner sector radius
    * \param outer_radius Outer sector radius
-   * \param start_angle Start angle in degree, 0° is horizontal right, counting anticlockwise
+   * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
   void sector(vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
   {
+    present_lock();
+
     // angle:
     //   0° = 3 o'clock
     //   0° -  89°: Q1 (top/right)
@@ -839,26 +841,23 @@ public:
     // 180° - 269°: Q3 (bottom/left)
     // 270° - 359°: Q4 (bottom/right)
 
-    bool second_half;
+    bool second_half = false;
     std::uint16_t end_angle2 = end_angle;
-    if ((end_angle > start_angle && end_angle > start_angle + 180U) ||
-      (start_angle > end_angle && end_angle + 180U > start_angle)) {
-      // more than 180°
-      end_angle = (start_angle + 180U) % 360U;
+    if (end_angle > 180U) {
+      end_angle = 180U;
     }
-// TBD: sine calc and AA
-    do {
-      bool q14s = (start_angle < 90U) || (start_angle >= 270U);
-      bool q14e = (end_angle < 90U) || (end_angle >= 270U);
-      bool q24s = (start_angle >= 90U && start_angle < 180U) || (start_angle >= 270U);
-      bool q24e = (end_angle >= 90U && end_angle < 180U) || (end_angle >= 270U);
 
-      std::int16_t xss = (std::uint8_t)(util::sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 8U : 0U)) * (std::int16_t)(q14s ? 1 : -1);
-      std::int16_t yss = (std::uint8_t)(util::sin((q24s ? start_angle - 90U : start_angle) % 90U) >> (q24s ? 0U : 8U)) * (std::int16_t)((start_angle < 180U) ? 1 : -1);
-      std::int16_t xse = (std::uint8_t)(util::sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 8U : 0U)) * (std::int16_t)(q14e ? 1 : -1);
-      std::int16_t yse = (std::uint8_t)(util::sin((q24e ? end_angle - 90U : end_angle) % 90U) >> (q24e ? 0U : 8U)) * (std::int16_t)((end_angle < 180U) ? 1 : -1);
+    // aa renderer
+    anti_aliasing aa0(*this), aa1(*this), aa2(*this), aa3(*this);
+
+    do {
+      const std::int16_t xss = util::cos(static_cast<std::int16_t>(start_angle));  // no division of scaled sin/cos to use the full range
+      const std::int16_t yss = util::sin(static_cast<std::int16_t>(start_angle));
+      const std::int16_t xse = util::cos(static_cast<std::int16_t>(end_angle));
+      const std::int16_t yse = util::sin(static_cast<std::int16_t>(end_angle));
 
       for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; yp++) {
+        std::int16_t inside = 0, lxp = 0;
         for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; xp++) {
           // check if xp/yp is within the sector
           std::int16_t xr = xp - center.x;
@@ -868,19 +867,36 @@ public:
             !((yss * xr) > (xss * yr)) &&
             ((yse * xr) >= (xse * yr))
             ) {
-            pixel_set({ xp, yp });
+            if (!(inside & 0x01U)) {
+              inside++;
+              lxp = xp;
           }
         }
+          else {
+            if (inside & 0x01U) {
+              line_horz({ lxp, yp }, { static_cast<std::int16_t>(xp - 1), yp });
+              if (anti_aliasing_ && !(inside & 0x02U)) {
+                aa0.render({ lxp, yp });
+                aa1.render({ static_cast<std::int16_t>(xp - 1), yp });
+              }
+              if (anti_aliasing_ && (inside & 0x02U)) {
+                aa2.render({ lxp, yp });
+                aa3.render({ static_cast<std::int16_t>(xp - 1), yp });
+              }
+              inside++;
+            }
       }
-      // second half necessary?
+        }
+      }
+      // second half (Q3/Q4) necessary?
       second_half = false;
       if (end_angle != end_angle2) {
-        start_angle = end_angle;
+        start_angle = 180U;
         end_angle = end_angle2;
         second_half = true;
       }
     } while (second_half);
-    present();
+    present_lock(false);
   }
 
   ///////////////////////////////////////////////////////////////////////////////
