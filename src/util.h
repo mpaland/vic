@@ -149,15 +149,17 @@ inline std::int16_t sin(std::int16_t angle)
     16135, 16182, 16225, 16262, 16294, 16322, 16344, 16362, 16374, 16382
   };
 
-  const bool invers = angle < 0;
+  bool invers = angle < 0;
   angle = abs<std::int16_t>(angle) % 360;
+  invers = (angle <= 180) ? invers : !invers;
+  angle = angle % 180;
 
-  if ((static_cast<std::uint16_t>(angle) == 90U) || (static_cast<std::uint16_t>(angle) == 270U)) {
-    return 16384;
+  if (angle == 90) {
+    return invers ? -16384 : 16384;
   }
 
-  std::int16_t val = sin90[static_cast<std::uint16_t>(angle) % 90U];
-  return (angle <= 180) != invers ? val : -val;
+  const std::int16_t val = sin90[angle < 90 ? angle : 180 - angle];
+  return invers ? -val : val;
 }
 
 
