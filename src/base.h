@@ -168,13 +168,13 @@ protected:
   /**
    * Driver init
    */
-  virtual void drv_init() = 0;
+  virtual void drv_init(void) = 0;
 
 
   /**
    * Driver shutdown
    */
-  virtual void drv_shutdown() = 0;
+  virtual void drv_shutdown(void) = 0;
 
 
   /**
@@ -208,16 +208,16 @@ protected:
 
 
   /**
-   * Clear viewport, set all pixels off, delete all characters or fill screen with background color
+   * Clear the entire screen with the background color or delete all characters on text display
    */
-  virtual void drv_cls() = 0;
+  virtual void drv_cls(void) = 0;
 
 
   /**
    * Primitive rendering is done. May be overridden by driver to update display,
    * frame buffer or something else (like copy RAM / rendering buffer to screen)
    */
-  virtual void drv_present() = 0;
+  virtual void drv_present(void) = 0;
 
 };
 
