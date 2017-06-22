@@ -107,6 +107,17 @@ inline T abs(T val)
 
 
 /**
+  * Helper function for fast byte reverse (e.g. 0x80 to 0x01)
+  * \param data Input byte
+  * \return Reversed byte
+  */
+inline std::uint8_t byte_reverse(std::uint8_t data)
+{
+  return static_cast<std::uint8_t>(((data * 0x0802LU & 0x22110LU) | (data * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16U);
+}
+
+
+/**
  * Calculate the squared distance between two vertices
  * \param a Vertex a
  * \param b Vertex b
