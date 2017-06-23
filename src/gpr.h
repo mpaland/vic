@@ -132,7 +132,7 @@ protected:
         return;
       }
       if (dx == 0 || dy == 0) {
-        // antialising not necessary, 90ï¿½ or 180ï¿½
+        // antialising not necessary, 90° or 180°
         gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightgreen);
         return;
       }
@@ -215,16 +215,16 @@ protected:
       std::int16_t dy = abs<std::int16_t>(pipe_[2].y - pipe_[0].y);
 
       if (dy * 2 <= dx) {
-        // 0 - 30ï¿½
+        // 0 - 30°
       }
       if (dy <= dx) {
-        // 30 - 45ï¿½
+        // 30 - 45°
       }
       if (dx * 2 <= dy) {
-        // 90 - 75ï¿½
+        // 90 - 75°
       }
       if (dx <= dy) {
-        // 45 - 30ï¿½
+        // 45 - 30°
       }
 
 
@@ -439,6 +439,7 @@ public:
 
   /**
    * Draw a horizontal line, width is one pixel, no pen style support
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
    * \return true if successful
@@ -464,6 +465,7 @@ public:
 
   /**
    * Draw a vertical line, width is one pixel, no pen style support
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
    */
@@ -487,26 +489,8 @@ public:
 
 
   /**
-   * Draw a rectangle (frame) with the current pen
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in rect
-   * \param y1 Y end value, included in rect
-   * \return true if successful
-   */
-  virtual void rectangle(vertex_type v0, vertex_type v1)
-  {
-    present_lock();
-    line(v0, { v1.x, v0.y });
-    line(v1, { v1.x, v0.y });
-    line(v0, { v0.x, v1.y });
-    line(v1, { v0.x, v1.y });
-    present_lock(false);    // unlock and present
-  }
-
-
-  /**
    * Draw a box (filled rectangle)
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param x0 X start value
    * \param y0 Y start value
    * \param x1 X end value, included in box
@@ -522,6 +506,25 @@ public:
     for (; v0.y <= v1.y; ++v0.y) {
       line_horz(v0, v1);
     }
+    present_lock(false);    // unlock and present
+  }
+
+
+  /**
+   * Draw a rectangle (frame) with the current pen
+   * \param x0 X start value
+   * \param y0 Y start value
+   * \param x1 X end value, included in rect
+   * \param y1 Y end value, included in rect
+   * \return true if successful
+   */
+  void rectangle(vertex_type v0, vertex_type v1)
+  {
+    present_lock();
+    line(v0, { v1.x, v0.y });
+    line(v1, { v1.x, v0.y });
+    line(v0, { v0.x, v1.y });
+    line(v1, { v0.x, v1.y });
     present_lock(false);    // unlock and present
   }
 
@@ -612,7 +615,6 @@ public:
       for (p.x = min_x; p.x <= max_x; ++p.x) {
         // if p is on or inside all edges, render the pixel
         if (!inside && w0 <= 0 && w1 <= 0 && w2 <= 0) {
-          // if (w0 & w1 & w2 & 0x8000) {
           inside = true;
           l_x = p.x;
         }
@@ -631,67 +633,6 @@ public:
       w0_row += B12; w1_row += B20; w2_row += B01;
     }
     present_lock(false);
-  }
-
-
-  /**
-   * Draw an arc (Bezier curve)
-   * \param v0 Start value, included in arc
-   * \param v1 Mid value, included in arc
-   * \param v2 End value, included in arc
-   */
-  void arc(vertex_type v0, vertex_type v1, vertex_type v2)
-  {
-    // sign of gradient must not change
-    if ((v0.x - v1.x) * (v2.x - v1.x) > 0 ||
-        (v0.y - v1.y) * (v2.y - v1.y) > 0) {
-      return;
-    }
-
-    std::int16_t sx = v2.x - v1.x, sy = v2.y - v1.y;
-    std::int32_t xx = v0.x - v1.x, yy = v0.y - v1.y, xy;  // relative values for checks
-    std::int32_t dx, dy, err, cur = xx * sy - yy * sx;    // curvature
-    anti_aliasing aa(*this);
-
-    // sign of gradient must not change
-    if (xx * sx > 0 || yy * sy > 0) {
-      return;
-    }
-
-    if (sx * (std::int32_t)sx + sy * (std::int32_t)sy > xx * xx + yy * yy) {      // begin with longer part
-      v2.x = v0.x; v0.x = sx + v1.x; v2.y = v0.y; v0.y = sy + v1.y; cur = -cur;   // swap
-    }
-    if (cur != 0) {                                   // no straight line
-      xx += sx; xx *= sx = v0.x < v2.x ? 1 : -1;      // x step direction
-      yy += sy; yy *= sy = v0.y < v2.y ? 1 : -1;      // y step direction
-      xy = 2 * xx * yy;
-      xx *= xx;
-      yy *= yy;                                       // differences 2nd degree
-      if (cur * sx * sy < 0) {                        // negated curvature?
-        xx = -xx; yy = -yy; xy = -xy; cur = -cur;
-      }
-      dx = 4 * sy * cur * (v1.x - v0.x) + xx - xy;    // differences 1st degree
-      dy = 4 * sx * cur * (v0.y - v1.y) + yy - xy;
-      xx += xx;
-      yy += yy;
-      err = dx + dy + xy;                             // error 1st step
-      do {
-        pen_shape_ ? render_pen(v0) : anti_aliasing_ ? aa.render(v0) : pixel_set(v0);
-        if (v0 == v2) {
-          present();
-          return;                                     // curve finished
-        }
-        v1.y = 2 * err < dx;                          // save value for test of y step
-        if (2 * err > dy) {
-          v0.x += sx; dx -= xy; err += dy += yy;      // x step
-        }
-        if (v1.y) {
-          v0.y += sy; dy -= xy; err += dx += xx;      // y step
-        }
-      } while (dy < dx);                              // gradient negates -> algorithm fails
-    }
-    line(v0, v2);                                     // plot remaining part to end
-    present();
   }
 
 
@@ -846,11 +787,11 @@ public:
     present_lock();
 
     // angle:
-    //   0ï¿½ = 3 o'clock
-    //   0ï¿½ -  89ï¿½: Q1 (top/right)
-    //  90ï¿½ - 179ï¿½: Q2 (top/left)
-    // 180ï¿½ - 269ï¿½: Q3 (bottom/left)
-    // 270ï¿½ - 359ï¿½: Q4 (bottom/right)
+    //   0° = 3 o'clock
+    //   0° -  89°: Q1 (top/right)
+    //  90° - 179°: Q2 (top/left)
+    // 180° - 269°: Q3 (bottom/left)
+    // 270° - 359°: Q4 (bottom/right)
 
     bool second_half = false;
     std::uint16_t end_angle2 = end_angle;
@@ -910,10 +851,10 @@ public:
     present_lock(false);
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
 
   /**
    *  Fill region up to the bounding color with the drawing color
+   * Fill routine is only working on displays which support drv_pixel_get()
    * \param start Start value inside region to fill
    * \param bounding_color Color of the surrounding bound
    * \return true if successful
@@ -925,18 +866,19 @@ public:
     present();
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
 
+  ///////////////////////////////////////////////////////////////////////////////
 
   /**
    * Move display area
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param source Source vertex
    * \param destination Destination vertex
    * \param width Width of the area
    * \param height Height of the area
-   * \return true if successful
    */
   virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+//virtual void move(vertex_type orig_top_left, vertex_type orig_bottom_right, vertex_type dest_top_left)
   {
     std::uint16_t w, h;
     if (source.x < destination.x) {
