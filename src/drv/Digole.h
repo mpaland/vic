@@ -55,20 +55,29 @@ public:
 /////////////////////////////////////////////////////////////////////////////
 // M A N D A T O R Y   F U N C T I O N S
 
+  // interface type
+  typedef enum tag_interface_type {
+    spi,
+    i2c,
+    uart
+  } interface_type;
+
+
   /**
    * ctor
    * \param orientation Screen orientation
-   * \param iface Interface type, SPI, I�C or UART are valid
-   * \param iface_id Interface id: SPI: device id, I�C: address, UART: port_id
-   * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I�C mode
+   * \param iface Interface type, SPI, I²C or UART are valid
+   * \param iface_id Interface id: SPI: device id, I²C: address, UART: port_id
+   * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
-  digole(orientation_type orientation, interface_type iface, std::uint16_t iface_id, std::uint32_t uart_baudrate = 9600U)
+  digole(orientation_type orientation, device_handle_type device_handle,
+         interface_type iface, std::uint32_t uart_baudrate = 9600U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
           0U, 0U)
     , orientation_(orientation)
+    , device_handle_(device_handle)
     , interface_(iface)
-    , interface_port_(iface_id)
     , uart_baudrate_(uart_baudrate)
   { }
 
@@ -78,14 +87,16 @@ public:
    * Shutdown the driver
    */
   ~digole()
-  { shutdown(); }
+  {
+    shutdown();
+  }
 
 
 protected:
 
   void drv_init()
   {
-    if (interface_ == interface_i2c) {
+    if (interface_ == i2c) {
       // set I�C address
       std::uint8_t i2c_adr = static_cast<std::uint8_t>(interface_port_);
       interface_port_ = 0x27;   // use default I�C address for init
@@ -111,7 +122,7 @@ protected:
     // display on
     brightness_set(255U);
 
-    if (interface_ == interface_serial) {
+    if (interface_ == uart) {
     // set UART baudrate
       std::uint8_t len = 0U;
       cmd_[0] = 'S';
@@ -388,12 +399,12 @@ private:
 
   inline bool write(const std::uint8_t* buffer, std::uint16_t length)
   {
-    return io::dev_set(interface_, interface_port_, buffer, length, nullptr, 0U);
+    return io::dev::write(device_handle_, 0U, buffer, length, nullptr, 0U);
   }
 
+  device_handle_type  device_handle_;   // device handle
   interface_type    interface_;         // interface type
   std::uint32_t     uart_baudrate_;     // baudrate for UART interface mode
-  std::uint16_t     interface_port_;    // interface port
   std::uint8_t      cmd_[16U];          // command buffer
 };
 
