@@ -95,7 +95,7 @@ protected:
     std::size_t i = 0U;
     do {
       const vertex_type v = { static_cast<std::int16_t>(center.x + pen_shape_[i].x), static_cast<std::int16_t>(center.y + pen_shape_[i].y) };
-      drv_pixel_set_color(v, pen_shape_[i].alpha == 0U ? color_pen_get(v) : color::mix(drv_pixel_get(v), color_pen_get(v), pen_shape_[i].alpha));
+      drv_pixel_set_color(v, pen_shape_[i].alpha == 0U ? pen_get_color(v) : color::mix(drv_pixel_get(v), pen_get_color(v), pen_shape_[i].alpha));
     } while (pen_shape_[i++].next);
   }
 
@@ -132,7 +132,7 @@ protected:
         return;
       }
       if (dx == 0 || dy == 0) {
-        // antialising not necessary, 90° or 180°
+        // antialising not necessary, 90ï¿½ or 180ï¿½
         gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightgreen);
         return;
       }
@@ -215,16 +215,16 @@ protected:
       std::int16_t dy = abs<std::int16_t>(pipe_[2].y - pipe_[0].y);
 
       if (dy * 2 <= dx) {
-        // 0 - 30°
+        // 0 - 30ï¿½
       }
       if (dy <= dx) {
-        // 30 - 45°
+        // 30 - 45ï¿½
       }
       if (dx * 2 <= dy) {
-        // 90 - 75°
+        // 90 - 75ï¿½
       }
       if (dx <= dy) {
-        // 45 - 30°
+        // 45 - 30ï¿½
       }
 
 
@@ -271,10 +271,20 @@ public:
 // G R A P H I C   P R I M I T I V E   F U N C T I O N S
 
   /**
+   * Enable/disable anti aliasing support
+   * \param enable True to enable anti aliasing
+   */
+  void anti_aliasing_enable(bool enable = true)
+  {
+    anti_aliasing_ = enable;
+  }
+
+
+  /**
    * Select the actual drawing pen
    * \param pen_shape Set the actual pen shape or nullptr for 1 pixel default pen (fastest)
    */
-  inline void pen_set(const pen_type* pen_shape)
+  inline void pen_set_shape(const pen_type* pen_shape = nullptr)
   {
     pen_shape_ = pen_shape;
   }
@@ -306,7 +316,7 @@ public:
    */
   inline virtual void pixel_set(vertex_type point)
   {
-    drv_pixel_set_color(point, color_pen_get(point));
+    drv_pixel_set_color(point, pen_get_color(point));
   }
 
 
@@ -339,7 +349,7 @@ public:
    */
   void plot(vertex_type point)
   {
-    drv_pixel_set_color(point, color_pen_get(point));
+    drv_pixel_set_color(point, pen_get_color(point));
     present();
   }
 
@@ -438,14 +448,14 @@ public:
     // set v0 to min x
     vertex_min_x(v0, v1);
 
-    if (color_pen_is_function()) {
+    if (pen_color_is_function()) {
       for (; v0.x <= v1.x; ++v0.x) {
         pixel_set(v0);
       }
     }
     else {
       for (; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0, color_pen_get());
+        pixel_set(v0, pen_get_color());
       }
     }
     present();
@@ -462,14 +472,14 @@ public:
     // set v0 to min y
     vertex_min_y(v0, v1);
 
-    if (color_pen_is_function()) {
+    if (pen_color_is_function()) {
       for (; v0.y <= v1.y; ++v0.y) {
         pixel_set(v0);
       }
     }
     else {
       for (; v0.y <= v1.y; ++v0.y) {
-        pixel_set(v0, color_pen_get());
+        pixel_set(v0, pen_get_color());
       }
     }
     present();
@@ -836,11 +846,11 @@ public:
     present_lock();
 
     // angle:
-    //   0° = 3 o'clock
-    //   0° -  89°: Q1 (top/right)
-    //  90° - 179°: Q2 (top/left)
-    // 180° - 269°: Q3 (bottom/left)
-    // 270° - 359°: Q4 (bottom/right)
+    //   0ï¿½ = 3 o'clock
+    //   0ï¿½ -  89ï¿½: Q1 (top/right)
+    //  90ï¿½ - 179ï¿½: Q2 (top/left)
+    // 180ï¿½ - 269ï¿½: Q3 (bottom/left)
+    // 270ï¿½ - 359ï¿½: Q4 (bottom/right)
 
     bool second_half = false;
     std::uint16_t end_angle2 = end_angle;

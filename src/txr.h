@@ -139,7 +139,7 @@ public:
               std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
-                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + info->xpos + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + info->ypos + (std::int16_t)y) }, color::set_alpha(color_pen_get(), static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(color_pen_get()) * (255U - intensity) / 255U)));
+                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + info->xpos + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + info->ypos + (std::int16_t)y) }, color::set_alpha(pen_get_color(), static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(pen_get_color()) * (255U - intensity) / 255U)));
               }
             }
           }
@@ -166,7 +166,7 @@ public:
                 std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {
                   intensity = ((intensity + 1U) << color_shift) - 1U;
-                  drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + (std::int16_t)y) }, color::set_alpha(color_pen_get(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_pen_get())) * intensity / 255U)));
+                  drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + (std::int16_t)y) }, color::set_alpha(pen_get_color(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(pen_get_color())) * intensity / 255U)));
                 }
               }
             }
@@ -188,7 +188,7 @@ public:
               std::uint16_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
-                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + (std::int16_t)y) }, color::set_alpha(color_pen_get(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_pen_get())) * intensity / 255U)));
+                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + (std::int16_t)y) }, color::set_alpha(pen_get_color(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(pen_get_color())) * intensity / 255U)));
               }
             }
           }

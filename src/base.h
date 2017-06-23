@@ -42,7 +42,7 @@ namespace vgx {
 
 
 // callback function definition for dynamic pen color
-typedef color::value_type (*color_pen_function_type)(vertex_type vertex);
+typedef color::value_type (*pen_color_function_type)(vertex_type vertex);
 
 
 /**
@@ -50,9 +50,9 @@ typedef color::value_type (*color_pen_function_type)(vertex_type vertex);
  */
 class base
 {
-  color::value_type         color_pen_;           // drawing color
-  color::value_type         color_bg_;            // background color
-  color_pen_function_type   color_pen_function_;  // function for dynamic pen color
+  color::value_type         pen_color_;           // drawing color
+  color::value_type         bg_color_;            // background color
+  pen_color_function_type   pen_color_function_;  // function for dynamic pen color
   bool                      present_lock_;        // true if present is locked
 
 
@@ -60,9 +60,9 @@ public:
 
   // standard ctor
   base()
-    : color_pen_(color::white)
-    , color_bg_(color::black)
-    , color_pen_function_(nullptr)
+    : pen_color_(color::white)
+    , bg_color_(color::black)
+    , pen_color_function_(nullptr)
     , present_lock_(false)
   { }
 
@@ -75,54 +75,54 @@ public:
    * Set the pen (drawing) color
    * \param pen_color New drawing color in ARGB format
    */
-  inline virtual void color_pen_set(color::value_type pen_color)
+  inline virtual void pen_set_color(color::value_type pen_color)
   {
-    color_pen_          = pen_color;
-    color_pen_function_ = nullptr;
+    pen_color_          = pen_color;
+    pen_color_function_ = nullptr;
   }
 
   /**
    * Set the callback function for dynamic pen color
    * \param pen_color_function Function for dynamic pen color
    */
-  inline virtual void color_pen_set(color_pen_function_type pen_color_function)
-  { color_pen_function_ = pen_color_function; }
+  inline virtual void pen_set_color(pen_color_function_type pen_color_function)
+  { pen_color_function_ = pen_color_function; }
 
   /**
    * Get the actual pen (drawing) color
    * \return Actual drawing color in ARGB format
    */
-  inline virtual color::value_type color_pen_get() const
-  { return color_pen_; }
+  inline virtual color::value_type pen_get_color() const
+  { return pen_color_; }
 
   /**
    * Get the actual pen (drawing) color
-   * \param point Point for which the color is needed
+   * \param point Point for which the color is needed, color is given by the defined pen function
    * \return Actual drawing color in ARGB format
    */
-  inline virtual color::value_type color_pen_get(vertex_type point) const
-  { return !!color_pen_function_ ? color_pen_function_(point) : color_pen_; }
+  inline virtual color::value_type pen_get_color(vertex_type point) const
+  { return !!pen_color_function_ ? pen_color_function_(point) : pen_color_; }
 
   /**
-   * Return true if color pen is a function
-   * \return True if color pen is function, false if pen is solid
+   * Return true if pen color is defined by function
+   * \return True if pen color is a function, false if the pen color is solid
    */
-  inline bool color_pen_is_function() const
-  { return !!color_pen_function_; }
+  inline bool pen_color_is_function() const
+  { return !!pen_color_function_; }
 
   /**
    * Set the background color (e.g. for cls)
-   * \param color_background New background color in ARGB format
+   * \param background_color New background color in ARGB format
    */
-  inline virtual void color_bg_set(color::value_type color_background)
-  { color_bg_ = color_background; }
+  inline virtual void bg_set_color(color::value_type background_color)
+  { bg_color_ = background_color; }
 
   /**
    * Get the actual background color
    * \return Actual background color in ARGB format
    */
-  inline virtual color::value_type color_bg_get() const
-  { return color_bg_; }
+  inline virtual color::value_type bg_get_color() const
+  { return bg_color_; }
 
 
 ///////////////////////////////////////////////////////////////////////////////
