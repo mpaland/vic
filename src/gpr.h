@@ -976,13 +976,18 @@ public:
 
 
   /**
-   * Enable/disable anti aliasing support
-   * \param enable True to enable anti aliasing
+   * Bit block image transfer to the display area
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * \param top_left
+   * \param bottom_right
+   * \param color_format
+   * \param data
    */
-  void anti_aliasing_set(bool enable)
+  virtual void blitter(vertex_type top_left, vertex_type bottom_right, color::format_type color_format, const void* data)
   {
-    anti_aliasing_ = enable;
+    (void)top_left; (void)bottom_right; (void)color_format; (void)data;
   }
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
