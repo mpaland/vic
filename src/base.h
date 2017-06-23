@@ -31,8 +31,9 @@
 #define _VGX_BASE_H_
 
 #include <cstdint>
+#include <cstddef>
 
-#include <cfg.h>      // use < > here, cause vgx_cfg.h may be in some platform folder
+#include <vgx_cfg.h>    // use < > here, cause vgx_cfg.h may be in some platform folder
 #include "util.h"
 #include "color.h"
 
