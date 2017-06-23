@@ -25,7 +25,7 @@
 //
 // \brief MAX7219/21 matrix LED driver
 // Create a SPI device with the following characteristics
-// mode = 3                 SCK idle high, data captured on rising edge, data propagated on falling edge
+// mode = 0                 data captured on rising edge, clock base value is zero
 // lsb  = false             MSB is transmitted first
 // tx_idle_value = 0xFF     output data value during data read (normally 0xFF)
 // clock_speed = 10000000   clock speed of the bus in [Hz] (10 MHz maximum for MAX7219)
@@ -39,7 +39,7 @@
 
 
 // defines the driver name and version
-#define VGX_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.30"
+#define VGX_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.40"
 
 namespace vgx {
 namespace head {
@@ -53,6 +53,22 @@ namespace head {
 template<std::uint16_t Screen_Size_X = 8U, std::uint16_t Screen_Size_Y = 8U>
 class MAX7219 : public drv
 {
+  // register address map
+  static const std::uint8_t REG_NOOP       = 0x00U;
+  static const std::uint8_t REG_DIGIT0     = 0x01U;
+  static const std::uint8_t REG_DIGIT1     = 0x02U;
+  static const std::uint8_t REG_DIGIT2     = 0x03U;
+  static const std::uint8_t REG_DIGIT3     = 0x04U;
+  static const std::uint8_t REG_DIGIT4     = 0x05U;
+  static const std::uint8_t REG_DIGIT5     = 0x06U;
+  static const std::uint8_t REG_DIGIT6     = 0x07U;
+  static const std::uint8_t REG_DIGIT7     = 0x08U;
+  static const std::uint8_t REG_DECODE     = 0x09U;
+  static const std::uint8_t REG_INTENSITY  = 0x0AU;
+  static const std::uint8_t REG_SCANLIMIT  = 0x0BU;
+  static const std::uint8_t REG_SHUTDOWN   = 0x0CU;
+  static const std::uint8_t REG_TEST       = 0x0FU;
+
 public:
 
   /////////////////////////////////////////////////////////////////////////////
@@ -63,12 +79,12 @@ public:
    * \param orientation Screen orientation
    * \param spi_device_id Logical SPI bus device ID
    */
-  MAX7219(orientation_type orientation, std::uint16_t spi_device_id)
+  MAX7219(orientation_type orientation, io::dev::handle_type device_handle)
     : drv(Screen_Size_X, Screen_Size_Y,
           Screen_Size_X, Screen_Size_Y,     // no viewport support (screen = viewport)
           0, 0,                             // no viewport support
           orientation)
-    , spi_device_id_(spi_device_id)
+    , device_handle_(device_handle)
   { }
 
 
@@ -77,7 +93,9 @@ public:
    * Shutdown the driver
    */
   ~MAX7219()
-  { drv_shutdown(); }
+  {
+    drv_shutdown();
+  }
 
 
 protected:
@@ -92,12 +110,17 @@ protected:
     // set no decode
     write(REG_DECODE, 0x00U);
 
-    // clear buffer
-    drv_cls();
-    brightness_set(255U);   // full brightness
-
     // start normal operation
     write(REG_SHUTDOWN, 0x01U);
+
+    // no test mode
+    write(REG_TEST, 0x00U);
+
+    // clear buffer
+    drv_cls();
+
+    // full brightness
+    brightness_set(255U);
   }
 
 
@@ -169,14 +192,14 @@ protected:
     // copy memory bitmap to screen
     switch (orientation_) {
       case orientation_0 :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
           write(REG_DIGIT0 + y, digit_[viewport_get().y + y]);
         }
         break;
       case orientation_90 :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
           std::uint8_t data = 0U;
-          for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
+          for (std::int16_t x = 0; x < viewport_width(); ++x) {
             data >>= 1U;
             data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x80U : 0x00U;
           }
@@ -184,14 +207,14 @@ protected:
         }
         break;
       case orientation_180 :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
-          write(REG_DIGIT0 + y, byte_reverse(digit_[static_cast<std::uint32_t>(viewport_get().y + viewport_height()) - y - 1U]));
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
+          write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_get().y + viewport_height() - y - 1]));
         }
         break;
       case orientation_270 :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
           std::uint8_t data = 0U;
-          for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
+          for (std::int16_t x = 0; x < viewport_width(); ++x) {
             data <<= 1U;
             data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x01U : 0x00U;
           }
@@ -199,14 +222,14 @@ protected:
         }
         break;
       case orientation_0m :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
-          write(REG_DIGIT0 + y, digit_[static_cast<std::uint32_t>(viewport_get().y + viewport_height()) - y - 1U]);
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
+          write(REG_DIGIT0 + y, digit_[viewport_get().y + viewport_height() - y - 1]);
         }
         break;
       case orientation_90m :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
+        for (std::int16_t y = 0U; y < viewport_height(); ++y) {
           std::uint8_t data = 0U;
-          for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
+          for (std::int16_t x = 0; x < viewport_width(); ++x) {
             data >>= 1U;
             data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x80U : 0x00U;
           }
@@ -214,14 +237,14 @@ protected:
         }
         break;
       case orientation_180m :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
           write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_get().y + y]));
         }
         break;
       case orientation_270m :
-        for (std::uint_fast8_t y = 0U; y < static_cast<uint_fast8_t>(viewport_height()); ++y) {
+        for (std::int16_t y = 0; y < viewport_height(); ++y) {
           std::uint8_t data = 0U;
-          for (std::uint_fast8_t x = 0U; x < static_cast<uint_fast8_t>(viewport_width()); ++x) {
+          for (std::int16_t x = 0; x < viewport_width(); ++x) {
             data <<= 1U;
             data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x01U : 0x00U;
           }
@@ -251,7 +274,7 @@ private:
   inline bool write(std::uint8_t addr, std::uint8_t data)
   {
     std::uint8_t data_out[2] = { addr, data };
-    return io::dev_set(interface_spi, spi_device_id_, data_out, 2U, nullptr, 0U);
+    return io::dev::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
   }
 
   /**
@@ -264,27 +287,9 @@ private:
     return static_cast<std::uint8_t>(((data * 0x0802LU & 0x22110LU) | (data * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16U);
   }
 
-
-  // register address map
-  const std::uint8_t REG_NOOP       = 0x00U;
-  const std::uint8_t REG_DIGIT0     = 0x01U;
-  const std::uint8_t REG_DIGIT1     = 0x02U;
-  const std::uint8_t REG_DIGIT2     = 0x03U;
-  const std::uint8_t REG_DIGIT3     = 0x04U;
-  const std::uint8_t REG_DIGIT4     = 0x05U;
-  const std::uint8_t REG_DIGIT5     = 0x06U;
-  const std::uint8_t REG_DIGIT6     = 0x07U;
-  const std::uint8_t REG_DIGIT7     = 0x08U;
-  const std::uint8_t REG_DECODE     = 0x09U;
-  const std::uint8_t REG_INTENSITY  = 0x0AU;
-  const std::uint8_t REG_SCANLIMIT  = 0x0BU;
-  const std::uint8_t REG_SHUTDOWN   = 0x0CU;
-  const std::uint8_t REG_TEST       = 0x0FU;
-
-
 private:
-  std::uint16_t   spi_device_id_;           // Logical SPI device ID
-  std::uint8_t    digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
+  const io::dev::handle_type  device_handle_;           // (SPI) device handle
+  std::uint8_t        digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
 };
 
 } // namespace head

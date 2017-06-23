@@ -75,13 +75,13 @@ public:
    * \param yoffset Y offset of the screen, relative to top/left corner
    * \param spi_device_id Logical SPI bus device ID
    */
-  STPxxP05(orientation_type orientation, std::uint16_t spi_device_id,
+  STPxxP05(orientation_type orientation, device_handle_type device_handle,
            std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_Y, Viewport_Size_Y,
           viewport_x,      viewport_y,
           orientation)
-    , spi_device_id_(spi_device_id)
+    , device_handle_(device_handle)
   {
     // clear buffer
     cls();
@@ -194,7 +194,7 @@ private:
   }
 
 private:
-  std::uint16_t spi_device_id_;       // Logical SPI device ID
+  device_handle_type  device_handle_;       // Logical SPI device ID
   std::uint8_t  buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
 };
 

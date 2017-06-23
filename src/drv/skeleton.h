@@ -63,7 +63,7 @@ public:
    * \param xoffset X offset of the screen, relative to top/left corner
    * \param yoffset Y offset of the screen, relative to top/left corner
    */
-  skeleton(orientation_type orientation, std::uint16_t dummy_var,
+  skeleton(orientation_type orientation, device_handle_type device_handle,
            std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_Y, Viewport_Size_Y,
