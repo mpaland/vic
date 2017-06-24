@@ -269,11 +269,11 @@ static const mono_type LCD_8x8_mono = {
 };
 
 const font_type LCD_8x8 = {
-  VIC_FONT_ENCODING_ASCII | VIC_FONT_AA_NONE | VIC_FONT_TYPE_MONO,    // type of font
-  8U,                                                                 // height of font
-  8U,                                                                 // space of font y
-  0U,                                                                 // baseline
-  &LCD_8x8_mono                                                       // font type
+  ENCODING_ASCII | AA_NONE | TYPE_MONO,     // type of font
+  8U,                                       // height of font
+  8U,                                       // space of font y
+  0U,                                       // baseline
+  &LCD_8x8_mono                             // font type
 };
 
 } // namespace font

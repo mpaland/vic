@@ -628,7 +628,7 @@ const prop_type Arial_num_16x24_aa4_Prop1 = {
 
 
 const font_type Arial_num_16x24_aa4 = {
-  VIC_FONT_ENCODING_ASCII | VIC_FONT_AA_4 | VIC_FONT_TYPE_PROP  // type of font
+  ENCODING_ASCII | AA_4 | TYPE_PROP   // type of font
   ,24   // height of font
   ,24   // y space of font
   ,23   // Baseline

@@ -2017,10 +2017,10 @@ const font_prop_ext_type font_std_arial_12_aa2_prop1 = {
 };
 
 const font_type font_std_arial_8x12_aa2 = {
-   VIC_FONT_AA_2 | VIC_FONT_ENCODING_UNICODE | VIC_FONT_TYPE_PROP /* type of font    */
+  AA_2 | ENCODING_UNICODE | TYPE_PROP   /* type of font    */
   ,12 /* height of font  */
   ,12 /* space of font y */
-  ,5 /* Baseline */
+  ,5  /* Baseline */
   ,&font_std_arial_12_aa2_prop1
 };
 

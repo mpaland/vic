@@ -38,7 +38,7 @@ namespace font {
 
 
 // standard character info (prop font)
-typedef struct struct_charinfo_type {
+typedef struct tag_charinfo_type {
   std::uint8_t xsize;             // x-size to render in pixel 
   std::uint8_t xdist;             // x-distance (cursor movement)
   std::uint8_t bytes_per_line;    // bytes to store the char line
@@ -46,7 +46,7 @@ typedef struct struct_charinfo_type {
 } charinfo_type;
 
 // extended character info (prop font)
-typedef struct struct_charinfo_ext_type {
+typedef struct tag_charinfo_ext_type {
   std::uint8_t xsize;             // x-size to render in pixel
   std::uint8_t ysize;             // y-size to render in pixel
   std::int8_t  xpos;              // x-start position
@@ -56,7 +56,7 @@ typedef struct struct_charinfo_ext_type {
 } charinfo_ext_type;
 
 // standard mono font (ASCII/ANSI support)
-typedef struct struct_mono_type {
+typedef struct tag_mono_type {
   std::uint8_t first;             // first char code
   std::uint8_t last;              // last char code
   std::uint8_t xsize;             // x-size of the char in pixel 
@@ -65,72 +65,53 @@ typedef struct struct_mono_type {
 } mono_type;
 
 // standard prop font (ASCII/ANSI support)
-typedef struct struct_prop_type {
+typedef struct tag_prop_type {
   std::uint8_t first;
   std::uint8_t last;
-  const charinfo_type*           char_info;
-  const struct struct_prop_type* next;
+  const charinfo_type*        char_info;
+  const struct tag_prop_type* next;
 } prop_type;
 
 // extended prop font (UNICODE support)
-typedef struct struct_prop_ext_type {
+typedef struct tag_prop_ext_type {
   std::uint16_t first;
   std::uint16_t last;
-  const charinfo_ext_type*           char_info_ext;
-  const struct struct_prop_ext_type* next;
+  const charinfo_ext_type*        char_info_ext;
+  const struct tag_prop_ext_type* next;
 } prop_ext_type;
 
 // font info
-typedef struct struct_font_type {
+typedef struct tag_font_type {
   std::uint8_t attr;              // font attributes
   std::uint8_t ysize;             // y-size to render in pixel
   std::uint8_t ydist;             // y-distance (cursor movement for \n)
   std::uint8_t baseline;          // reserved
-  union union_font_type_type {
+  union tag_font_type_type {
     const mono_type*     mono;
     const prop_type*     prop;
     const prop_ext_type* prop_ext;
-    union_font_type_type()                       : prop(nullptr) { }
-    union_font_type_type(const mono_type* p)     : mono(p) { }
-    union_font_type_type(const prop_type* p)     : prop(p) { }
-    union_font_type_type(const prop_ext_type* p) : prop_ext(p) { }
+    tag_font_type_type()                       : prop(nullptr) { }
+    tag_font_type_type(const mono_type* p)     : mono(p) { }
+    tag_font_type_type(const prop_type* p)     : prop(p) { }
+    tag_font_type_type(const prop_ext_type* p) : prop_ext(p) { }
   } font_type_type;
 } font_type;
 
 
 // FONT ATTRIBUTES
-#define VIC_FONT_AA_MASK            0x0FU
-#define VIC_FONT_AA_NONE            0x01U   // 1bpp font - no antialiasing
-#define VIC_FONT_AA_2               0x02U   // 2bpp antialiased font
-#define VIC_FONT_AA_4               0x04U   // 4bpp antialiased font
-#define VIC_FONT_AA_8               0x08U   // 8bpp antialiased font
+const std::uint8_t AA_MASK          =  0x0FU;   // mask
+const std::uint8_t AA_NONE          =  0x01U;   // 1bpp font - no antialiasing
+const std::uint8_t AA_2             =  0x02U;   // 2bpp antialiased font
+const std::uint8_t AA_4             =  0x04U;   // 4bpp antialiased font
+const std::uint8_t AA_8             =  0x08U;   // 8bpp antialiased font
 
-#define VIC_FONT_ENCODING_MASK      0x10U
-#define VIC_FONT_ENCODING_ASCII     0x00U   // character encoding: ASCII + ISO8859
-#define VIC_FONT_ENCODING_UNICODE   0x10U   // Character encoding: Unicode
+const std::uint8_t ENCODING_MASK    =  0x10U;   // mask
+const std::uint8_t ENCODING_ASCII   =  0x00U;   // character encoding: ASCII + ISO8859
+const std::uint8_t ENCODING_UNICODE =  0x10U;   // Character encoding: Unicode
 
-#define VIC_FONT_TYPE_MASK          0x20U
-#define VIC_FONT_TYPE_MONO          0x00U   // monospaced font
-#define VIC_FONT_TYPE_PROP          0x20U   // proportional font
-
-
-#if (0)
-////////////////////////////////////////////////////////////////
-// AVAILABLE FONTS
-//
-// declarations of standard fonts, this fonts must be available when using controls
-extern const font_type              font_std_LCD_8x8;
-extern const font_type              font_std_arial_8x12_aa2;
-
-// extern declarations for ALL fonts, just include your really used cpp font modules
-extern const font_type              font_Consolas_16;
-extern const font_type              font_Arial_num_16x24_aa4;
-extern const font_type              font_Arial_15;
-extern const font_type              font_9x15;
- extern const font_type              font_LCD_6x8;
- extern const font_type              font_LCD_6x10;
- extern const font_type              font_LCD_8x8;
-#endif
+const std::uint8_t TYPE_MASK        =  0x20U;   // mask
+const std::uint8_t TYPE_MONO        =  0x00U;   // monospaced font
+const std::uint8_t TYPE_PROP        =  0x20U;   // proportional font
 
 
 ////////////////////////////////////////////////////////////////

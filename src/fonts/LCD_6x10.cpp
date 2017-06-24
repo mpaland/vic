@@ -268,7 +268,7 @@ static const mono_type LCD_6x10_mono = {
 };
 
 const font_type LCD_6x10 = {
-  VIC_FONT_ENCODING_ASCII | VIC_FONT_AA_NONE | VIC_FONT_TYPE_MONO   // type of font
+  ENCODING_ASCII | AA_NONE | TYPE_MONO    // type of font
   ,10   // height of font
   ,10   // space of font y
   ,0    // baseline

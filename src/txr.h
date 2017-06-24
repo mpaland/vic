@@ -141,7 +141,7 @@ public:
    */
   virtual void text_char(std::uint16_t ch)
   {
-    const std::uint8_t color_depth = (text_font_->attr & VIC_FONT_AA_MASK);
+    const std::uint8_t color_depth = (text_font_->attr & font::AA_MASK);
     const std::uint8_t color_mask = (1U << color_depth) - 1U;
     const std::uint8_t color_shift = 8U - color_depth;
 
@@ -150,7 +150,7 @@ public:
       return;
     }
 
-    if ((text_font_->attr & VIC_FONT_ENCODING_MASK) == VIC_FONT_ENCODING_UNICODE) {
+    if ((text_font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
       // extended (UNICODE) font
       const font::prop_ext_type* font_prop_ext = text_font_->font_type_type.prop_ext;
       do {
@@ -177,7 +177,7 @@ public:
     }
     else {
       // normal (ASCII) font
-      if ((text_font_->attr & VIC_FONT_TYPE_MASK) == VIC_FONT_TYPE_PROP) {
+      if ((text_font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
         // prop font
         const font::prop_type* font_prop = text_font_->font_type_type.prop;
         do {
@@ -336,7 +336,7 @@ public:
 
       if (drv_is_graphic())
       {
-        if ((text_font_->attr & VIC_FONT_ENCODING_MASK) == VIC_FONT_ENCODING_UNICODE) {
+        if ((text_font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
           // extended (UNICODE) font
           const font::prop_ext_type* font_prop_ext = text_font_->font_type_type.prop_ext;
           do {
@@ -351,7 +351,7 @@ public:
         }
         else {
           // normal (ASCII) font
-          if ((text_font_->attr & VIC_FONT_TYPE_MASK) == VIC_FONT_TYPE_PROP) {
+          if ((text_font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
             // prop font
             const font::prop_type* font_prop = text_font_->font_type_type.prop;
             do {
