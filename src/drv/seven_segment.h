@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -29,17 +29,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_SEVEN_SEGMENT_H_
-#define _VGX_DRV_SEVEN_SEGMENT_H_
+#ifndef _VIC_DRV_SEVEN_SEGMENT_H_
+#define _VIC_DRV_SEVEN_SEGMENT_H_
 
 #include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_SEVEN_SEGMENT_VERSION   "Seven segment driver 1.00"
+#define VIC_DRV_SEVEN_SEGMENT_VERSION   "Seven segment driver 1.00"
 
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -103,7 +103,7 @@ protected:
   virtual inline const char* drv_version() const
   {
     // return the driver version, like
-    return (const char*)VGX_DRV_SEVEN_SEGMENT_VERSION;
+    return (const char*)VIC_DRV_SEVEN_SEGMENT_VERSION;
   }
 
 
@@ -137,7 +137,7 @@ protected:
    * \return Color of pixel in ARGB format
    */
   virtual inline color::value_type drv_pixel_get(vertex_type point) const
-  { return vgx::color::black; }
+  { return vic::color::black; }
 
 
   /**
@@ -208,6 +208,6 @@ private:
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_SEVEN_SEGMENT_H_
+#endif  // _VIC_DRV_SEVEN_SEGMENT_H_

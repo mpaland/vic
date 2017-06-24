@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -37,16 +37,16 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_STPXXP05_H_
-#define _VGX_DRV_STPXXP05_H_
+#ifndef _VIC_DRV_STPXXP05_H_
+#define _VIC_DRV_STPXXP05_H_
 
 #include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_STPXXP05_VERSION   "STPxxP05 driver 1.02"
+#define VIC_DRV_STPXXP05_VERSION   "STPxxP05 driver 1.02"
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -113,7 +113,7 @@ public:
   // get driver name and version
   virtual const char* version() const
   {
-    return (const char*)VGX_DRV_STPXXP05_VERSION;
+    return (const char*)VIC_DRV_STPXXP05_VERSION;
   }
 
 
@@ -195,10 +195,10 @@ private:
 
 private:
   device_handle_type  device_handle_;       // Logical SPI device ID
-  std::uint8_t  buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
+  std::uint8_t        buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_STPXXP05_H_
+#endif  // _VIC_DRV_STPXXP05_H_

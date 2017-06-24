@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -32,16 +32,16 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_MAX7219_H_
-#define _VGX_DRV_MAX7219_H_
+#ifndef _VIC_DRV_MAX7219_H_
+#define _VIC_DRV_MAX7219_H_
 
 #include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.40"
+#define VIC_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.40"
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -100,7 +100,7 @@ public:
 
 protected:
 
-  virtual void drv_init()
+  virtual void drv_init() final
   {
     // set scan limit according to width or height
     write(REG_SCANLIMIT, (orientation_ == orientation_0)  || (orientation_ == orientation_180) ||
@@ -124,7 +124,7 @@ protected:
   }
 
 
-  virtual void drv_shutdown()
+  virtual void drv_shutdown() final
   {
     // clear buffer
     drv_cls();
@@ -134,20 +134,20 @@ protected:
   }
 
 
-  inline virtual const char* drv_version() const
+  inline virtual const char* drv_version() const final
   {
-    return (const char*)VGX_DRV_MAX7219_VERSION;
+    return (const char*)VIC_DRV_MAX7219_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const
+  inline virtual bool drv_is_graphic() const final
   {
     // MAX7219 is a graphic display
     return true;
   }
 
 
-  virtual void drv_cls()
+  virtual void drv_cls() final
   {
     // clear display
     for (std::uint_fast8_t i = 0U; i < screen_height(); ++i) {
@@ -158,7 +158,7 @@ protected:
   }
 
 
-  virtual void drv_pixel_set_color(vertex_type point, color::value_type color)
+  virtual void drv_pixel_set_color(vertex_type point, color::value_type color) final
   {
     // check limits and clipping
     if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
@@ -176,7 +176,7 @@ protected:
   }
 
 
-  virtual inline color::value_type drv_pixel_get(vertex_type point) const
+  virtual inline color::value_type drv_pixel_get(vertex_type point) final 
   {
     // check limits
     if (!screen_is_inside(point)) {
@@ -187,7 +187,7 @@ protected:
   }
 
 
-  virtual void drv_present()
+  virtual void drv_present() final
   {
     // copy memory bitmap to screen
     switch (orientation_) {
@@ -208,7 +208,7 @@ protected:
         break;
       case orientation_180 :
         for (std::int16_t y = 0; y < viewport_height(); ++y) {
-          write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_get().y + viewport_height() - y - 1]));
+          write(REG_DIGIT0 + y, util::byte_reverse(digit_[viewport_get().y + viewport_height() - y - 1]));
         }
         break;
       case orientation_270 :
@@ -238,7 +238,7 @@ protected:
         break;
       case orientation_180m :
         for (std::int16_t y = 0; y < viewport_height(); ++y) {
-          write(REG_DIGIT0 + y, byte_reverse(digit_[viewport_get().y + y]));
+          write(REG_DIGIT0 + y, util::byte_reverse(digit_[viewport_get().y + y]));
         }
         break;
       case orientation_270m :
@@ -257,9 +257,9 @@ protected:
   }
 
 
-  virtual inline void brightness_set(std::uint8_t level)
+  virtual inline void brightness_set(std::uint8_t level) final
   {
-    // set brightness, use lower nibble of level
+    // set brightness, use upper nibble of level
     write(REG_INTENSITY, static_cast<std::uint8_t>(level >> 4U));
   }
 
@@ -277,22 +277,12 @@ private:
     return io::dev::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
   }
 
-  /**
-   * Helper function for fast byte reverse (e.g. 0x80 to 0x01)
-   * \param data Input byte
-   * \return Reversed byte
-   */
-  inline std::uint8_t byte_reverse(std::uint8_t data) const
-  {
-    return static_cast<std::uint8_t>(((data * 0x0802LU & 0x22110LU) | (data * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16U);
-  }
-
 private:
   const io::dev::handle_type  device_handle_;           // (SPI) device handle
-  std::uint8_t        digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
+  std::uint8_t                digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_MAX7219_H_
+#endif  // _VIC_DRV_MAX7219_H_

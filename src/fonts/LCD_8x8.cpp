@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -30,7 +30,7 @@
 #include "LCD_8x8.h"
 
 
-namespace vgx {
+namespace vic {
 namespace font {
 
 static const std::uint8_t LCD_8x8_data[] = {
@@ -269,7 +269,7 @@ static const mono_type LCD_8x8_mono = {
 };
 
 const font_type LCD_8x8 = {
-  VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_NONE | VGX_FONT_TYPE_MONO,    // type of font
+  VIC_FONT_ENCODING_ASCII | VIC_FONT_AA_NONE | VIC_FONT_TYPE_MONO,    // type of font
   8U,                                                                 // height of font
   8U,                                                                 // space of font y
   0U,                                                                 // baseline
@@ -277,4 +277,4 @@ const font_type LCD_8x8 = {
 };
 
 } // namespace font
-} // namespace vgx
+} // namespace vic

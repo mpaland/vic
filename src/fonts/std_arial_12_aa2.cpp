@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,10 +27,10 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#include "vgx_fonts.h"
+#include "vic_fonts.h"
 
 
-namespace vgx {
+namespace vic {
 
 const std::uint8_t font_std_arial_12_aa2_0020[  1] = { /* code 0020, SPACE */
   0x00
@@ -2017,11 +2017,11 @@ const font_prop_ext_type font_std_arial_12_aa2_prop1 = {
 };
 
 const font_type font_std_arial_8x12_aa2 = {
-   VGX_FONT_AA_2 | VGX_FONT_ENCODING_UNICODE | VGX_FONT_TYPE_PROP /* type of font    */
+   VIC_FONT_AA_2 | VIC_FONT_ENCODING_UNICODE | VIC_FONT_TYPE_PROP /* type of font    */
   ,12 /* height of font  */
   ,12 /* space of font y */
   ,5 /* Baseline */
   ,&font_std_arial_12_aa2_prop1
 };
 
-} // namespace vgx
+} // namespace vic

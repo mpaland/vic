@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -23,18 +23,18 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Utils and types for vgx
+// \brief Utils and types for vic
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_UTIL_H_
-#define _VGX_UTIL_H_
+#ifndef _VIC_UTIL_H_
+#define _VIC_UTIL_H_
 
 #include <cstdint>
 #include <cstddef>
 
 
-namespace vgx {
+namespace vic {
 
 
 /**
@@ -142,7 +142,7 @@ inline std::int16_t orient_2d(vertex_type a, vertex_type b, vertex_type c)
 
 
 /**
- * Helper function to calculate (lookup) sin(x) normalized to 16384 (to be fast divided by 2^15)
+ * Helper function to calculate (lookup) sin(x) normalized to 16384 (to be fast divided by 2^14)
  * \param angle Angle in degree
  * \return sin(x) * 16384
  */
@@ -207,6 +207,6 @@ inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int
 
 
 } // namespace util
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_UTIL_H_
+#endif  // _VIC_UTIL_H_

@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,16 +27,16 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_DIGOLE_H_
-#define _VGX_DRV_DIGOLE_H_
+#ifndef _VIC_DRV_DIGOLE_H_
+#define _VIC_DRV_DIGOLE_H_
 
 #include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_DIGOLE_VERSION   "Digole driver 1.10"
+#define VIC_DRV_DIGOLE_VERSION   "Digole driver 1.10"
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -94,19 +94,19 @@ public:
 
 protected:
 
-  void drv_init()
+  virtual void drv_init() final
   {
     if (interface_ == i2c) {
-      // set I�C address
+      // set I²C address
       std::uint8_t i2c_adr = static_cast<std::uint8_t>(interface_port_);
-      interface_port_ = 0x27;   // use default I�C address for init
+      interface_port_ = 0x27;   // use default I²C address ($27) for init
       cmd_[0] = 'S';
       cmd_[1] = 'I';
       cmd_[2] = '2';
       cmd_[3] = 'C';
       cmd_[4] = 'A';
       cmd_[5] =  i2c_adr;
-      (void)write(cmd_, 6U);
+      write(cmd_, 6U);
       interface_port_ = i2c_adr;  // use new address now
     }
 
@@ -114,7 +114,7 @@ protected:
     cmd_[0] = 'S';
     cmd_[1] = 'D';
     cmd_[2] =  static_cast<std::uint8_t>(orientation_);
-    (void)write(cmd_, 3U);
+    write(cmd_, 3U);
 
     // clear screen
     drv_cls();
@@ -123,7 +123,7 @@ protected:
     brightness_set(255U);
 
     if (interface_ == uart) {
-    // set UART baudrate
+      // set UART baudrate
       std::uint8_t len = 0U;
       cmd_[0] = 'S';
       cmd_[1] = 'B';
@@ -140,7 +140,7 @@ protected:
         case 115200U : cmd_[2] = '1'; cmd_[3] = '1'; cmd_[4] = '5'; cmd_[5] = '2'; cmd_[6] = '0'; cmd_[7] = '0'; len = 8U; break;
         default: break;
       }
-      (void)write(cmd_, len);
+      write(cmd_, len);
     }
   }
 
@@ -152,20 +152,20 @@ protected:
   }
 
 
-  inline const char* drv_version() const
+  inline const char* drv_version() const final
   {
-    return (const char*)VGX_DRV_DIGOLE_VERSION;
+    return (const char*)VIC_DRV_DIGOLE_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const
+  inline virtual bool drv_is_graphic() const final
   {
     // Digole LCD is a graphic display
     return true;
   }
 
 
-  void drv_cls()
+  virtual void drv_cls() final
   {
     cmd_[0] = 'C';
     cmd_[1] = 'L';
@@ -173,7 +173,7 @@ protected:
     cmd_[3] = 'P';
     cmd_[4] = static_cast<std::uint8_t>(0U);
     cmd_[5] = static_cast<std::uint8_t>(0U);
-    (void)write(cmd_, 6U);
+    write(cmd_, 6U);
   }
 
 
@@ -183,7 +183,7 @@ protected:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual void drv_pixel_set_color(vertex_type point, color::value_type color)
+  virtual void drv_pixel_set_color(vertex_type point, color::value_type color) final
   {
     // check limits and clipping
     if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
@@ -208,22 +208,22 @@ protected:
     cmd_[13] = color::get_red(color_);
     cmd_[14] = color::get_green(color_);
     cmd_[15] = color::get_blue(color_);
-    (void)write(cmd_, 16U);
+    write(cmd_, 16U);
   }
 
 
   /**
    * The problem of the Digole displays is that they communicate unidirectional - you can't read anything back.
    * To get the pixel color, a buffer would be necessary to store a display content copy locally, about 60k for 160x128 RGB
-   * Therefore this function is not implemented, anti aliasing and fill function don't work.
+   * Therefore this function is not implemented, anti aliasing, sprites and fill function don't work.
    */
-  inline color::value_type drv_pixel_get(vertex_type) const
+  inline color::value_type drv_pixel_get(vertex_type) final
   {
     return color_bg_get();
   }
 
 
-  inline void pixel_set(vertex_type point)
+  inline void pixel_set(vertex_type point) final
   {
     // check limits and clipping
     if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
@@ -242,7 +242,7 @@ protected:
     cmd_[1] = 'P';
     cmd_[2] = static_cast<std::uint8_t>(point.x);
     cmd_[3] = static_cast<std::uint8_t>(point.y);
-    (void)write(cmd_, 4U);
+    write(cmd_, 4U);
   }
 
 
@@ -255,23 +255,24 @@ protected:
     cmd_[4] = 'O';
     cmd_[5] = 'O';
     cmd_[6] = level == 0U ? 0U : 1U;
-    (void)write(cmd_, 7U);
+    write(cmd_, 7U);
   }
 
 
-  void color_pen_set(color::value_type color)
+  virtual void color_pen_set(color::value_type color) final
   {
-    color_pen_ = color;
+    base::color_pen_set(color);
+
     cmd_[0] = 'E';
     cmd_[1] = 'S';
     cmd_[2] = 'C';
     cmd_[3] = color::get_red(color);
     cmd_[4] = color::get_green(color);
     cmd_[5] = color::get_blue(color);
-    (void)write(cmd_, 6U);
+    write(cmd_, 6U);
   }
 
-  virtual void line_horz(vertex_type v0, vertex_type v1)
+  virtual void line_horz(vertex_type v0, vertex_type v1) final
   {
     // check clipping
     if (clipping_.is_enabled()) {
@@ -287,11 +288,11 @@ protected:
     cmd_[3] = static_cast<std::uint8_t>(v0.y);
     cmd_[4] = static_cast<std::uint8_t>(v1.x);
     cmd_[5] = static_cast<std::uint8_t>(v1.y);
-    (void)write(cmd_, 6U);
+    write(cmd_, 6U);
   }
 
 
-  virtual void line_vert(vertex_type v0, vertex_type v1)
+  virtual void line_vert(vertex_type v0, vertex_type v1) final
   {
     // check clipping
     if (clipping_.is_enabled()) {
@@ -307,11 +308,11 @@ protected:
     cmd_[3] = static_cast<std::uint8_t>(v0.y);
     cmd_[4] = static_cast<std::uint8_t>(v1.x);
     cmd_[5] = static_cast<std::uint8_t>(v1.y);
-    (void)write(cmd_, 6U);
+    write(cmd_, 6U);
   }
 
 
-  virtual void box(vertex_type v0, vertex_type v1)
+  void box(vertex_type v0, vertex_type v1)
   {
     // check clipping
     if (clipping_.is_enabled()) {
@@ -330,7 +331,7 @@ protected:
     cmd_[3] = static_cast<std::uint8_t>(v0.y);
     cmd_[4] = static_cast<std::uint8_t>(v1.x);
     cmd_[5] = static_cast<std::uint8_t>(v1.y);
-    (void)write(cmd_, 6U);
+    write(cmd_, 6U);
   }
 
 
@@ -374,7 +375,7 @@ protected:
 #endif
 
 
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
   {
     // check clipping
     if (clipping_.is_enabled()) {
@@ -397,18 +398,18 @@ protected:
 
 private:
 
-  inline bool write(const std::uint8_t* buffer, std::uint16_t length)
+  inline void write(const std::uint8_t* buffer, std::uint16_t length)
   {
-    return io::dev::write(device_handle_, 0U, buffer, length, nullptr, 0U);
+    io::dev::write(device_handle_, 0U, buffer, length, nullptr, 0U);
   }
 
   device_handle_type  device_handle_;   // device handle
-  interface_type    interface_;         // interface type
-  std::uint32_t     uart_baudrate_;     // baudrate for UART interface mode
-  std::uint8_t      cmd_[16U];          // command buffer
+  interface_type      interface_;       // interface type
+  std::uint32_t       uart_baudrate_;   // baudrate for UART interface mode
+  std::uint8_t        cmd_[16U];        // command buffer
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_DIGOLE_H_
+#endif  // _VIC_DRV_DIGOLE_H_

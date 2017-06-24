@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -31,26 +31,26 @@
 // supported). Only pixel_set() and pixel_get() is used of the display drivers
 //
 // Usage (create a display out of 4 heads in a row):
-// vgx::head::dummy<200U, 200U> _head1;
-// vgx::head::dummy<200U, 200U> _head2;
-// vgx::head::dummy<200U, 200U> _head3;
-// vgx::head::dummy<200U, 200U> _head4;
-// vgx::head::multihead<800U, 200U, 4U> _multihead = {{ _head1, 0U, 0U }, { _head2, 200U, 0U }, { _head3, 400U, 0U }, { _head4, 600U, 0U }};
+// vic::head::dummy<200U, 200U> _head1;
+// vic::head::dummy<200U, 200U> _head2;
+// vic::head::dummy<200U, 200U> _head3;
+// vic::head::dummy<200U, 200U> _head4;
+// vic::head::multihead<800U, 200U, 4U> _multihead = {{ _head1, 0U, 0U }, { _head2, 200U, 0U }, { _head3, 400U, 0U }, { _head4, 600U, 0U }};
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_MULTIHEAD_H_
-#define _VGX_DRV_MULTIHEAD_H_
+#ifndef _VIC_DRV_MULTIHEAD_H_
+#define _VIC_DRV_MULTIHEAD_H_
 
 #include "../drv.h"
 #include <initializer_list>
 
 
 // defines the driver name and version
-#define VGX_DRV_MULTIHEAD_VERSION   "Multihead driver 1.20"
+#define VIC_DRV_MULTIHEAD_VERSION   "Multihead driver 1.20"
 
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -74,9 +74,9 @@ template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
 
 public:
 
-    /**
-     * Head definition for initializer list of ctor
-     */
+  /**
+   * Head definition for initializer list of ctor
+   */
   typedef struct tag_head_type {
     drv&        head;       // reference to head
     vertex_type viewport;   // viewport in multihead screen
@@ -96,11 +96,11 @@ public:
    */
   multihead(const std::initializer_list<head_type>& il)
     : drv(Screen_Size_X, Screen_Size_Y,
-      Screen_Size_X, Screen_Size_Y)
+          Screen_Size_X, Screen_Size_Y)
   {
     std::size_t n = 0U;
     for (typename std::initializer_list<head_type>::iterator it = il.begin(); it != il.end(); ++it) {
-      head_[n].head = reinterpret_cast<multihead*>(&it->head);
+      head_[n].head       = reinterpret_cast<multihead*>(&it->head);
       head_[n++].viewport = it->viewport;
     }
 
@@ -146,7 +146,7 @@ protected:
   // get driver name and version
   inline virtual const char* drv_version() const final
   {
-    return (const char*)VGX_DRV_MULTIHEAD_VERSION;
+    return (const char*)VIC_DRV_MULTIHEAD_VERSION;
   }
 
 
@@ -193,11 +193,11 @@ protected:
    * Set the drawing color
    * \param color New drawing color in ARGB format
    */
-  inline virtual void color_pen_set(color::value_type pen_color)
+  inline virtual void pen_set_color(color::value_type pen_color)
   {
-    base::color_pen_set(pen_color);
+    base::pen_set_color(pen_color);
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->color_pen_set(pen_color);
+      head_[i].head->pen_set_color(pen_color);
     }
   }
 
@@ -206,11 +206,11 @@ protected:
    * Set the callback function for dynmic pen color
    * \param pen_color_function Function for dynamic pen color
    */
-  inline virtual void color_pen_set(color_pen_function_type pen_color_function)
+  inline virtual void pen_set_color(pen_color_function_type pen_color_function)
   {
-    base::color_pen_set(pen_color_function);
+    base::pen_set_color(pen_color_function);
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->color_pen_set(pen_color_function);
+      head_[i].head->pen_set_color(pen_color_function);
     }
   }
 
@@ -220,27 +220,27 @@ protected:
    * \param point Point for which the color is needed
    * \return Actual drawing color in ARGB format
    */
-  inline virtual color::value_type color_pen_get(vertex_type point) const
+  inline virtual color::value_type pen_get_color(vertex_type point) const
   {
     // select to right head and read the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
       if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
-        return head_[i].head->color_pen_get({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
+        return head_[i].head->pen_get_color({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
       }
     }
-    return base::color_pen_get(point);
+    return base::pen_get_color(point);
   }
 
 
   /**
    * Set the background color (e.g. for cls)
-   * \param color_background New background color in ARGB format
+   * \param background_color New background color in ARGB format
    */
-  inline virtual void color_bg_set(color::value_type color_background)
+  inline virtual void bg_set_color(color::value_type background_color)
   {
-    base::color_bg_set(color_background);
+    base::bg_set_color(background_color);
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->color_bg_set(color_background);
+      head_[i].head->bg_set_color(background_color);
     }
   }
 
@@ -376,6 +376,6 @@ protected:
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_MULTIHEAD_H_
+#endif  // _VIC_DRV_MULTIHEAD_H_

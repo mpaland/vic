@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,13 +27,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_FONT_H_
-#define _VGX_FONT_H_
+#ifndef _VIC_FONT_H_
+#define _VIC_FONT_H_
 
 #include <cstdint>
 
 
-namespace vgx {
+namespace vic {
 namespace font {
 
 
@@ -99,19 +99,19 @@ typedef struct struct_font_type {
 
 
 // FONT ATTRIBUTES
-#define VGX_FONT_AA_MASK            0x0FU
-#define VGX_FONT_AA_NONE            0x01U   // 1bpp font - no antialiasing
-#define VGX_FONT_AA_2               0x02U   // 2bpp antialiased font
-#define VGX_FONT_AA_4               0x04U   // 4bpp antialiased font
-#define VGX_FONT_AA_8               0x08U   // 8bpp antialiased font
+#define VIC_FONT_AA_MASK            0x0FU
+#define VIC_FONT_AA_NONE            0x01U   // 1bpp font - no antialiasing
+#define VIC_FONT_AA_2               0x02U   // 2bpp antialiased font
+#define VIC_FONT_AA_4               0x04U   // 4bpp antialiased font
+#define VIC_FONT_AA_8               0x08U   // 8bpp antialiased font
 
-#define VGX_FONT_ENCODING_MASK      0x10U
-#define VGX_FONT_ENCODING_ASCII     0x00U   // character encoding: ASCII + ISO8859
-#define VGX_FONT_ENCODING_UNICODE   0x10U   // Character encoding: Unicode
+#define VIC_FONT_ENCODING_MASK      0x10U
+#define VIC_FONT_ENCODING_ASCII     0x00U   // character encoding: ASCII + ISO8859
+#define VIC_FONT_ENCODING_UNICODE   0x10U   // Character encoding: Unicode
 
-#define VGX_FONT_TYPE_MASK          0x20U
-#define VGX_FONT_TYPE_MONO          0x00U   // monospaced font
-#define VGX_FONT_TYPE_PROP          0x20U   // proportional font
+#define VIC_FONT_TYPE_MASK          0x20U
+#define VIC_FONT_TYPE_MONO          0x00U   // monospaced font
+#define VIC_FONT_TYPE_PROP          0x20U   // proportional font
 
 
 #if (0)
@@ -395,6 +395,6 @@ extern const font_type              font_9x15;
 #define XXXXXXXX  0xFFU
 
 } // namespace font
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_FONT_H_
+#endif  // _VIC_FONT_H_

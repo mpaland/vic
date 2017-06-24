@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -29,17 +29,17 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_TXR_H_
-#define _VGX_TXR_H_
+#ifndef _VIC_TXR_H_
+#define _VIC_TXR_H_
 
 #include "base.h"
 #include "font.h"
 
 
-namespace vgx {
+namespace vic {
 
 
-typedef enum enum_text_mode_type {
+typedef enum tag_text_mode_type {
   text_mode_normal = 0,
   text_mode_inverse
 } text_mode_type;
@@ -111,13 +111,37 @@ public:
 
 
   /**
+   * Clear actual line from cursor pos to end
+   */
+  virtual void text_clear_eol()
+  {
+  }
+
+
+  /**
+   * Clear actual line from start to cursor pos
+   */
+  virtual void text_clear_sol()
+  {
+  }
+
+
+  /**
+   * Clear the actual line
+   */
+  virtual void text_clear_line()
+  {
+  }
+
+
+  /**
    * Output a single ASCII/UNICODE char at the actual cursor position
    * The cursor position is moved by the char width (distance)
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
    */
   virtual void text_char(std::uint16_t ch)
   {
-    const std::uint8_t color_depth = (text_font_->attr & VGX_FONT_AA_MASK);
+    const std::uint8_t color_depth = (text_font_->attr & VIC_FONT_AA_MASK);
     const std::uint8_t color_mask = (1U << color_depth) - 1U;
     const std::uint8_t color_shift = 8U - color_depth;
 
@@ -126,7 +150,7 @@ public:
       return;
     }
 
-    if ((text_font_->attr & VGX_FONT_ENCODING_MASK) == VGX_FONT_ENCODING_UNICODE) {
+    if ((text_font_->attr & VIC_FONT_ENCODING_MASK) == VIC_FONT_ENCODING_UNICODE) {
       // extended (UNICODE) font
       const font::prop_ext_type* font_prop_ext = text_font_->font_type_type.prop_ext;
       do {
@@ -153,7 +177,7 @@ public:
     }
     else {
       // normal (ASCII) font
-      if ((text_font_->attr & VGX_FONT_TYPE_MASK) == VGX_FONT_TYPE_PROP) {
+      if ((text_font_->attr & VIC_FONT_TYPE_MASK) == VIC_FONT_TYPE_PROP) {
         // prop font
         const font::prop_type* font_prop = text_font_->font_type_type.prop;
         do {
@@ -286,7 +310,7 @@ public:
    * \param string String in UTF-8 format, zero terminated
    * \return Number of string characters, not bytes (as a character may consist out of two bytes)
    */
-  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string)
+  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string) const
   {
     std::uint16_t ch, cnt = 0U;
     while (*string) {
@@ -310,22 +334,9 @@ public:
         continue;
       }
 
-      if (drv_is_graphic()) {
-        // handling of special chars
-        if ((char)ch == '\n') {
-          // LF: X = 0, Y = next line
-          text_x_act_ = text_x_set_;
-          text_y_act_ = text_y_act_ + text_font_->ysize;
-        }
-        else if ((char)ch == '\r') {
-          // CR: X = 0
-          text_x_act_ = text_x_set_;
-        }
-        else if (ch < 0x20U) {
-          // ignore all other codes
-        }
-
-        if ((text_font_->attr & VGX_FONT_ENCODING_MASK) == VGX_FONT_ENCODING_UNICODE) {
+      if (drv_is_graphic())
+      {
+        if ((text_font_->attr & VIC_FONT_ENCODING_MASK) == VIC_FONT_ENCODING_UNICODE) {
           // extended (UNICODE) font
           const font::prop_ext_type* font_prop_ext = text_font_->font_type_type.prop_ext;
           do {
@@ -340,7 +351,7 @@ public:
         }
         else {
           // normal (ASCII) font
-          if ((text_font_->attr & VGX_FONT_TYPE_MASK) == VGX_FONT_TYPE_PROP) {
+          if ((text_font_->attr & VIC_FONT_TYPE_MASK) == VIC_FONT_TYPE_PROP) {
             // prop font
             const font::prop_type* font_prop = text_font_->font_type_type.prop;
             do {
@@ -382,9 +393,10 @@ protected:
 private:
 
   // non copyable
-  const txr& operator=(const txr& rhs) { return rhs; }
+  const txr& operator=(const txr& rhs)
+  { return rhs; }
 };
 
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_TXR_H_
+#endif  // _VIC_TXR_H_

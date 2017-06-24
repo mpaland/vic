@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,8 +27,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_COLOR_H_
-#define _VGX_COLOR_H_
+#ifndef _VIC_COLOR_H_
+#define _VIC_COLOR_H_
 
 #include <cstdint>
 #include <initializer_list>
@@ -36,11 +36,11 @@
 #include "util.h"
 
 
-namespace vgx {
+namespace vic {
 namespace color {
 
   /**
-   * Internal vgx color format is 32bit ARGB
+   * Internal vic color format is 32bit ARGB
    */
   typedef std::uint32_t value_type;
 
@@ -83,7 +83,7 @@ namespace color {
     format_ARGB4444 = 0x24,   // 16 bit ARGB, 4 bit alpha
     format_ARGB1555 = 0x25,   // 16 bit ARGB, 1 bit alpha (0 = opaque, 1 = transparent)
     format_ARGB6666 = 0x32,   // 18 bit ARGB, 6 bit alpha
-    format_ARGB8888 = 0x40    // 24 bit ARGB, 8 bit alpha (the internal default format of vgx)
+    format_ARGB8888 = 0x40    // 24 bit ARGB, 8 bit alpha (the internal default format of vic)
   } format_type;
 
   /**
@@ -200,7 +200,7 @@ namespace color {
    * Color gradient structure
    * A gradient is a collection of pixels which returns an interpolated color for a given vertex
    * Construct a gradient with 3 pixels like
-   * vgx::color::gradient<3U> gr = { {{0, 0} vgx::color::green}, {{500, 0}, vgx::color::yellow}, {{750,100}, vgx::color::red} };
+   * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{500, 0}, vic::color::yellow}, {{750,100}, vic::color::red} };
    * color = gr.mix({300,0});   // get the color at position 300,0
    */
   template<std::size_t N>
@@ -366,6 +366,6 @@ namespace color {
   const value_type tan           = rgb_static<210, 180, 140>::value;
 
 } // namespace color
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_COLOR_H_
+#endif  // _VIC_COLOR_H_

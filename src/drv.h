@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -27,15 +27,15 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_H_
-#define _VGX_DRV_H_
+#ifndef _VIC_DRV_H_
+#define _VIC_DRV_H_
 
 #include "gpr.h"
 #include "txr.h"
 #include <io.h>     // hardware dependent IO access, use < > here, cause io.h may be in some platform folder
 
 
-namespace vgx {
+namespace vic {
 
 
 typedef struct tag_clipping_type
@@ -396,15 +396,15 @@ public:
 
 
 protected:
-  const std::uint16_t screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
-  const std::uint16_t screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
-  const std::uint16_t viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
-  const std::uint16_t viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
+  const std::uint16_t     screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
+  const std::uint16_t     screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
+  const std::uint16_t     viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
+  const std::uint16_t     viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
   const orientation_type  orientation_;       // hardware orientation/rotation  of the display
-  vertex_type         viewport_;          // viewport top/left corner (x offset to screen)
-  clipping_type       clipping_;          // clipping region
+  vertex_type             viewport_;          // viewport top/left corner (x offset to screen)
+  clipping_type           clipping_;          // clipping region
 };
 
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_H_
+#endif  // _VIC_DRV_H_

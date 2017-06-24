@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -23,23 +23,23 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief vgx IO class
+// \brief vic IO class
 // Define this class/file in your own project and implement the four hardware
 // dependent IO functions.
 // Best is to take this header file, copy it and define your access functions in it.
 // Alternative use a .cpp file but the compiler won't be able to inline functions very well.
-// vgx driver hardware access is done via these functions like io.mem_set<std::uint8_t>(0x000, 0x00);
+// vic driver hardware access is done via these functions like io.mem_set<std::uint8_t>(0x000, 0x00);
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_IO_H_
-#define _VGX_IO_H_
+#ifndef _VIC_IO_H_
+#define _VIC_IO_H_
 
 #include <cstdint>
 #include <cstddef>
 
 
-namespace vgx {
+namespace vic {
 namespace io {
 
 
@@ -125,6 +125,6 @@ namespace mem {
 
 
 } // namespace io
-} // vgx
+} // vic
 
-#endif  // _VGX_IO_H_
+#endif  // _VIC_IO_H_

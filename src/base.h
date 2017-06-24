@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -23,22 +23,22 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief vgx base class
+// \brief vic base class
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_BASE_H_
-#define _VGX_BASE_H_
+#ifndef _VIC_BASE_H_
+#define _VIC_BASE_H_
 
 #include <cstdint>
 #include <cstddef>
 
-#include <vgx_cfg.h>    // use < > here, cause vgx_cfg.h may be in some platform folder
+#include <vic_cfg.h>    // use < > here, cause vic_cfg.h may be in some platform folder
 #include "util.h"
 #include "color.h"
 
 
-namespace vgx {
+namespace vic {
 
 
 // callback function definition for dynamic pen color
@@ -46,7 +46,7 @@ typedef color::value_type (*pen_color_function_type)(vertex_type vertex);
 
 
 /**
- * vgx base class
+ * vic base class
  */
 class base
 {
@@ -222,6 +222,6 @@ protected:
 
 };
 
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_BASE_H_
+#endif  // _VIC_BASE_H_

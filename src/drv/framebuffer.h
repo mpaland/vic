@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -23,20 +23,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Skeleton driver, use this as an easy start for own drivers
+// \brief Framebuffer driver, add framebuffer support to drivers
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_FRAMEBUFFER_H_
-#define _VGX_DRV_FRAMEBUFFER_H_
+#ifndef _VIC_DRV_FRAMEBUFFER_H_
+#define _VIC_DRV_FRAMEBUFFER_H_
 
 #include "../drv.h"
 
 
 // defines the driver name and version
-#define VGX_DRV_FRAMEBUFFER_VERSION   "Framebuffer driver 1.00"
+#define VIC_DRV_FRAMEBUFFER_VERSION   "Framebuffer driver 1.00"
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -44,11 +44,11 @@ namespace head {
  * Skeleton driver
  * \param Screen_Size_X Screen (buffer) width
  * \param Screen_Size_Y Screen (buffer) height
- * \param PLANE_COUNT Number of planes
- * \param PLANE_FORMAT Reserved (later fused for bytes per pixel)
+ * \param Plane_Count Number of planes
+ * \param PLANE_FORMAT Reserved (later used for 'bytes per pixel')
  */
 template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
-         std::size_t PLANE_COUNT, color::format_type FORMAT = color::format_ARGB8888>
+         std::size_t Plane_Count, bool Compact_Format = false>
 class framebuffer : public drv
 {
 public:
@@ -94,21 +94,21 @@ protected:
   }
 
 
-  virtual inline const char* drv_version() const
+  virtual inline const char* drv_version() const final
   {
     // return the driver version, like
-    return (const char*)VGX_DRV_FRAMEBUFFER_VERSION;
+    return (const char*)VIC_DRV_FRAMEBUFFER_VERSION;
   }
 
 
-  virtual inline bool drv_is_graphic() const
+  virtual inline bool drv_is_graphic() const final
   {
     // return if the display is a graphic display (true)
     return true;
   }
 
 
-  virtual void drv_cls()
+  virtual void drv_cls() final
   {
     for (std::uint16_t y = 0U; y < Screen_Size_Y; ++y) {
       for (std::uint16_t x = 0U; x < Screen_Size_X; ++x) {
@@ -125,7 +125,7 @@ protected:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color)
+  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color) final
   {
     // check limits and clipping
     if (!screen_is_inside(point)) {
@@ -149,12 +149,12 @@ protected:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type point) const
+  virtual inline color::value_type drv_pixel_get(vertex_type point) final
   {
     // check limits and clipping
     if (!screen_is_inside(point)) {
       // out of bounds or outside clipping region
-      return vgx::color::black;
+      return vic::color::black;
     }
     // return the pixel color at the given position
     return buffer_[plane_active_][point.x][point.y];
@@ -204,13 +204,13 @@ protected:
 
 private:
 
-  color::value_type buffer_[PLANE_COUNT][Screen_Size_X][Screen_Size_Y];
-  drv&              head_;
+  color::value_type buffer_[Plane_Count][Screen_Size_X][Screen_Size_Y];
+  const drv&        head_;
   std::size_t       plane_active_;
   std::size_t       plane_display_;
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_FRAMEBUFFER_H_
+#endif  // _VIC_DRV_FRAMEBUFFER_H_

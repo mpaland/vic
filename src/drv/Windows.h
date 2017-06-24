@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -28,8 +28,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_WINDOWS_H_
-#define _VGX_DRV_WINDOWS_H_
+#ifndef _VIC_DRV_WINDOWS_H_
+#define _VIC_DRV_WINDOWS_H_
 
 #include <Windows.h>
 #include <process.h>
@@ -38,10 +38,10 @@
 
 
 // defines the driver name and version
-#define VGX_DRV_WINDOWS_VERSION   "Windows driver 3.01"
+#define VIC_DRV_WINDOWS_VERSION   "Windows driver 3.01"
 
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -69,7 +69,7 @@ public:
   windows(std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U,
           std::uint16_t window_x = 0U, std::uint16_t window_y = 0U,
           std::uint8_t zoom_x = 1U, std::uint8_t zoom_y = 1U,
-          const LPCTSTR caption = L"vgx screen")
+          const LPCTSTR caption = L"vic screen")
     : drv(Screen_Size_X, Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
           viewport_x, viewport_y,
@@ -123,7 +123,7 @@ protected:
 
   inline virtual const char* drv_version() const final
   {
-    return (const char*)VGX_DRV_WINDOWS_VERSION;
+    return (const char*)VIC_DRV_WINDOWS_VERSION;
   }
 
 
@@ -138,8 +138,8 @@ protected:
   {
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(color_bg_get()), color::get_green(color_bg_get()), color::get_blue(color_bg_get())));
-    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(color_bg_get()), color::get_green(color_bg_get()), color::get_blue(color_bg_get())));
+    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
+    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
     ::Rectangle(hmemdc_, 0, 0, screen_width() * zoom_x_, screen_height() * zoom_y_);  // needs to be 1 pixel bigger for Windows API
     ::SelectObject(hmemdc_, org);
   }
@@ -179,7 +179,7 @@ protected:
     // check limits and clipping
     if (!screen_is_inside(point)) {
       // out of bounds or outside clipping region
-      return vgx::color::black;
+      return vic::color::black;
     }
 
     COLORREF clr = ::GetPixel(hmemdc_, point.x * zoom_x_, point.y * zoom_y_);
@@ -205,7 +205,7 @@ protected:
     windows* d = static_cast<windows*>(arg);
 
     const HINSTANCE hInstance = ::GetModuleHandle(NULL);
-    const LPCTSTR className = L"vgx_screen";
+    const LPCTSTR className = L"vic_screen";
     WNDCLASSEX wc = {};
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -305,7 +305,7 @@ public:
    */
   windows_text(std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U,
                std::uint16_t window_x   = 0U, std::uint16_t window_y   = 0U,
-               const LPCTSTR caption = L"vgx text screen")
+               const LPCTSTR caption = L"vic text screen")
     : drv(COLUMNS, ROWS,
           Viewport_Size_X, Viewport_Size_Y,
           viewport_x, viewport_y,
@@ -367,7 +367,7 @@ protected:
 
   virtual inline const char* drv_version() const final
   {
-    return (const char*)VGX_DRV_WINDOWS_VERSION;
+    return (const char*)VIC_DRV_WINDOWS_VERSION;
   }
 
 
@@ -419,12 +419,10 @@ protected:
    */
   virtual void drv_present() final
   {
-    // render text
-
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(color_bg_get()), color::get_green(color_bg_get()), color::get_blue(color_bg_get())));
-    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(color_bg_get()), color::get_green(color_bg_get()), color::get_blue(color_bg_get())));
+    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
+    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
     ::Rectangle(hmemdc_, 0, 0, window_size_x_, window_size_y_);
     ::SelectObject(hmemdc_, org);
 
@@ -492,7 +490,7 @@ protected:
     windows_text* d = static_cast<windows_text*>(arg);
 
     const HINSTANCE hInstance = ::GetModuleHandle(NULL);
-    const LPCTSTR className = L"vgx_text_screen";
+    const LPCTSTR className = L"vic_text_screen";
     WNDCLASSEX wc = { };
     wc.cbSize = sizeof(WNDCLASSEX);
     wc.style = CS_HREDRAW | CS_VREDRAW;
@@ -605,6 +603,6 @@ public:
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_WINDOWS_H_
+#endif  // _VIC_DRV_WINDOWS_H_

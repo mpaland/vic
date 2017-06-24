@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -30,7 +30,7 @@
 #include "Arial_num_16x24_AA4.h"
 
 
-namespace vgx {
+namespace vic {
 namespace font {
 
 const std::uint8_t Arial_num_16x24_aa4_0021[] = { /* code 0021 */
@@ -628,7 +628,7 @@ const prop_type Arial_num_16x24_aa4_Prop1 = {
 
 
 const font_type Arial_num_16x24_aa4 = {
-  VGX_FONT_ENCODING_ASCII | VGX_FONT_AA_4 | VGX_FONT_TYPE_PROP  // type of font
+  VIC_FONT_ENCODING_ASCII | VIC_FONT_AA_4 | VIC_FONT_TYPE_PROP  // type of font
   ,24   // height of font
   ,24   // y space of font
   ,23   // Baseline
@@ -636,4 +636,4 @@ const font_type Arial_num_16x24_aa4 = {
 };
 
 } // namespace font
-} // namespace vgx
+} // namespace vic

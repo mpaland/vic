@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -34,8 +34,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_BA6X_H_
-#define _VGX_DRV_BA6X_H_
+#ifndef _VIC_DRV_BA6X_H_
+#define _VIC_DRV_BA6X_H_
 
 #include <string.h>
 
@@ -43,10 +43,10 @@
 
 
 // defines the driver name and version
-#define VGX_DRV_BA6X_VERSION  "Wincor BA6x driver 1.30"
+#define VIC_DRV_BA6X_VERSION  "Wincor BA6x driver 1.30"
 
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 
@@ -125,7 +125,7 @@ protected:
 
   inline virtual const char* drv_version() const final
   {
-    return (const char*)VGX_DRV_BA6X_VERSION;
+    return (const char*)VIC_DRV_BA6X_VERSION;
   }
 
 
@@ -240,7 +240,7 @@ protected:
    * \param string Output string in UTF-8/ASCII format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  inline virtual std::uint16_t text_string(const std::uint8_t* string) final
+  virtual std::uint16_t text_string(const std::uint8_t* string) final
   {
     // the base class function might be used, but the char by char write command overhead is too big,
     // so assemble the data here and pass it directly
@@ -436,6 +436,6 @@ private:
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif // _VGX_DRV_BA6X_H_
+#endif // _VIC_DRV_BA6X_H_

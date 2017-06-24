@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -28,8 +28,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_CTRL_BITMAP_H_
-#define _VGX_CTRL_BITMAP_H_
+#ifndef _VIC_CTRL_BITMAP_H_
+#define _VIC_CTRL_BITMAP_H_
 
 #include <cstdint>
 #include <cstddef>
@@ -40,14 +40,14 @@
 
 // defines the maximum chars per XPM pixel
 // value of 4 is default, one CLUT entry takes 8 byte than
-#define VGX_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL  4U
+#define VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL  4U
 
 // Entrys in the Color LookUp Table for XPM bitmaps
 // 16/32 is a good value, so CLUT takes 128/256 byte
-#define VGX_CTRL_BITMAP_XPM_CLUT_SIZE 16U
+#define VIC_CTRL_BITMAP_XPM_CLUT_SIZE 16U
 
 
-namespace vgx {
+namespace vic {
 
 class bitmap : public ctrl
 {
@@ -226,7 +226,7 @@ private:
   color::value_type xpm_get_clut_color(const char* pixel_code)
   {
     // try to find the color in clut
-    for (std::uint_fast16_t n = 0U; n < VGX_CTRL_BITMAP_XPM_CLUT_SIZE; n++) {
+    for (std::uint_fast16_t n = 0U; n < VIC_CTRL_BITMAP_XPM_CLUT_SIZE; n++) {
       if (memcmp(clut_[n].code, pixel_code, xpm_data_.char_on_pixel) == 0) {
         // found
         return clut_[n].color;
@@ -237,7 +237,7 @@ private:
     color::value_type _color = xpm_get_image_color(pixel_code);
     memcpy(clut_[clut_idx_].code, pixel_code, xpm_data_.char_on_pixel);
     clut_[clut_idx_].color = _color;
-    clut_idx_ = ++clut_idx_ % VGX_CTRL_BITMAP_XPM_CLUT_SIZE;
+    clut_idx_ = ++clut_idx_ % VIC_CTRL_BITMAP_XPM_CLUT_SIZE;
     return _color;
   }
 
@@ -251,7 +251,7 @@ private:
    */
   std::uint32_t strtol(const char* str, char** endptr, unsigned int base) const
   {
-    std::size_t   i   = 0U;
+    std::size_t i = 0U;
 
     // skip whitspace(s)
     while (str[i] == ' ') {
@@ -283,7 +283,7 @@ private:
 
   // xpm color lookup table
   typedef struct tag_clut_type {
-    char              code[VGX_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL];  // color code
+    char              code[VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL];  // color code
     color::value_type color;                                        // assigned color
   } clut_type;
 
@@ -300,10 +300,10 @@ private:
   xpm_data_type xpm_data_;          // XPM data
  
   // XPM color lookup table
-  clut_type     clut_[VGX_CTRL_BITMAP_XPM_CLUT_SIZE] = { 0 };
+  clut_type     clut_[VIC_CTRL_BITMAP_XPM_CLUT_SIZE] = { 0 };
   std::size_t   clut_idx_;
 };
 
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_CTRL_BITMAP_H_
+#endif  // _VIC_CTRL_BITMAP_H_

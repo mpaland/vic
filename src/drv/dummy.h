@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -28,16 +28,16 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_DRV_DUMMY_H_
-#define _VGX_DRV_DUMMY_H_
+#ifndef _VIC_DRV_DUMMY_H_
+#define _VIC_DRV_DUMMY_H_
 
 #include "../drv.h"
 
 // defines the driver name and version
-#define VGX_DRV_DUMMY_VERSION   "Dummy driver 1.00"
+#define VIC_DRV_DUMMY_VERSION   "Dummy driver 1.00"
 
 
-namespace vgx {
+namespace vic {
 namespace head {
 
 /**
@@ -87,7 +87,7 @@ public:
   { }
 
   virtual const char* drv_version() const
-  { return (const char*)VGX_DRV_DUMMY_VERSION; }
+  { return (const char*)VIC_DRV_DUMMY_VERSION; }
 
   virtual bool drv_is_graphic() const
   { return is_graphic_; }
@@ -154,6 +154,6 @@ public:
 };
 
 } // namespace head
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_DRV_DUMMY_H_
+#endif  // _VIC_DRV_DUMMY_H_

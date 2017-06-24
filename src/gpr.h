@@ -4,7 +4,7 @@
 //
 // \license The MIT License (MIT)
 //
-// This file is part of the vgx library.
+// This file is part of the vic library.
 // Permission is hereby granted, free of charge, to any person obtaining a copy
 // of this software and associated documentation files (the "Software"), to deal
 // in the Software without restriction, including without limitation the rights
@@ -29,13 +29,13 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VGX_GPR_H_
-#define _VGX_GPR_H_
+#ifndef _VIC_GPR_H_
+#define _VIC_GPR_H_
 
 #include "base.h"
 
 
-namespace vgx {
+namespace vic {
 
 
 typedef struct struct_pen_type {
@@ -86,7 +86,7 @@ protected:
   {
     if (v_min_y.y > v_max_y.y) {
       vertex_swap(v_min_y, v_max_y);
-  }
+    }
   }
 
 
@@ -132,7 +132,7 @@ protected:
         return;
       }
       if (dx == 0 || dy == 0) {
-        // antialising not necessary, 90° or 180°
+        // antialising not necessary, 90ï¿½ or 180ï¿½
         gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightgreen);
         return;
       }
@@ -215,16 +215,16 @@ protected:
       std::int16_t dy = abs<std::int16_t>(pipe_[2].y - pipe_[0].y);
 
       if (dy * 2 <= dx) {
-        // 0 - 30°
+        // 0 - 30ï¿½
       }
       if (dy <= dx) {
-        // 30 - 45°
+        // 30 - 45ï¿½
       }
       if (dx * 2 <= dy) {
-        // 90 - 75°
+        // 90 - 75ï¿½
       }
       if (dx <= dy) {
-        // 45 - 30°
+        // 45 - 30ï¿½
       }
 
 
@@ -787,11 +787,11 @@ public:
     present_lock();
 
     // angle:
-    //   0° = 3 o'clock
-    //   0° -  89°: Q1 (top/right)
-    //  90° - 179°: Q2 (top/left)
-    // 180° - 269°: Q3 (bottom/left)
-    // 270° - 359°: Q4 (bottom/right)
+    //   0ï¿½ = 3 o'clock
+    //   0ï¿½ -  89ï¿½: Q1 (top/right)
+    //  90ï¿½ - 179ï¿½: Q2 (top/left)
+    // 180ï¿½ - 269ï¿½: Q3 (bottom/left)
+    // 270ï¿½ - 359ï¿½: Q4 (bottom/right)
 
     bool second_half = false;
     std::uint16_t end_angle2 = end_angle;
@@ -815,15 +815,15 @@ public:
           std::int16_t xr = xp - center.x;
           std::int16_t yr = center.y - yp;   // * -1 for coords to screen conversion
           if (((xr * xr + yr * yr) >= inner_radius * inner_radius) &&
-            ((xr * xr + yr * yr) < outer_radius * outer_radius) &&
-            !((yss * xr) > (xss * yr)) &&
-            ((yse * xr) >= (xse * yr))
-            ) {
+              ((xr * xr + yr * yr) <  outer_radius * outer_radius) &&
+              !((yss * xr) >  (xss * yr)) &&
+               ((yse * xr) >= (xse * yr))
+             ) {
             if (!(inside & 0x01U)) {
               inside++;
               lxp = xp;
+            }
           }
-        }
           else {
             if (inside & 0x01U) {
               line_horz({ lxp, yp }, { static_cast<std::int16_t>(xp - 1), yp });
@@ -837,7 +837,7 @@ public:
               }
               inside++;
             }
-      }
+          }
         }
       }
       // second half (Q3/Q4) necessary?
@@ -853,7 +853,7 @@ public:
 
 
   /**
-   *  Fill region up to the bounding color with the drawing color
+   * Fill region up to the bounding color with the drawing color
    * Fill routine is only working on displays which support drv_pixel_get()
    * \param start Start value inside region to fill
    * \param bounding_color Color of the surrounding bound
@@ -947,6 +947,6 @@ private:
   { return rhs; }
 };
 
-} // namespace vgx
+} // namespace vic
 
-#endif  // _VGX_GPR_H_
+#endif  // _VIC_GPR_H_
