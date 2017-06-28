@@ -854,15 +854,119 @@ public:
 
   /**
    * Fill region up to the bounding color with the drawing color
-   * Fill routine is only working on displays which support drv_pixel_get()
+   * Fill routine is only working on displays which support drv_pixel_get() (or using the framebuffer ctrl)
    * \param start Start value inside region to fill
-   * \param bounding_color Color of the surrounding bound
+   * \param bounding_color Color of the surrounding bound or bg_color to fill all which is not bg_color
    * \return true if successful
    */
   void fill(vertex_type start, color::value_type bounding_color)
   {
-    // TBD
-    (void)start; (void)bounding_color;
+    class floodfill
+    {
+      // a stack entry take 8 byte
+      typedef struct tag_segment_type
+      {
+        std::int16_t x_start;
+        std::int16_t x_end;
+        std::int16_t y;
+        std::int8_t  dir;             // 0: no previous segment, -1: above the previous segment, 1: below the previous segment
+        std::uint8_t scan_left  : 1;
+        std::uint8_t scan_right : 1;
+      } segment_type;
+
+      gpr&               gpr_;
+      color::value_type  bounding_color_;
+      std::size_t        stack_count_;
+      segment_type       stack_[VIC_GPR_FILL_STACK_SIZE / 8];
+
+      inline void stack_push(segment_type segment)
+      {
+        if (stack_count_ < (VIC_GPR_FILL_STACK_SIZE / 8)) {
+          stack_[stack_count_++] = segment;
+        }
+      }
+
+      inline segment_type& stack_pop()
+      {
+        return stack_[--stack_count_];
+      }
+
+      // returns true if pixel is of border or drawing color
+      // returns true if col != bg_color       && bounding_color == bg_color 
+      // returns true if col == bounding_color && bounding_color != bg_color 
+      // returns true if col == pen_color
+      inline bool test(vertex_type point)
+      {
+        const color::value_type col = gpr_.drv_pixel_get({ point.x, point.y });
+        return (col == gpr_.pen_get_color())                                      ||
+               (col == bounding_color_ && bounding_color_ != gpr_.bg_get_color()) ||
+               (col != bounding_color_ && bounding_color_ == gpr_.bg_get_color());
+      }
+
+      void fill(vertex_type start)
+      {
+        stack_push({ start.x, start.x + 1, start.y, 0, 1U, 1U });
+        gpr_.pixel_set({ start.x, start.y });
+
+        do {
+          segment_type r = stack_pop();
+          std::int16_t x_start = r.x_start, x_end = r.x_end;
+          if (r.scan_left) { // if we should extend the segment towards the left...
+            while (x_start > 0 && !test({ x_start - 1, r.y })) {
+              gpr_.pixel_set({ --x_start, r.y });
+            }
+          }
+          if (r.scan_right) {
+            while (x_end < gpr_.screen_width() && !test({ x_end, r.y })) {
+              gpr_.pixel_set({ x_end++, r.y });
+            }
+          }
+          // at this point, the segment from startX (inclusive) to endX (exclusive) is filled. compute the region to ignore
+          r.x_start--;  // since the segment is bounded on either side by filled cells or array edges, we can extend the size of
+          r.x_end++;    // the region that we're going to ignore in the adjacent lines by one
+          // scan above and below the segment and add any new segments we find
+          if (r.y > 0) {
+            add_line(x_start, x_end, r.y - 1, r.x_start, r.x_end, -1, r.dir <= 0);
+          }
+          if (r.y < gpr_.screen_height() - 1) {
+            add_line(x_start, x_end, r.y + 1, r.x_start, r.x_end,  1, r.dir >= 0);
+          }
+        } while (stack_count_ != 0U);
+      }
+
+      void add_line(std::int16_t x_start, std::int16_t x_end, std::int16_t y, std::int16_t ignore_start, std::int16_t ignore_end, std::int8_t dir, bool is_next_in_dir)
+      {
+        std::int16_t region_start = -1, x;
+        for (x = x_start; x < x_end; ++x) { // scan the width of the parent segment
+          if ((is_next_in_dir || x < ignore_start || x >= ignore_end) && !test({ x, y })) {   // if we're outside the region we should ignore and the cell is clear
+            gpr_.pixel_set({ x, y });       // fill the cell
+            if (region_start < 0)
+              region_start = x;             // and start a new segment if we haven't already
+          }
+          else if (region_start >= 0) {     // otherwise, if we shouldn't fill this cell and we have a current segment...
+            stack_push({ region_start, x, y, dir, region_start == x_start ? 1U : 0U, 0U });   // push the segment
+            region_start = -1;              // and end it
+          }
+          if (!is_next_in_dir && x < ignore_end && x >= ignore_start) {
+            x = ignore_end - 1;             // skip over the ignored region
+          }
+        }
+        if (region_start >= 0) {
+          stack_push({ region_start, x, y, dir, region_start == x_start ? 1U : 0U, 1U });
+        }
+      }
+
+    public:
+      floodfill(gpr& _gpr, vertex_type start, color::value_type bounding_color)
+      : gpr_(_gpr)
+      , bounding_color_(bounding_color)
+      , stack_count_(0U)
+      {
+        fill(start);
+      }
+    };
+
+    floodfill _floodfill(*this, start, bounding_color);
     present();
   }
 

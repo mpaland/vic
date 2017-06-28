@@ -30,5 +30,11 @@
 #ifndef _VIC_CFG_H_
 #define _VIC_CFG_H_
 
+// defines the internal working stack size of the fill function
+// the size is dynamically allocated on the cpu stack for the runtime of the fill function 
+// a default of 64 should be okay, but if the filling of complex objects is incomplete,
+// increase this value
+#define VIC_GPR_FILL_STACK_SIZE   64
+
 
 #endif  // _VIC_CFG_H_
