@@ -158,6 +158,20 @@ public:
   }
 
 
+  /**
+   * Returns the screen (buffer) width
+   * \return Screen width in pixel or chars
+   */
+  virtual std::uint16_t screen_width(void) const = 0;
+
+
+  /**
+   * Returns the screen (buffer) height
+   * \return Screen height in pixel or chars
+   */
+  virtual std::uint16_t screen_height(void) const = 0;
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // M A N D A T O R Y   D R I V E R   F U N C T I O N S
 //
