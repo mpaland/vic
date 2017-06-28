@@ -125,6 +125,6 @@ namespace mem {
 
 
 } // namespace io
-} // vic
+} // namespace vic
 
 #endif  // _VIC_IO_H_
