@@ -958,7 +958,7 @@ public:
       second_half = false;
       if (end_angle != end_angle2) {
         start_angle = 180U;
-        end_angle = end_angle2;
+        end_angle   = end_angle2;
         second_half = true;
       }
     } while (second_half);
