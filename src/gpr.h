@@ -38,12 +38,22 @@
 namespace vic {
 
 
-typedef struct struct_pen_type {
-  std::int8_t   x;
-  std::int8_t   y;
-  std::uint8_t  alpha;
-  std::uint8_t  next;
-} pen_type;
+typedef enum tag_pen_style_type {
+  pen_style_solid = 0,
+  pen_style_dash,
+  pen_style_dot,
+  pen_style_dashdot
+} pen_style_type;
+
+
+typedef struct tag_pen_shape_type {
+  std::uint16_t       width;          // width of pen shape
+  std::uint16_t       height;         // height of pen shape
+  color::value_type   color;          // color of pen
+  pen_style_type      style;          // style of pen
+  std::uint8_t        style_ctl;      // internal style control, set to 0 on init
+  const std::uint8_t* alpha;          // pen shape as alpha value array
+} pen_shape_type;
 
 
 /**
@@ -87,16 +97,6 @@ protected:
     if (v_min_y.y > v_max_y.y) {
       vertex_swap(v_min_y, v_max_y);
     }
-  }
-
-
-  inline void render_pen(vertex_type center)
-  {
-    std::size_t i = 0U;
-    do {
-      const vertex_type v = { static_cast<std::int16_t>(center.x + pen_shape_[i].x), static_cast<std::int16_t>(center.y + pen_shape_[i].y) };
-      drv_pixel_set_color(v, pen_shape_[i].alpha == 0U ? pen_get_color(v) : color::mix(drv_pixel_get(v), pen_get_color(v), pen_shape_[i].alpha));
-    } while (pen_shape_[i++].next);
   }
 
 
@@ -284,33 +284,92 @@ public:
    * Select the actual drawing pen
    * \param pen_shape Set the actual pen shape or nullptr for 1 pixel default pen (fastest)
    */
-  inline void pen_set_shape(const pen_type* pen_shape = nullptr)
+  inline void pen_set_shape(pen_shape_type* pen_shape = nullptr)
   {
     pen_shape_ = pen_shape;
   }
 
 
   /**
-   * Return a stock pen
+   * Get a stock pen
+   * \param shape Receiving pen struct
+   * \param style Pen style 
    * \param width Pen width
+   * \param color Pen color
    */
-  inline const pen_type* pen_get_stock(std::uint8_t width) const
+  void pen_get_stock(pen_shape_type& shape, pen_style_type style, std::uint8_t width, color::value_type color) const
   {
     // stock pens
-    static const pen_type    pen_shape_width_1[1] = { { 0, 0, 0, 0 } };                                   // one pixel pen
-    static const pen_type    pen_shape_width_2[4] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 },
-                                                      { 0, 1, 0, 1 }, { 1, 1, 0, 0 } };                   // two pixel pen
-    static const pen_type    pen_shape_width_3[9] = { { 0, 0, 0, 1 }, { 1, 0, 0, 1 }, { 2, 0, 0, 1 },
-                                                      { 0, 1, 0, 1 }, { 1, 1, 0, 1 }, { 2, 1, 0, 1 },
-                                                      { 0, 2, 0, 1 }, { 1, 2, 0, 1 }, { 2, 2, 0, 0 } };   // three pixel pen
+    static const std::uint8_t   pen_shape_width_1[1] = { 0 };         // one pixel pen
+    static const std::uint8_t   pen_shape_width_2[4] = { 0, 0,
+                                                         0, 0 };      // two pixel pen
+    static const std::uint8_t   pen_shape_width_3[9] = { 0, 0, 0,
+                                                         0, 0, 0,
+                                                         0, 0, 0 };   // three pixel pen
+    static const std::uint8_t* alpha[3] = { pen_shape_width_1, pen_shape_width_2, pen_shape_width_3 };
 
-    const pen_type* stock_pen[4] = { nullptr, pen_shape_width_1, pen_shape_width_2, pen_shape_width_3 };
-    return stock_pen[width];
+    shape = { width, width, color, style, 0U, alpha[width - 1U] };
   }
 
 
   /**
-   * Set pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color
+   * Render the pen at the given position
+   * \param center Pen center position
+   */
+  inline void pen_render(vertex_type center)
+  {
+    if (!pen_shape_) {
+      drv_pixel_set_color(center, pen_get_color(center));
+    }
+    else {
+      switch (pen_shape_->style) {
+        case pen_style_solid :
+          break;
+        case pen_style_dot :
+          // * * * *
+          if (pen_shape_->style_ctl >= pen_shape_->width * 2U) {
+            pen_shape_->style_ctl = 0U;
+          }
+          if (pen_shape_->style_ctl++ > 0U) {
+            return;
+          }
+          break;
+        case pen_style_dash :
+          // *** *** ***
+          if (pen_shape_->style_ctl >= pen_shape_->width * 4U) {
+            pen_shape_->style_ctl = 0U;
+          }
+          if (pen_shape_->style_ctl++ > pen_shape_->width * 2U) {
+            return;
+          }
+          break;
+        case pen_style_dashdot :
+          // *** * *** * ***
+          if (pen_shape_->style_ctl >= pen_shape_->width * 6U) {
+            pen_shape_->style_ctl = 0U;
+          }
+          if ((pen_shape_->style_ctl >  pen_shape_->width * 2U) &&
+              (pen_shape_->style_ctl != pen_shape_->width * 4U )) {
+            pen_shape_->style_ctl++;
+            return;
+          }
+          pen_shape_->style_ctl++;
+          break;
+        default:
+          break;
+      }
+      std::size_t i = 0U;
+      for (std::int16_t y = center.y - pen_shape_->height / 2, ye = y + pen_shape_->height; y < ye; ++y) {
+        for (std::int16_t x = center.x - pen_shape_->width / 2, xe = x + pen_shape_->width; x < xe; ++x, ++i) {
+          drv_pixel_set_color({ x, y }, pen_shape_->alpha[i] == 0U ? pen_shape_->color : color::mix(drv_pixel_get({ x, y }), pen_get_color({ x, y }), pen_shape_->alpha[i]));
+        }
+      }
+    }
+  }
+
+
+  /**
+   * Set a pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color, which is protected)
    * Uncommon to override this function, but may be done for in case of a monochrome displays
    * \param point Vertex to set
    */
@@ -321,7 +380,7 @@ public:
 
 
   /**
-   * Set pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color
+   * Set a pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color, which is protected)
    * Uncommon to override this function, but may be done for in case of a monochrome displays
    * \param point Vertex to set
    * \param color Color of the pixel
@@ -344,7 +403,7 @@ public:
 
 
   /**
-   * Plot a point in the actual drawing (pen) color
+   * Plot a point (one pixel) in the actual drawing (pen) color
    * \param point Vertex to plot
    */
   void plot(vertex_type point)
@@ -355,7 +414,7 @@ public:
 
 
   /**
-   * Plot a point with a given color, drawing color is not affected
+   * Plot a point (one pixel) with the given color, drawing color is not affected
    * \param point Vertex to plot
    * \param color Color of the pixel
    */
@@ -383,7 +442,7 @@ public:
     // start Bresenham line algorithm
     if (pen_shape_) {
       for (;;) {
-        render_pen(v0);
+        pen_render(v0);
         if (v0 == v1) {
           break;
         }
@@ -1041,8 +1100,7 @@ public:
 protected:
   bool              primitive_lock_;  // lock for rendering multiple primitives without refresh
   bool              anti_aliasing_;   // true if AA is enabled
-
-  const pen_type*   pen_shape_;       // actual selected drawing pen
+  pen_shape_type*   pen_shape_;       // actual selected drawing pen
 
 private:
 
