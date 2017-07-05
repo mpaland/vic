@@ -841,9 +841,9 @@ public:
    * Draw a disc sector (filled quarter circle)
    * \param center Center value
    * \param radius Disc radius
-   * \param sector Sector number: 0: top/left, 1: top/right, 2: bottom/right, 3: bottom/left
+   * \param quadrant Quadrant number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
    */
-  void disc_sector(vertex_type center, std::uint16_t radius, std::uint8_t sector)
+  void disc_sector(vertex_type center, std::uint16_t radius, std::uint8_t quadrant)
   {
     anti_aliasing aa(*this);
 
@@ -852,29 +852,29 @@ public:
     for (std::int16_t y = -radius; y <= 0; ++y) {
       for (std::int16_t x = -radius; x <= 0; ++x) {
         if (x * x + y * y < radius_sqr) {
-          switch (sector) {
+          switch (quadrant) {
             case 0 :
-              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
-              if (anti_aliasing_) {
-                aa.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
-              }
-              break;
-            case 1 :
               line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
               if (anti_aliasing_) {
                 aa.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
               }
               break;
-            case 2 :
-              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+            case 1 :
+              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
               if (anti_aliasing_) {
-                aa.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+                aa.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
               }
               break;
-            case 3 :
+            case 2 :
               line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) });
               if (anti_aliasing_) {
                 aa.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) });
+              }
+              break;
+            case 3 :
+              line_horz({ static_cast<std::int16_t>(center.x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+              if (anti_aliasing_) {
+                aa.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
               }
               break;
             default :
