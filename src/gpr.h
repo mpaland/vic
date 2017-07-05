@@ -550,11 +550,8 @@ public:
   /**
    * Draw a box (filled rectangle)
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in box
-   * \param y1 Y end value, included in box
-   * \return true if successful
+   * \param v0 top/left vertex
+   * \param v1 bottom/right vertex
    */
   virtual void box(vertex_type v0, vertex_type v1)
   {
