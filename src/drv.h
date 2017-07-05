@@ -32,7 +32,7 @@
 
 #include "gpr.h"
 #include "txr.h"
-#include <io.h>     // hardware dependent IO access, use < > here, cause io.h may be in some platform folder
+#include "io.h"     // hardware dependent IO access
 
 
 namespace vic {
