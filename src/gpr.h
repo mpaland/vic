@@ -567,26 +567,57 @@ public:
 
 
   /**
+   * Draw a box (filled rectangle)
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * \param v0 top/left vertex
+   * \param v1 bottom/right vertex
+   * \param border_radius Radius of the corner, 0 for angular
+   */
+  void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  {
+
+  }
+
+
+  /**
    * Draw a rectangle (frame) with the current pen
-   * \param x0 X start value
-   * \param y0 Y start value
-   * \param x1 X end value, included in rect
-   * \param y1 Y end value, included in rect
-   * \return true if successful
+   * \param v0 top/left vertex
+   * \param v1 bottom/right vertex
    */
   void rectangle(vertex_type v0, vertex_type v1)
   {
     present_lock();
-    line(v0, { v1.x, v0.y });
-    line(v1, { v1.x, v0.y });
     line(v0, { v0.x, v1.y });
-    line(v1, { v0.x, v1.y });
+    line({ v0.x, v1.y }, v1);
+    line(v1, { v1.x, v0.y });
+    line({ v1.x, v0.y },  v0);
     present_lock(false);    // unlock and present
   }
 
 
   /**
-   * Draw a multiple lines
+   * Draw a rectangle (frame) with the current pen
+   * \param v0 top/left vertex
+   * \param v1 bottom/right vertex
+   * \param border_radius Radius of the corner, 0 for angular
+   */
+  void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  {
+    present_lock();
+    line({ static_cast<std::int16_t>(v1.x - border_radius), v0.y }, { static_cast<std::int16_t>(v0.x + border_radius), v0.y });
+    circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,  90U, 180U);
+    line({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v0.x, static_cast<std::int16_t>(v1.y - border_radius) });
+    circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 180U, 270U);
+    line({ static_cast<std::int16_t>(v0.x + border_radius), v1.y }, { static_cast<std::int16_t>(v1.x - border_radius), v1.y });
+    circle({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 270U, 360U);
+    line({ v1.x, static_cast<std::int16_t>(v1.y - border_radius) }, { v1.x, static_cast<std::int16_t>(v0.y + border_radius) });
+    circle({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,   0U,  90U);
+    present_lock(false);    // unlock and present
+  }
+
+
+  /**
+   * Draw multiple connected lines
    * \param vertexes Pointer to array of vertexes, at least 2
    * \param vertex_count Number of vertexes in the array, at least 2
    */
