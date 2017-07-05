@@ -1019,14 +1019,14 @@ public:
 
       void fill(vertex_type start)
       {
-        stack_push({ start.x, start.x + 1, start.y, 0, 1U, 1U });
+        stack_push({ start.x, static_cast<std::int16_t>(start.x + 1), start.y, 0, 1U, 1U });
         gpr_.pixel_set({ start.x, start.y });
 
         do {
           segment_type r = stack_pop();
           std::int16_t x_start = r.x_start, x_end = r.x_end;
           if (r.scan_left) { // if we should extend the segment towards the left...
-            while (x_start > 0 && !test({ x_start - 1, r.y })) {
+            while (x_start > 0 && !test({ static_cast<std::int16_t>(x_start - 1), r.y })) {
               gpr_.pixel_set({ --x_start, r.y });
             }
           }
@@ -1058,7 +1058,7 @@ public:
               region_start = x;             // and start a new segment if we haven't already
           }
           else if (region_start >= 0) {     // otherwise, if we shouldn't fill this cell and we have a current segment...
-            stack_push({ region_start, x, y, dir, region_start == x_start ? 1U : 0U, 0U });   // push the segment
+            stack_push({ region_start, x, y, dir, static_cast<std::uint8_t>(region_start == x_start ? 1U : 0U), 0U });   // push the segment
             region_start = -1;              // and end it
           }
           if (!is_next_in_dir && x < ignore_end && x >= ignore_start) {
@@ -1066,7 +1066,7 @@ public:
           }
         }
         if (region_start >= 0) {
-          stack_push({ region_start, x, y, dir, region_start == x_start ? 1U : 0U, 1U });
+          stack_push({ region_start, x, y, dir, static_cast<std::uint8_t>(region_start == x_start ? 1U : 0U), 1U });
         }
       }
 
