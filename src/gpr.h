@@ -644,8 +644,8 @@ public:
   {
     present_lock();
     line(v0, v1);
-    line(v0, v2);
     line(v1, v2);
+    line(v2, v0);
     present_lock(false);  // present
   }
 
