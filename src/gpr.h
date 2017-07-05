@@ -724,57 +724,84 @@ public:
 
 
   /**
-   * Draw a circle
+   * Draw a circle piece with the current pen or anti aliased
    * \param center Center vertex
    * \param radius Circle radius
+   * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
+   * \param end_angle End angle in degree
    */
-  void circle(vertex_type center, std::uint16_t radius)
+  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 360U)
   {
-    std::int16_t xo = static_cast<std::int16_t>(radius), yo = 0, err = 1 - xo;
+    const std::int16_t xs = center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384;
+    const std::int16_t ys = center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384;
+    const std::int16_t xe = center.x + radius * util::cos(static_cast<std::int16_t>(end_angle))   / 16384;
+    const std::int16_t ye = center.y - radius * util::sin(static_cast<std::int16_t>(end_angle))   / 16384;
 
-    if (pen_shape_ || !anti_aliasing_) {
-      // render with pen
-      while (xo >= yo) {
-        render_pen({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y + yo) });  // q4
-        render_pen({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y - yo) });  // q1
-        render_pen({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y + xo) });  // q4
-        render_pen({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y - xo) });  // q1
-        render_pen({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y + yo) });  // q3
-        render_pen({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y - yo) });  // q2
-        render_pen({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y + xo) });  // q3
-        render_pen({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y - xo) });  // q2
-        yo++;
-        if (err < 0) {
-          err += 2 * yo + 1;
+    const std::uint_fast16_t qs = (start_angle / 90U);
+    const std::uint_fast16_t qe = (end_angle - 1U) / 90U;
+    const bool               os = (start_angle / 45U) & 1U;
+    const bool               oe = ((end_angle - 1U) / 45U) & 1U;
+
+    // aa renderer
+    anti_aliasing aa(*this);
+
+    bool render = false;
+    for (std::uint_fast16_t q = qs; q <= qe; ++q) {
+      std::int16_t r = static_cast<std::int16_t>(radius), x = 0, y = -r, err = 2 - r * 2;
+      vertex_type p;
+      do {
+        switch (q) {
+          case 0 :
+            p = { static_cast<std::int16_t>(center.x - y), static_cast<std::int16_t>(center.y - x) };
+            if (!render && (q == qs) && (((p.x <= xs) && os) || ((p.y <= ys) && !os))) {
+              render = true;
+            }
+            if (render && (q == qe) && (((p.x < xe) && oe) || ((p.y < ye) && !oe))) {
+              present();
+              return;
+            }
+            break;
+          case 1 :
+            p = { static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) };
+            if (!render && (q == qs) && (((p.x <= xs) && !os) || ((p.y >= ys) && os))) {
+              render = true;
+            }
+            if (render && (q == qe) && (((p.x < xe) && !oe) || ((p.y > ye) && oe))) {
+              present();
+              return;
+            }
+            break;
+          case 2 :
+            p = { static_cast<std::int16_t>(center.x + y), static_cast<std::int16_t>(center.y + x) };
+            if (!render && (q == qs) && (((p.x >= xs) && os) || ((p.y >= ys) && !os))) {
+              render = true;
+            }
+            if (render && (q == qe) && (((p.x > xe) && oe) || ((p.y > ye) && !oe))) {
+              present();
+              return;
+            }
+            break;
+          case 3 :
+            p = { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) };
+            if (!render && (q == qs) && (((p.x >= xs) && !os) || ((p.y <= ys) && os))) {
+              render = true;
+            }
+            if (render && (q == qe) && (((p.x > xe) && !oe) || ((p.y < ye) && oe))) {
+              present();
+              return;
+            }
+            break;
+          default: break;
         }
-        else {
-          xo--;
-          err += 2 * (yo - xo + 1);
+        if (render) {
+          pen_shape_ ? pen_render(p) : (anti_aliasing_ ? aa.render(p) : pixel_set(p));
         }
-      }
-    }
-    else {
-      // render antialiased
-      anti_aliasing aa0(*this), aa1(*this), aa2(*this), aa3(*this),
-                    aa4(*this), aa5(*this), aa6(*this), aa7(*this);
-      while (xo >= yo) {
-        aa0.render({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y + yo) });  // q4
-        aa1.render({ static_cast<std::int16_t>(center.x + xo), static_cast<std::int16_t>(center.y - yo) });  // q1
-        aa2.render({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y + xo) });  // q4
-        aa3.render({ static_cast<std::int16_t>(center.x + yo), static_cast<std::int16_t>(center.y - xo) });  // q1
-        aa4.render({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y + yo) });  // q3
-        aa5.render({ static_cast<std::int16_t>(center.x - xo), static_cast<std::int16_t>(center.y - yo) });  // q2
-        aa6.render({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y + xo) });  // q3
-        aa7.render({ static_cast<std::int16_t>(center.x - yo), static_cast<std::int16_t>(center.y - xo) });  // q2
-        yo++;
-        if (err < 0) {
-          err += 2 * yo + 1;
-        }
-        else {
-          xo--;
-          err += 2 * (yo - xo + 1);
-        }
-      }
+        r = err;
+        if (r <= x)
+          err += ++x * 2 + 1;
+        if (r > y || err > x)
+          err += ++y * 2 + 1;
+      } while (y < 0);
     }
     present();
   }
