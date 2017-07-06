@@ -53,7 +53,7 @@ class base
   color::value_type         pen_color_;           // drawing color
   color::value_type         bg_color_;            // background color
   pen_color_function_type   pen_color_function_;  // function for dynamic pen color
-  bool                      present_lock_;        // true if present is locked
+  std::size_t               present_lock_;        // present lock counter, > 0 is locked
 
 
 public:
@@ -63,7 +63,7 @@ public:
     : pen_color_(color::white)
     , bg_color_(color::black)
     , pen_color_function_(nullptr)
-    , present_lock_(false)
+    , present_lock_(0U)
   { }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -146,14 +146,22 @@ public:
    * Prevent calling drv_present after a single primitive drawing.
    * Use this to draw complex objects like controls. After all primitives are drawn call
    * present_lock(false) which releases the lock and calls drv_present().
-   * \param lock True for engaging a drv_present() lock.
+   * This is a nested call, every 'lock' call needs an 'unlock' call.
+   * \param lock True for engaging a drv_present() lock and incrementing the lock count
    */
   inline void present_lock(bool lock = true)
   {
-    present_lock_ = lock;
-    if (!lock) {
-      // primitive is done when lock is released
-      drv_present();
+    if (lock) {
+      present_lock_++;
+    }
+    else {
+      if (present_lock_ > 0U) {
+        present_lock_--;
+      }
+      if (present_lock_ == 0U) {
+        // lock is released, present
+        drv_present();
+      }
     }
   }
 
