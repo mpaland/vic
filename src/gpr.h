@@ -575,7 +575,15 @@ public:
    */
   void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
-
+    present_lock();
+    box({ static_cast<std::int16_t>(v0.x + border_radius), v0.y }, { static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) });
+    box({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v1.x, static_cast<std::int16_t>(v1.y - border_radius) });
+    box({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, { static_cast<std::int16_t>(v1.x - border_radius), v1.y });
+    disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 0U);
+    disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 1U);
+    disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 2U);
+    disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 3U);
+    present_lock(false);
   }
 
 
