@@ -799,7 +799,9 @@ public:
               return;
             }
             break;
-          default: break;
+          default:
+            p = { 0, 0 };
+            break;
         }
         if (render) {
           pen_shape_ ? pen_render(p) : (anti_aliasing_ ? aa.render(p) : pixel_set(p));
