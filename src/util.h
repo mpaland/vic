@@ -193,6 +193,10 @@ inline std::int16_t cos(std::int16_t angle)
 
 /**
  * Helper function to rotate a vertex of a given angle in respect to given center
+ * \param point Vertex to rotate
+ * \param center Rotation center
+ * \param angle Rotation angle in degree, direction is math positive (counter clockwise)
+ * \return Rotated vertex
  */
 inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int16_t angle)
 {
@@ -200,15 +204,12 @@ inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int
   const std::int32_t c = cos(angle);  // normalized to 16384
 
   // translate point to center
-  point.x -= center.x;
-  point.y -= center.y;
+  point = point - center;
 
   // rotate point and translate back
-  vertex_type rp;
-  rp.x = static_cast<std::int16_t>(((std::int32_t)point.x * c - (std::int32_t)point.y * s) / 16384) + center.x;
-  rp.y = static_cast<std::int16_t>(((std::int32_t)point.x * s - (std::int32_t)point.y * c) / 16384) + center.y;
-
-  return rp;
+  return { static_cast<std::int16_t>(((std::int32_t)point.x * c + (std::int32_t)point.y * s) / 16384 + center.x),
+           static_cast<std::int16_t>(((std::int32_t)point.x * s + (std::int32_t)point.y * c) / 16384 + center.y)
+         };
 }
 
 
