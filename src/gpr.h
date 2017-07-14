@@ -280,8 +280,7 @@ public:
    * Init vars
    */
   gpr()
-    : primitive_lock_(false)
-    , anti_aliasing_(false)     // no AA as default
+    : anti_aliasing_(false)     // no AA as default
     , pen_shape_(nullptr)       // 1 pixel pen as default
   { }
 
@@ -1182,9 +1181,8 @@ public:
 ///////////////////////////////////////////////////////////////////////////////
 
 protected:
-  bool              primitive_lock_;  // lock for rendering multiple primitives without refresh
-  bool              anti_aliasing_;   // true if AA is enabled
-  pen_shape_type*   pen_shape_;       // actual selected drawing pen
+  bool            anti_aliasing_;   // true if AA is enabled
+  pen_shape_type* pen_shape_;       // actual selected drawing pen
 
 private:
 
