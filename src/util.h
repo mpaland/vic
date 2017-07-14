@@ -44,11 +44,17 @@ typedef struct tag_vertex_type {
   std::int16_t x;
   std::int16_t y;
 
-  bool operator==(tag_vertex_type o) {
+  bool operator==(const tag_vertex_type& o) {
     return (x == o.x) && (y == o.y);
   }
-  bool operator!=(tag_vertex_type o) {
+  bool operator!=(const tag_vertex_type& o) {
     return (x != o.x) || (y != o.y);
+  }
+  tag_vertex_type operator+(const tag_vertex_type& o) {
+    return { static_cast<std::int16_t>(x + o.x), static_cast<std::int16_t>(y + o.y) };
+  }
+  tag_vertex_type operator-(const tag_vertex_type& o) {
+    return { static_cast<std::int16_t>(x - o.x), static_cast<std::int16_t>(y - o.y) };
   }
 } vertex_type;
 
