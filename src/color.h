@@ -203,31 +203,39 @@ namespace color {
    * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{500, 0}, vic::color::yellow}, {{750,100}, vic::color::red} };
    * color = gr.mix({300,0});   // get the color at position 300,0
    */
-  template<std::size_t N>
+  template<std::size_t Max_Pixel>
   class gradient
   {
     // array of the gradient colors and the according color values
-    pixel_type gradient_color_[N];
+    pixel_type  gradient_color_[Max_Pixel];
+    std::size_t size_;
 
   public:
-    // initializer list ctor
+    /**
+     * Initializer list ctor
+     * \param il Initializer list of N pixels
+     */
     gradient(const std::initializer_list<pixel_type>& il)
+      : size_(0U)
     {
-      std::size_t n = 0U;
-      for (std::initializer_list<pixel_type>::const_iterator it = il.begin(); it != il.end(); ++it) {
-        gradient_color_[n++] = *it;
+      for (std::initializer_list<pixel_type>::const_iterator it = il.begin(); (it != il.end()) && (size_ < Max_Pixel); ++it) {
+        gradient_color_[size_++] = *it;
       }
     }
 
-    // array ctor
+    /**
+     * Array ctor
+     * \param gradient_pixels Array of exact Max_Pixel pixels
+     */
     gradient(const pixel_type* gradient_pixels)
     {
-      set(gradient_pixels);
+      set(gradient_pixels, Max_Pixel);
     }
 
-    void set(const pixel_type* gradient_pixels)
+    void set(const pixel_type* gradient_pixels, std::size_t pixel_count)
     {
-      for (std::size_t n = 0U; n < N; ++n) {
+      size_ = pixel_count < Max_Pixel ? pixel_count : Max_Pixel;
+      for (std::size_t n = 0U; n < size_; ++n) {
         gradient_color_[n] = gradient_pixels[n];
       }
     }
@@ -242,13 +250,13 @@ namespace color {
       // calculate the sum of all inverse squared distances from pos to all points
       const std::uint32_t factor = 10000000UL;  // use 10M as factor
       std::uint32_t sd_sum = 0U;
-      for (std::size_t n = 0U; n < N; ++n) {
+      for (std::size_t n = 0U; n < size_; ++n) {
         sd_sum += factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex));
       }
 
       // assemble the mixed color at given pos
       value_type c = 0U;
-      for (std::size_t n = 0U; n < N; ++n) {
+      for (std::size_t n = 0U; n < size_; ++n) {
         c += dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * (factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex))) / sd_sum));
       }
       return c;
@@ -259,20 +267,20 @@ namespace color {
      * \param pos The position of the vertex
      * \return The solid base color at the given position
      */
-    virtual value_type solid(vertex_type pos) const
+    value_type solid(vertex_type pos) const
     {
       // calculate the sum of all inverse squared distances from pos to all points
       const std::uint32_t factor = 10000000UL;  // use 10M as factor
       std::uint32_t sd_sum = 0U;
-      for (std::size_t n = 0U; n < N; ++n) {
+      for (std::size_t n = 0U; n < size_; ++n) {
         sd_sum += factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex));   // use 10M as factor
       }
 
       // get the solid color at given pos
       std::uint32_t lum_max = 0U;
       std::size_t   n_max = 0U;
-      for (std::size_t n = 0U; n < N; ++n) {
-        std::uint32_t lum = 0x100UL * (factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex))) / sd_sum;
+      for (std::size_t n = 0U; n < size_; ++n) {
+        const std::uint32_t lum = 0x100UL * (factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex))) / sd_sum;
         if (lum > lum_max) {
           lum_max = lum;
           n_max   = n;
