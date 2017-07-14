@@ -99,6 +99,25 @@ protected:
     }
   }
 
+  /**
+   * Helper function to change two vertexes so that the first vertex contains top/left
+   * \param v_min_y vertex
+   * \param v_max_y vertex
+   */
+  void vertex_top_left(vertex_type& v_top_left, vertex_type& v_bottom_right) const
+  {
+    if (v_top_left.x > v_bottom_right.x) {
+      const std::int16_t t = v_top_left.x;
+      v_top_left.x     = v_bottom_right.x;
+      v_bottom_right.x = t;
+    }
+    if (v_top_left.y > v_bottom_right.y) {
+      const std::int16_t t = v_top_left.y;
+      v_top_left.y     = v_bottom_right.y;
+      v_bottom_right.y = t;
+    }
+  }
+
 
   class anti_aliasing
   {
