@@ -33,7 +33,7 @@
 #include <cstdint>
 #include <cstddef>
 
-#include <vic_cfg.h>    // use < > here, cause vic_cfg.h may be in some platform folder
+#include "vic_cfg.h"
 #include "util.h"
 #include "color.h"
 
