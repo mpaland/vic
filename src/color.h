@@ -81,22 +81,24 @@ namespace color {
     format_RGB666   = 0x30,   // 18 bit RGB
     format_RGB888   = 0x31,   // 24 bit RGB, no alpha
     format_ARGB4444 = 0x24,   // 16 bit ARGB, 4 bit alpha
-    format_ARGB1555 = 0x25,   // 16 bit ARGB, 1 bit alpha (0 = opaque, 1 = transparent)
+    format_ARGB1555 = 0x25,   // 16 bit ARGB, 1 bit alpha (0 = transparent, 1 = opaque, 1)
     format_ARGB6666 = 0x32,   // 18 bit ARGB, 6 bit alpha
     format_ARGB8888 = 0x40    // 24 bit ARGB, 8 bit alpha (the internal default format of vic)
   } format_type;
 
   /**
    * Color assembly, returns ARGB format out of RGB and alpha components
+   * |   A   |   R   |   G   |   B   |
+   *  31   24 23   16 15    8 7     0
    * \param red Red color
    * \param green Green color
    * \param blue Blue color
-   * \param alpha Alpha level, 0 = opaque, 255 = completely transparent
+   * \param alpha Alpha level, 0 = transparent, 255 = opaque (default)
    * \return ARGB color
    */
-  inline value_type rgb(std::uint8_t _red, std::uint8_t _green, std::uint8_t _blue, std::uint8_t alpha = 0U)
+  inline value_type argb(std::uint8_t _red, std::uint8_t _green, std::uint8_t _blue, std::uint8_t _alpha = 255U)
   {
-    return ((static_cast<value_type>(alpha)  << 24U) |
+    return ((static_cast<value_type>(_alpha) << 24U) |
             (static_cast<value_type>(_red)   << 16U) |
             (static_cast<value_type>(_green) <<  8U) |
             (static_cast<value_type>(_blue)  <<  0U));
@@ -107,10 +109,10 @@ namespace color {
    * \param hue Hue in degree
    * \param saturation Saturation from 0-100
    * \param value Value 
-   * \param alpha Alpha level, 0 = opaque, 255 = completely transparent
+   * \param alpha Alpha level, 0 = completely transparent, 255 = opaque (default)
    * \return ARGB color
    */
-  inline value_type hsv(const std::uint16_t hue, const std::uint8_t saturation, const std::uint8_t value, const std::uint8_t alpha = 0U)
+  inline value_type hsv(const std::uint16_t hue, const std::uint8_t saturation, const std::uint8_t value, const std::uint8_t alpha = 255U)
   {
     const std::uint16_t h   = hue % 360U;
     const std::uint16_t hi  = static_cast<std::uint16_t>(h / 60U);
@@ -137,14 +139,14 @@ namespace color {
             (static_cast<value_type>(b)     <<  0U));
   }
 
-  // color channel values out of 32BBP ARGB color
+  // get single color channel out of 32 bit ARGB color
   inline std::uint8_t get_alpha(value_type color) { return static_cast<std::uint8_t>((color & 0xFF000000UL) >> 24U); }
   inline std::uint8_t get_red  (value_type color) { return static_cast<std::uint8_t>((color & 0x00FF0000UL) >> 16U); }
   inline std::uint8_t get_green(value_type color) { return static_cast<std::uint8_t>((color & 0x0000FF00UL) >>  8U); }
   inline std::uint8_t get_blue (value_type color) { return static_cast<std::uint8_t>((color & 0x000000FFUL));        }
 
-  // modify single color in 32BBP ARGB color
-  inline value_type set_alpha(value_type color, std::uint8_t alpha)  { return (color & 0x00FFFFFFUL) | (static_cast<std::uint32_t>(alpha)  << 24U); }
+  // modify/set single color channel in 32 bit ARGB color
+  inline value_type set_alpha(value_type color, std::uint8_t _alpha) { return (color & 0x00FFFFFFUL) | (static_cast<std::uint32_t>(_alpha) << 24U); }
   inline value_type set_red  (value_type color, std::uint8_t _red)   { return (color & 0xFF00FFFFUL) | (static_cast<std::uint32_t>(_red)   << 16U); }
   inline value_type set_green(value_type color, std::uint8_t _green) { return (color & 0xFFFF00FFUL) | (static_cast<std::uint32_t>(_green) <<  8U); }
   inline value_type set_blue (value_type color, std::uint8_t _blue)  { return (color & 0xFFFFFF00UL) | (static_cast<std::uint32_t>(_blue));         }
@@ -188,9 +190,59 @@ namespace color {
   inline value_type mix(value_type foregound, value_type backgound, std::uint8_t lum)
   { return (dim(foregound, lum) + dim(backgound, 0xFFU - lum)); }
 
-  // combine foreground color with background color in relation to the foreground alpha channel
-  inline value_type mix_alpha(value_type foregound, value_type backgound)
-  { return !color::get_alpha(foregound) ? foregound : mix(backgound, foregound, get_alpha(foregound)); }
+  /**
+   * Return true if color is opaque
+   * \param color Color to test
+   * \return True if color is opaque
+   */
+  inline bool is_opaque(value_type color)
+  { return (color & 0xFF000000UL) == 0xFF000000UL; }
+
+  /**
+   * Combine two colors in relation to the alpha channel
+   * Porter-Duff composition is used: C = (aF * F + (255 - aF) * aB * B) / (aF + (255 - aF) * aB)
+   * \param front_color Color over back_color
+   * \parem back_color Color below front_color
+   * \return Resulting color
+   */
+  inline value_type alpha_blend(value_type front_color, value_type back_color)
+  {
+    if (is_opaque(front_color)) {
+      return front_color;
+    }
+
+    const std::uint16_t aF  = get_alpha(front_color);
+    const std::uint16_t aB  = get_alpha(back_color);
+    const std::uint16_t aFB = aB * (255U - aF) / 255U;
+
+    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + aFB * get_red(back_color))   / (aF + aFB)),
+                static_cast<std::uint8_t>((aF * get_green(front_color) + aFB * get_green(back_color)) / (aF + aFB)),
+                static_cast<std::uint8_t>((aF * get_blue(front_color)  + aFB * get_blue(back_color))  / (aF + aFB)),
+                static_cast<std::uint8_t>(aF + aFB)
+               );
+  }
+
+  /**
+   * Convert an ARGB color to an RGB opaque color in relation to an opaque background color
+   * This function is primary used to convert the internal 32bit ARGB color to a discrete display color.
+   * \param front_color Color over back_color
+   * \parem opaque_background Opaque background color (alpha channel doesn't care)
+   * \return Resulting color, alpha is set to 255 (opaque)
+   */
+  inline value_type argb_to_rgb(value_type front_color, value_type opaque_background)
+  {
+    if (is_opaque(front_color)) {
+      return front_color;
+    }
+
+    const std::uint16_t aF = get_alpha(front_color);
+
+    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + (255 - aF) * get_red(opaque_background))   / 255),
+                static_cast<std::uint8_t>((aF * get_green(front_color) + (255 - aF) * get_green(opaque_background)) / 255),
+                static_cast<std::uint8_t>((aF * get_blue(front_color)  + (255 - aF) * get_blue(opaque_background))  / 255),
+                255U
+               );
+  }
 
 
   //////////////////////////////////////////////////////////////////////////
@@ -295,7 +347,7 @@ namespace color {
   // P R E D E F I N E D   S T O C K   C O L O R S
 
   // static RGB color assembly
-  template <std::uint8_t Red, std::uint8_t Green, std::uint8_t Blue, std::uint8_t Alpha = 0U>
+  template <std::uint8_t Red, std::uint8_t Green, std::uint8_t Blue, std::uint8_t Alpha = 255U>
   struct rgb_static {
     static const value_type value = ((static_cast<value_type>(Alpha) << 24U) |
                                      (static_cast<value_type>(Red)   << 16U) |
@@ -305,7 +357,7 @@ namespace color {
 
 
   // no/transparent color
-  const value_type none          = rgb_static<  0,   0,   0, 255>::value;
+  const value_type none          = rgb_static<  0,   0,   0,   0>::value;
   const value_type transparent   = none;
 
   // black, white and gray tones
@@ -334,6 +386,7 @@ namespace color {
   const value_type brightcyan    = rgb_static<  0, 255, 255>::value;
   const value_type brightmagenta = rgb_static<255,   0, 255>::value;
   const value_type brightyellow  = rgb_static<255, 255,   0>::value;
+  const value_type brightgray    = rgb_static<224, 224, 224>::value;
 
   // light tones
   const value_type lightblue     = rgb_static<128, 128, 255>::value;
