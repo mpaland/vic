@@ -593,6 +593,9 @@ public:
    */
   void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
+    // make sure v0 is top/left
+    vertex_top_left(v0, v1);
+
     present_lock();
     box({ static_cast<std::int16_t>(v0.x + border_radius), v0.y }, { static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) });
     box({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v1.x, static_cast<std::int16_t>(v1.y - border_radius) });
@@ -629,6 +632,9 @@ public:
    */
   void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
+    // make sure v0 is top/left
+    vertex_top_left(v0, v1);
+
     present_lock();
     line({ static_cast<std::int16_t>(v1.x - border_radius), v0.y }, { static_cast<std::int16_t>(v0.x + border_radius), v0.y });
     circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,  90U, 180U);
