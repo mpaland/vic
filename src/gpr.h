@@ -1043,7 +1043,7 @@ public:
       // returns true if col != bg_color       && bounding_color == bg_color 
       // returns true if col == bounding_color && bounding_color != bg_color 
       // returns true if col == pen_color
-      inline bool test(vertex_type point)
+      inline bool test(vertex_type point) const
       {
         const color::value_type col = gpr_.drv_pixel_get({ point.x, point.y });
         return (col == gpr_.pen_get_color())                                      ||
@@ -1051,7 +1051,7 @@ public:
                (col != bounding_color_ && bounding_color_ == gpr_.bg_get_color());
       }
 
-      void fill(vertex_type start)
+      void fill(vertex_type& start)
       {
         stack_push({ start.x, static_cast<std::int16_t>(start.x + 1), start.y, 0, 1U, 1U });
         gpr_.pixel_set({ start.x, start.y });
@@ -1105,7 +1105,7 @@ public:
       }
 
     public:
-      floodfill(gpr& _gpr, vertex_type start, color::value_type bounding_color)
+      floodfill(gpr& _gpr, vertex_type& start, color::value_type bounding_color)
       : gpr_(_gpr)
       , bounding_color_(bounding_color)
       , stack_count_(0U)
