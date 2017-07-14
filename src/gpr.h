@@ -410,7 +410,7 @@ public:
 
 
   /**
-   * Return the color of the pixel (is a slim wrapper for drv_pixel_get)
+   * Return the color of the pixel (is a slim wrapper for drv_pixel_get, which is protected)
    * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
@@ -601,7 +601,7 @@ public:
     disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 1U);
     disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 2U);
     disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 3U);
-    present_lock(false);
+    present_lock(false);    // unlock and present
   }
 
 
@@ -929,11 +929,11 @@ public:
     present_lock();
 
     // angle:
-    //   0� = 3 o'clock
-    //   0� -  89�: Q1 (top/right)
-    //  90� - 179�: Q2 (top/left)
-    // 180� - 269�: Q3 (bottom/left)
-    // 270� - 359�: Q4 (bottom/right)
+    //   0° = 3 o'clock
+    //   0° -  89°: Q1 (top/right)
+    //  90° - 179°: Q2 (top/left)
+    // 180° - 269°: Q3 (bottom/left)
+    // 270° - 359°: Q4 (bottom/right)
 
     bool second_half = false;
     std::uint16_t end_angle2 = end_angle;
@@ -998,7 +998,7 @@ public:
    * Fill region up to the bounding color with the drawing color
    * Fill routine is only working on displays which support drv_pixel_get() (or using the framebuffer ctrl)
    * \param start Start value inside region to fill
-   * \param bounding_color Color of the surrounding bound or bg_color to fill all which is not bg_color
+   * \param bounding_color Color of the surrounding bound or bg_color to fill all what is of bg_color
    * \return true if successful
    */
   void fill(vertex_type start, color::value_type bounding_color)
