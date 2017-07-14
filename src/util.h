@@ -64,7 +64,7 @@ typedef struct tag_vertex_type {
  */
 typedef struct tag_pixel_type {
   vertex_type   vertex;   // vertex
-  std::uint32_t color;    // ARGB color
+  std::uint32_t color;    // ARGB 8-8-8-8 color
 } pixel_type;
 
 
@@ -152,7 +152,7 @@ inline std::int16_t orient_2d(vertex_type a, vertex_type b, vertex_type c)
  * \param angle Angle in degree
  * \return sin(x) * 16384
  */
-inline std::int16_t sin(std::int16_t angle)
+std::int16_t sin(std::int16_t angle)
 {
   static const std::int16_t sin90[90] = {
         0,   286,   572,   857,  1143,  1428,  1713,  1997,  2280,  2563,
