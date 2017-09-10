@@ -1124,48 +1124,57 @@ public:
   /**
    * Move display area
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param source Source vertex
-   * \param destination Destination vertex
+   * \param source Source top/left vertex
+   * \param destination Destination top/left vertex
    * \param width Width of the area
    * \param height Height of the area
    */
   virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
-//virtual void move(vertex_type orig_top_left, vertex_type orig_bottom_right, vertex_type dest_top_left)
   {
-    std::uint16_t w, h;
     if (source.x < destination.x) {
       if (source.y < destination.y) {
-        for (h = height; h != 0U; --h) {
-          for (w = width; w != 0U; --w) {
-            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
+        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
+            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
           }
         }
       }
       else {
-        for (h = 0U; h < height; ++h) {
-          for (w = width; w != 0U; --w) {
-            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
+        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
+          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
+            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
           }
         }
       }
     }
     else {
       if (source.y < destination.y) {
-        for (h = height; h != 0U; --h) {
-          for (w = 0U; w < width; ++w) {
-            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
+        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
+            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
           }
         }
       }
       else {
-        for (h = 0U; h < height; ++h) {
-          for (w = 0U; w < width; ++w) {
-            drv_pixel_set_color({ static_cast<std::int16_t>(destination.x + w), static_cast<std::int16_t>(destination.y + h) }, drv_pixel_get({ static_cast<std::int16_t>(source.x + w), static_cast<std::int16_t>(source.y + h) }));
+        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
+          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
+            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
           }
         }
       }
     }
     present();
+  }
+
+
+  /**
+   * move vertex wrapper
+   * \param orig_top_left Source top/left vertex
+   * \param orig_bottom_right Source bottom/right vertex
+   * \param dest_top_left Destination top/left vertex
+   */
+  inline void move(vertex_type orig_top_left, vertex_type orig_bottom_right, vertex_type dest_top_left) {
+    move(orig_top_left, dest_top_left, orig_bottom_right.x - orig_top_left.x, orig_bottom_right.y - orig_top_left.y);
   }
 
 
