@@ -72,8 +72,27 @@ typedef struct tag_vertex_type {
  * Structure to store coordinates and an associated ARGB color
  */
 typedef struct tag_pixel_type {
-  vertex_type   vertex;   // vertex
+  vertex_type   vertex;
   std::uint32_t color;    // ARGB 8-8-8-8 color
+
+  // operators
+  inline bool operator==(const tag_pixel_type& rhs) const {
+    return vertex == rhs.vertex;
+  }
+  inline bool operator!=(const tag_pixel_type& rhs) const {
+    return vertex != rhs.vertex;
+  }
+  inline tag_pixel_type operator+(const tag_vertex_type& rhs) const {
+    return {{ static_cast<std::int16_t>(vertex.x + rhs.x), static_cast<std::int16_t>(vertex.y + rhs.y) }, color };
+  }
+  inline tag_pixel_type operator-(const tag_vertex_type& rhs) const {
+    return {{ static_cast<std::int16_t>(vertex.x - rhs.x), static_cast<std::int16_t>(vertex.y - rhs.y) }, color };
+  }
+  inline tag_pixel_type& operator+=(const tag_vertex_type& rhs) {
+    vertex.x = static_cast<std::int16_t>(vertex.x + rhs.x);
+    vertex.y = static_cast<std::int16_t>(vertex.y + rhs.y);
+    return *this;
+  }
 } pixel_type;
 
 
