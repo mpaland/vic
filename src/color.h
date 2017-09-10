@@ -214,11 +214,12 @@ namespace color {
     const std::uint16_t aF  = get_alpha(front_color);
     const std::uint16_t aB  = get_alpha(back_color);
     const std::uint16_t aFB = aB * (255U - aF) / 255U;
+    const std::uint16_t aS  = aF + aFB;
 
-    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + aFB * get_red(back_color))   / (aF + aFB)),
-                static_cast<std::uint8_t>((aF * get_green(front_color) + aFB * get_green(back_color)) / (aF + aFB)),
-                static_cast<std::uint8_t>((aF * get_blue(front_color)  + aFB * get_blue(back_color))  / (aF + aFB)),
-                static_cast<std::uint8_t>(aF + aFB)
+    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + aFB * get_red(back_color))   / aS),
+                static_cast<std::uint8_t>((aF * get_green(front_color) + aFB * get_green(back_color)) / aS),
+                static_cast<std::uint8_t>((aF * get_blue(front_color)  + aFB * get_blue(back_color))  / aS),
+                static_cast<std::uint8_t>(aS)
                );
   }
 
@@ -237,9 +238,9 @@ namespace color {
 
     const std::uint16_t aF = get_alpha(front_color);
 
-    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + (255 - aF) * get_red(opaque_background))   / 255),
-                static_cast<std::uint8_t>((aF * get_green(front_color) + (255 - aF) * get_green(opaque_background)) / 255),
-                static_cast<std::uint8_t>((aF * get_blue(front_color)  + (255 - aF) * get_blue(opaque_background))  / 255),
+    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + (255U - aF) * get_red(opaque_background))   / 255U),
+                static_cast<std::uint8_t>((aF * get_green(front_color) + (255U - aF) * get_green(opaque_background)) / 255U),
+                static_cast<std::uint8_t>((aF * get_blue(front_color)  + (255U - aF) * get_blue(opaque_background))  / 255U),
                 255U
                );
   }
