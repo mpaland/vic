@@ -377,13 +377,13 @@ protected:
 
     if (!color_256k) {
       // 64k color mode
-      if (color_pen_is_function()) {
+      if (pen_color_is_function()) {
         for (; v0.x <= v1.x; ++v0.x) {
-          write_data(color_to_head_RGB565(color_pen_get(v0)), 2U);
+          write_data(color_to_head_RGB565(pen_get_color(v0)), 2U);
         }
       }
       else {
-        const std::uint16_t color = color_to_head_RGB565(color_pen_get());
+        const std::uint16_t color = color_to_head_RGB565(pen_get_color());
         for (; v0.x <= v1.x; ++v0.x) {
           write_data(color, 2U);
         }
@@ -391,13 +391,13 @@ protected:
     }
     else {
       // 256k color mode
-      if (color_pen_is_function()) {
+      if (pen_color_is_function()) {
         for (; v0.x <= v1.x; ++v0.x) {
-          write_data(color_to_head_RGB666(color_pen_get(v0)), 3U);
+          write_data(color_to_head_RGB666(pen_get_color(v0)), 3U);
         }
       }
       else {
-        const std::uint32_t color = color_to_head_RGB666(color_pen_get());
+        const std::uint32_t color = color_to_head_RGB666(pen_get_color());
         for (; v0.x <= v1.x; ++v0.x) {
           write_data(color, 3U);
         }
