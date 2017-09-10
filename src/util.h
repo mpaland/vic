@@ -44,17 +44,26 @@ typedef struct tag_vertex_type {
   std::int16_t x;
   std::int16_t y;
 
-  bool operator==(const tag_vertex_type& o) {
-    return (x == o.x) && (y == o.y);
+  // operators
+  inline bool operator==(const tag_vertex_type& rhs) const {
+    return (x == rhs.x) && (y == rhs.y);
   }
-  bool operator!=(const tag_vertex_type& o) {
-    return (x != o.x) || (y != o.y);
+  inline bool operator!=(const tag_vertex_type& rhs) const {
+    return (x != rhs.x) || (y != rhs.y);
   }
-  tag_vertex_type operator+(const tag_vertex_type& o) {
-    return { static_cast<std::int16_t>(x + o.x), static_cast<std::int16_t>(y + o.y) };
+  inline bool operator<(const tag_vertex_type& rhs) const {
+    return (y < rhs.y) || ((y == rhs.y) && (x < rhs.x));
   }
-  tag_vertex_type operator-(const tag_vertex_type& o) {
-    return { static_cast<std::int16_t>(x - o.x), static_cast<std::int16_t>(y - o.y) };
+  inline tag_vertex_type operator+(const tag_vertex_type& rhs) const {
+    return { static_cast<std::int16_t>(x + rhs.x), static_cast<std::int16_t>(y + rhs.y) };
+  }
+  inline tag_vertex_type operator-(const tag_vertex_type& rhs) const {
+    return { static_cast<std::int16_t>(x - rhs.x), static_cast<std::int16_t>(y - rhs.y) };
+  }
+  inline tag_vertex_type& operator+=(const tag_vertex_type& rhs) {
+    x = static_cast<std::int16_t>(x + rhs.x);
+    y = static_cast<std::int16_t>(y + rhs.y);
+    return *this;
   }
 } vertex_type;
 
