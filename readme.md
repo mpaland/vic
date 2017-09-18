@@ -1,8 +1,9 @@
 # Video Interface Controller library
-#### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays.
-If you need a robust, universal and embedded library for rendering text and graphics on various displays - VIC is your library!
+#### VIC is an universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays.
 
-**The VIC lib is beta and still under heavy development. If you have specific questions, do not hesitate to contact me!**
+
+**The VIC lib is beta and still under heavy development. If you have specific questions, do not hesitate to contact me!  
+v0.3.0 with major design improvements is coming up!**
 
 ## Highlights
 - Universal library for graphic and alpha numeric displays
@@ -11,16 +12,17 @@ If you need a robust, universal and embedded library for rendering text and grap
 - Platform independent driver design, the very same low level display driver runs everywhere
 - High performance primitive rendering of lines, circles, triangles, boxes, text etc.
 - Support of advanced controls like gauges, bars, (radio) buttons, checkboxes etc.
-- Sprite support for moving objects
+- Support of unlimited number of sprites for moving objects
 - Multiple heads support, as many displays as you may like in one system
-- Multihead driver, combine any number of single displays to one big display
+- Multihead driver, combine any number of (even different) single displays to one big display
 - Support of various color formats from 1 to 32 bpp displays
 - Support for different font formats (proportional, monospace), ASCII/UTF-8 support
-- Pen shape support for line drawing
+- Brush shape support for line drawing
 - Antialiasing support for smooth primitive and text/font rendering
 - Framebuffer and viewport support
 - Clipping region support
 - Gradient color rendering support
+- Alpha blending support
 - NO floating point math, only fast integer operations
 - VERY clean and stable C++ code, LINT and L4 warning free, automotive ready
 - Very easy to use and fast implemention of own/new display drivers
@@ -28,7 +30,7 @@ If you need a robust, universal and embedded library for rendering text and grap
 - MIT license
 
 ## What is VIC NOT?
-vic is not meant to be a full bloated window manager, widgets, dialogs, theme rendering framework.
+VIC is not meant to be a full bloated window manager, widgets, dialogs, theme rendering framework.
 If you need an advanced windowed GUI, there are many other cool libraries around, like µC/GUI, StWin etc.
 
 ## To be done (and implemented)
@@ -48,7 +50,7 @@ Of cource, native rendering on a specialized LCD controller is always faster and
 
 
 ## Class design
-![](https://cdn.rawgit.com/mpaland/vic/master/docs/viclib.svg)
+![](https://cdn.rawgit.com/mpaland/vic/master/doc/vgxlib.svg)
 
 ### base
 The base class provides common functions.
