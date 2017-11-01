@@ -47,7 +47,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_MULTIHEAD_VERSION   "Multihead driver 1.20"
+#define VIC_DRV_MULTIHEAD_VERSION   "Multihead driver 2.0.0"
 
 
 namespace vic {
@@ -107,7 +107,7 @@ public:
     // eval graphic/text info of all heads
     is_graphic_ = false;
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      is_graphic_ |= head_[i].head->drv_is_graphic();
+      is_graphic_ |= head_[i].head->is_graphic();
     }
   }
 
@@ -117,130 +117,61 @@ public:
    */
   ~multihead()
   {
-    drv_shutdown();
+    shutdown();
   }
 
 
 protected:
 
   // driver init
-  inline virtual void drv_init()
+  virtual void init()
   {
     // init all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->drv_init();
+      head_[i].head->init();
     }
   }
 
 
   // driver shutdown
-  inline virtual void drv_shutdown()
+  virtual void shutdown()
   {
     // shutdown all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->drv_shutdown();
+      head_[i].head->shutdown();
     }
   }
 
 
   // get driver name and version
-  inline virtual const char* drv_version() const final
+  inline virtual const char* version() const
   {
     return (const char*)VIC_DRV_MULTIHEAD_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const final
+  inline virtual bool is_graphic() const
   {
     return is_graphic_;
   }
 
 
   // clear display, all pixels off (black)
-  inline virtual void drv_cls()
+  inline virtual void cls()
   {
     // clear all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->drv_cls();
+      head_[i].head->cls();
     }
   }
 
 
   // rendering done (copy RAM / frame buffer to screen)
-  inline virtual void drv_present()
+  inline virtual void present()
   {
     // call present of all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->drv_present();
-    }
-  }
-
-
-  // set display brightness or backlight
-  virtual void brightness_set(std::uint8_t level)
-  {
-    // set brightness of all heads
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->brightness_set(level);
-    }
-  }
-
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // C O L O R   F U N C T I O N S
-
-  /**
-   * Set the drawing color
-   * \param color New drawing color in ARGB format
-   */
-  inline virtual void pen_set_color(color::value_type pen_color)
-  {
-    base::pen_set_color(pen_color);
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->pen_set_color(pen_color);
-    }
-  }
-
-
-  /**
-   * Set the callback function for dynmic pen color
-   * \param pen_color_function Function for dynamic pen color
-   */
-  inline virtual void pen_set_color(pen_color_function_type pen_color_function)
-  {
-    base::pen_set_color(pen_color_function);
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->pen_set_color(pen_color_function);
-    }
-  }
-
-
-  /**
-   * Get the actual pen (drawing) color
-   * \param point Point for which the color is needed
-   * \return Actual drawing color in ARGB format
-   */
-  inline virtual color::value_type pen_get_color(vertex_type point) const
-  {
-    // select to right head and read the pixel
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
-        return head_[i].head->pen_get_color({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
-      }
-    }
-    return base::pen_get_color(point);
-  }
-
-
-  /**
-   * Set the background color (e.g. for cls)
-   * \param background_color New background color in ARGB format
-   */
-  inline virtual void bg_set_color(color::value_type background_color)
-  {
-    base::bg_set_color(background_color);
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->bg_set_color(background_color);
+      head_[i].head->present();
     }
   }
 
@@ -253,19 +184,11 @@ protected:
    * \param point Pixel coordinates
    * \param color Color of pixel in ARGB format
    */
-  inline virtual void drv_pixel_set_color(vertex_type point, color::value_type color)
+  inline virtual void pixel_set(vertex_type point, color::value_type color)
   {
-    // check clipping
-    if (!clipping_.is_inside(point)) {
-      // outside clipping region
-      return;
-    }
-
     // select to right head and set the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
-        head_[i].head->drv_pixel_set_color({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) }, color);
-      }
+      head_[i].head->pixel_set({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) }, color);
     }
   }
 
@@ -275,31 +198,17 @@ protected:
    * \param point Coordinates of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type drv_pixel_get(vertex_type point)
+  inline virtual color::value_type pixel_get(vertex_type point)
   {
     // select to right head and read the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
-        return head_[i].head->drv_pixel_get({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
+      const vertex_type p = { static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) };
+      if (head_[i].head->screen_is_inside(p)) {
+        return head_[i].head->pixel_get(p);
       }
     }
     // pixel not found
-    return color::black;
-  }
-
-
-  /**
-   * Set pixel in the actual pen color
-   * \param point Pixel coordinates
-   */
-  inline virtual void pixel_set(vertex_type point)
-  {
-    // select to right head and set the pixel
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      if (head_[i].head->screen_is_inside({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) })) {
-        head_[i].head->pixel_set({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) });
-      }
-    }
+    return color::none;
   }
 
 
@@ -307,40 +216,26 @@ protected:
   // F U N C T I O N S   F O R   A L P H A   H E A D S
 
   /**
-   * Select the font
-   * \param Reference to font to use
-   * \return true if font set successfully
+   * Set the new text position
+   * \param pos Position in pixel on graphic displays, position in chars on text displays
    */
-  inline virtual void text_font_select(const font::font_type& font)
+  inline virtual void text_pos(std::int16_t x, std::int16_t y)
   {
+    // set the individual position on every head
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->text_font_select(font);
+      head_[i].head->text_pos(static_cast<std::int16_t>(x - head_[i].viewport.x), static_cast<std::int16_t>(y - head_[i].viewport.y));
     }
   }
 
 
  /**
-  * Set the text mode
+  * Set inverse text mode
   * \param mode Set normal or inverse video
-  * \return true if successful
   */
-  inline virtual void text_mode(text_mode_type mode)
+  inline virtual void text_set_inverse(bool inverse)
   {
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->text_mode(mode);
-    }
-  }
-
-
-  /**
-   * Set the new text position
-   * \param pos Position in pixel on graphic displays, position in chars on text displays
-   */
-  inline virtual void text_pos(vertex_type pos)
-  {
-    // set the individual position on every head
-    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->text_pos({ static_cast<std::int16_t>(pos.x - head_[i].viewport.x), static_cast<std::int16_t>(pos.y - head_[i].viewport.y) });
+      head_[i].head->text_set_inverse(inverse);
     }
   }
 
@@ -363,16 +258,45 @@ protected:
    * \param string Output string in ASCII/UTF-8 format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  virtual std::uint16_t text_string(const std::uint8_t* string)
+  virtual std::uint16_t text_out(const std::uint8_t* string)
   {
     // each graphic head renders its own string
     std::uint16_t cnt;
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      cnt = head_[i].head->text_string(string);
+      cnt = head_[i].head->text_out(string);
     }
     return cnt;
   }
 
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // D I S P L A Y   C O N T R O L
+  //
+
+  /**
+   * Enable / disable the display
+   * \param enable True to switch the display on, false to switch it off
+   */
+  virtual void display_enable(bool enable = true)
+  {
+    // enable/disable all heads
+    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
+      head_[i].head->display_enable(enable);
+    }
+  }
+
+
+  /**
+   * Set display or backlight brightness
+   * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
+   */
+  virtual void display_brightness(std::uint8_t level)
+  {
+    // set brightness of all heads
+    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
+      head_[i].head->display_brightness(level);
+    }
+  }
 };
 
 } // namespace head
