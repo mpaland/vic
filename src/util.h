@@ -175,13 +175,24 @@ inline T abs(T val)
 
 
 /**
-  * Helper function for fast byte reverse (e.g. 0x80 to 0x01)
-  * \param data Input byte
-  * \return Reversed byte
-  */
+ * Helper function for fast byte reverse (e.g. 0x80 to 0x01)
+ * \param data Input byte
+ * \return Reversed byte
+ */
 inline std::uint8_t byte_reverse(std::uint8_t data)
 {
   return static_cast<std::uint8_t>(((data * 0x0802LU & 0x22110LU) | (data * 0x8020LU & 0x88440LU)) * 0x10101LU >> 16U);
+}
+
+
+/**
+ * Helper function for fast division by 255
+ * \param data Input data
+ * \return data / 255U
+ */
+inline std::uint16_t div255(std::uint16_t data)
+{
+  return static_cast<std::uint16_t>((++data * 257U) >> 16U);
 }
 
 
@@ -198,6 +209,7 @@ inline std::uint32_t distance_squared(vertex_type a, vertex_type b)
 
 
 /**
+ * Orient 2D function
  * \param a Vertex a
  * \param b Vertex b
  * \param c Vertex c
@@ -210,11 +222,12 @@ inline std::int16_t orient_2d(vertex_type a, vertex_type b, vertex_type c)
 
 
 /**
- * Helper function to calculate (lookup) sin(x) normalized to 16384 (to be fast divided by 2^14)
+ * Fast sine function
+ * Calculates (lookup) sin(x) normalized to 16384 (to be fast divided by 2^14)
  * \param angle Angle in degree
  * \return sin(x) * 16384
  */
-std::int16_t sin(std::int16_t angle)
+inline std::int16_t sin(std::int16_t angle)
 {
   static const std::int16_t sin90[90] = {
         0,   286,   572,   857,  1143,  1428,  1713,  1997,  2280,  2563,
@@ -243,7 +256,8 @@ std::int16_t sin(std::int16_t angle)
 
 
 /**
- * Helper function to calculate (lookup) cos(x) normalized to 16384
+ * Fast cosine function
+ * Calculates (lookup) cos(x) normalized to 16384
  * \param angle Angle in degree
  * \return cos(x) * 16384
  */
@@ -254,23 +268,82 @@ inline std::int16_t cos(std::int16_t angle)
 
 
 /**
+ * Helper function to swap two vertexes (as coordinates)
+ * \param v0 First vertex
+ * \param v1 Second vertex
+ */
+inline void vertex_swap(vertex_type& v0, vertex_type& v1)
+{
+  const vertex_type vt = v0;
+  v0 = v1;
+  v1 = vt;
+}
+
+
+/**
+ * Helper function to swap two vertexes so that first vertex contains min x
+ * \param min_x vertex
+ * \param max_x vertex
+ */
+inline void vertex_min_x(vertex_type& min_x, vertex_type& max_x)
+{
+  if (min_x.x > max_x.x) {
+    vertex_swap(min_x, max_x);
+  }
+}
+
+
+/**
+ * Helper function to swap two vertexes that first vertex contains min y
+ * \param min_y vertex
+ * \param max_y vertex
+ */
+inline void vertex_min_y(vertex_type& min_y, vertex_type& max_y)
+{
+  if (min_y.y > max_y.y) {
+    vertex_swap(min_y, max_y);
+  }
+}
+
+
+/**
+ * Helper function to change two vertexes so that the first vertex contains top/left
+ * \param top_left vertex
+ * \param bottom_right vertex
+ */
+inline void vertex_top_left(vertex_type& top_left, vertex_type& bottom_right)
+{
+  if (top_left.x > bottom_right.x) {
+    const std::int16_t t = top_left.x;
+    top_left.x     = bottom_right.x;
+    bottom_right.x = t;
+  }
+  if (top_left.y > bottom_right.y) {
+    const std::int16_t t = top_left.y;
+    top_left.y     = bottom_right.y;
+    bottom_right.y = t;
+  }
+}
+
+
+/**
  * Helper function to rotate a vertex of a given angle in respect to given center
  * \param point Vertex to rotate
  * \param center Rotation center
  * \param angle Rotation angle in degree, direction is math positive (counter clockwise)
  * \return Rotated vertex
  */
-inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int16_t angle)
+inline vertex_type vertex_rotate(const vertex_type& point, const vertex_type& center, std::int16_t angle)
 {
   const std::int32_t s = sin(angle);  // normalized to 16384
   const std::int32_t c = cos(angle);  // normalized to 16384
 
   // translate point to center
-  point = point - center;
+  const vertex_type v = point - center;
 
   // rotate point and translate back
-  return { static_cast<std::int16_t>(((std::int32_t)point.x * c + (std::int32_t)point.y * s) / 16384 + center.x),
-           static_cast<std::int16_t>(((std::int32_t)point.x * s + (std::int32_t)point.y * c) / 16384 + center.y)
+  return { static_cast<std::int16_t>(((std::int32_t)v.x * c + (std::int32_t)v.y * s) / 16384 + center.x),
+           static_cast<std::int16_t>(((std::int32_t)v.x * s + (std::int32_t)v.y * c) / 16384 + center.y)
          };
 }
 
