@@ -1,5 +1,5 @@
 # Video Interface Controller library
-#### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays.
+#### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems.
 If you need a robust, universal and embedded library for rendering text and graphics on various displays - VIC is your library!
 
 **The VIC lib is beta and still under heavy development. If you have specific questions, do not hesitate to contact me!**
@@ -50,9 +50,6 @@ Of cource, native rendering on a specialized LCD controller is always faster and
 ## Class design
 ![](https://cdn.rawgit.com/mpaland/vic/master/docs/viclib.svg)
 
-### base
-The base class provides common functions.
-
 ### gpr
 The Graphic Primitive Renderer provides fast rendering functions for graphic primitives.
 The `gpr` doesn't use any floating point math, only fast integer operations.
@@ -63,6 +60,12 @@ contribure!
 ### txr
 The Text Renderer is responsible for rendering text fonts on graphic displays. It supports monospaced and proportional fonts.
 
+### dc
+Drawing context
+
+### tc
+Text context
+
 ### drv
 The base class of the head driver which adds some mandatory driver routines.
 All color calculations are done in ARGB 32 bit format. If a display has less colors, like 15 bit RGB, the specific driver
@@ -71,6 +74,9 @@ class is responsible for color reduction. Conversion routines provides the `drv`
 ### head
 The specific display driver. A display together with its controller is referenced here as `head`. And `head` is the namespace of all specific drivers.
 All virtual functions of the `gpr` and `drv` are overridden here.
+
+### sprite
+
 
 ### ctrl
 The base class for advanced controls like gauges, progress bars, checkboxes, buttons etc.
