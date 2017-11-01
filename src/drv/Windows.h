@@ -38,7 +38,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_WINDOWS_VERSION   "Windows driver 3.01"
+#define VIC_DRV_WINDOWS_VERSION   "Windows driver 4.00"
 
 
 namespace vic {
@@ -88,13 +88,13 @@ public:
    */
   ~windows()
   {
-    drv_shutdown();
+    shutdown();
   }
 
 
 protected:
 
-  virtual void drv_init() final
+  virtual void init() final
   {
     // create init event
     wnd_init_ev_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -114,52 +114,71 @@ protected:
   }
 
 
-  virtual void drv_shutdown() final
+  virtual void shutdown() final
   {
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
   }
 
 
-  inline virtual const char* drv_version() const final
+  inline virtual const char* version() const final
   {
     return (const char*)VIC_DRV_WINDOWS_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const final
+  inline virtual bool is_graphic() const final
   {
     // This Windows driver is a graphic display
     return true;
   }
 
 
-  virtual void drv_cls() final
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+  virtual void cls(color::value_type bk_color) final
   {
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
-    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
+    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bk_color), color::get_green(bk_color), color::get_blue(bk_color)));
+    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bk_color), color::get_green(bk_color), color::get_blue(bk_color)));
     ::Rectangle(hmemdc_, 0, 0, screen_width() * zoom_x_, screen_height() * zoom_y_);  // needs to be 1 pixel bigger for Windows API
     ::SelectObject(hmemdc_, org);
   }
 
- 
+
+  /**
+   * Rendering is done (copy RAM / frame buffer to screen)
+   */
+  virtual void present() final
+  {
+    // copy memory bitmap to viewport
+    HDC hDC = ::GetDC(hwnd_);
+    ::BitBlt(hDC, viewport_get().x * zoom_x_, viewport_get().y * zoom_y_, viewport_width() * zoom_x_,viewport_height() * zoom_y_, hmemdc_, 0, 0, SRCCOPY);
+    ::ReleaseDC(hwnd_, hDC);
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
+
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
    * \param x X value
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color) final
+  virtual inline void pixel_set(vertex_type point, color::value_type color) final
   {
     // check limits and clipping
-    if (!screen_is_inside(point) || !clipping_.is_inside(point)) {
+    if (!screen_is_inside(point)) {
       // out of bounds or outside clipping region
       return;
     }
 
-    color = !color::get_alpha(color) ? color : color::mix_alpha(color, drv_pixel_get(point));
     for (int c = 0; c < zoom_x_; ++c) {
       for (int r = 0; r < zoom_y_; ++r) {
         (void)::SetPixel(hmemdc_, point.x * zoom_x_ + c, point.y * zoom_y_ + r, RGB(color::get_red(color), color::get_green(color), color::get_blue(color)));
@@ -174,28 +193,16 @@ protected:
    * \param y Y value
    * \return Color of pixel in ARGB format
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type point) final
+  virtual inline color::value_type pixel_get(vertex_type point) final
   {
     // check limits and clipping
     if (!screen_is_inside(point)) {
       // out of bounds or outside clipping region
-      return vic::color::black;
+      return color::none;
     }
 
     COLORREF clr = ::GetPixel(hmemdc_, point.x * zoom_x_, point.y * zoom_y_);
-    return color::rgb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
-  }
-
-
-  /**
-   * Rendering is done (copy RAM / frame buffer to screen)
-   */
-  virtual void drv_present() final
-  {
-    // copy memory bitmap to viewport
-    HDC hDC = ::GetDC(hwnd_);
-    ::BitBlt(hDC, viewport_get().x * zoom_x_, viewport_get().y * zoom_y_, viewport_width() * zoom_x_,viewport_height() * zoom_y_, hmemdc_, 0, 0, SRCCOPY);
-    ::ReleaseDC(hwnd_, hDC);
+    return color::argb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
   }
 
 
@@ -329,13 +336,13 @@ public:
    */
   ~windows_text()
   {
-    drv_shutdown();
+    shutdown();
   }
 
 
 protected:
 
-  virtual void drv_init() final
+  virtual void init() final
   {
     // create init event
     wnd_init_ev_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
@@ -354,75 +361,54 @@ protected:
     ::WaitForSingleObject(wnd_init_ev_, INFINITE);
 
     // clear screen
-    drv_cls();
+    cls();
   }
 
 
-  virtual void drv_shutdown() final
+  virtual void shutdown() final
   {
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
   }
 
 
-  virtual inline const char* drv_version() const final
+  virtual inline const char* version() const final
   {
     return (const char*)VIC_DRV_WINDOWS_VERSION;
   }
 
 
-  virtual inline bool drv_is_graphic() const final
+  virtual inline bool is_graphic() const final
   {
     // This Windows text driver is an alpha numeric (text only) display
     return false;
   }
 
 
-  virtual void drv_cls() final
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+  virtual void cls() final
   {
     for (std::int16_t y = 0; y < screen_height(); y++) {
       for (std::int16_t x = 0; x < screen_width(); x++) {
         frame_buffer_[x][y] = ' ';
       }
     }
-    drv_present();
+    present();
   }
-
- 
-  /**
-   * Set pixel in given color, the color doesn't change the actual drawing color
-   * Unused
-   */
-  virtual inline void drv_pixel_set_color(vertex_type, color::value_type) final
-  { }
-
-
-  /**
-   * Get pixel color - unsued
-   * \return Dumy color (black)
-   */
-  virtual inline color::value_type drv_pixel_get(vertex_type) final
-  {
-    return color::black;
-  }
-
-
-  /**
-   * Text mode is ignored, BA6x has no inverse video mode
-   */
-  virtual void drv_text_mode(text_mode_type) final
-  { }
 
 
   /**
    * Rendering is done (copy RAM / frame buffer to screen)
    */
-  virtual void drv_present() final
+  virtual void present() final
   {
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
-    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
+//    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
+//    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
     ::Rectangle(hmemdc_, 0, 0, window_size_x_, window_size_y_);
     ::SelectObject(hmemdc_, org);
 
@@ -462,6 +448,20 @@ protected:
   }
 
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // A L P H A   T E X T   F U N C T I O N S
+  //
+
+  /**
+   * Set the new text position
+   * \param pos Position in chars on text displays (0/0 is left/top)
+   */
+  inline virtual void text_set_pos(std::int16_t x, std::int16_t y)
+  {
+    text_x_pos_ = x;
+    text_y_pos_ = y;
+  }
+
   /**
    * Output a single ASCII/UNICODE char at the actual cursor position
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
@@ -474,12 +474,12 @@ protected:
     }
 
     // check limits
-    if (screen_is_inside({ text_x_act_, text_y_act_ })) {
-      frame_buffer_[text_x_act_][text_y_act_] = ch;
+    if (screen_is_inside({ text_x_pos_, text_y_pos_ })) {
+      frame_buffer_[text_x_pos_][text_y_pos_] = ch;
     }
 
     // always increment the text position
-    text_x_act_++;
+    text_x_pos_++;
   }
 
 
@@ -592,6 +592,9 @@ public:
   std::uint16_t char_y_margin_;
   std::uint16_t char_x_padding_;
   std::uint16_t char_y_padding_;
+
+  std::int16_t  text_x_pos_;
+  std::int16_t  text_y_pos_;
 
   std::int16_t  window_x_;                // x coordinate of output window
   std::int16_t  window_y_;                // y coordinate of output window
