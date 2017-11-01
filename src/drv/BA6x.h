@@ -43,7 +43,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_BA6X_VERSION  "Wincor BA6x driver 1.30"
+#define VIC_DRV_BA6X_VERSION  "Wincor BA6x driver 2.0.0"
 
 
 namespace vic {
@@ -94,49 +94,49 @@ public:
    */
   ~BA6x()
   {
-    drv_shutdown();
+    shutdown();
   }
 
 
 protected:
 
-  virtual void drv_init() final
+  virtual void init() final
   {
     // init the interface
     io::dev::init(device_handle_);
 
-    // BX6x needs about 700 ms time to get ready
+    // BX6x needs about 750 ms time to get ready
     io::delay(750U);
 
     // clear display
-    drv_cls();
+    cls();
 
     // explicit cursor home
     text_pos({ 0, 0 });
   }
 
 
-  virtual void drv_shutdown() final
+  virtual void shutdown() final
   {
     // clear buffer
-    drv_cls();
+    cls();
   }
 
 
-  inline virtual const char* drv_version() const final
+  inline virtual const char* version() const final
   {
     return (const char*)VIC_DRV_BA6X_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const final
+  inline virtual bool is_graphic() const final
   {
     // BA6x is an alpha numeric display
     return false;
   }
 
 
-  inline virtual void drv_cls() final
+  inline virtual void cls() final
   {
     // send 1B 5B 32 4A
     const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x32U, 0x4AU };
@@ -146,25 +146,11 @@ protected:
   }
 
 
-  inline virtual void drv_pixel_set_color(vertex_type, color::value_type) final
-  { }
-
-
-  inline virtual color::value_type drv_pixel_get(vertex_type) final
-  {
-    return color::black; 
-  }
-
-
-  inline virtual void drv_present() final
-  { }
-
-
   /**
    * Set cursor
    * \param pos New cursor position. 0,0 is left,top
    */
-  virtual void text_pos(vertex_type pos) final
+  virtual void text_pos(std::int16_t x, std::int16_t y) final
   {
     txr::text_pos(pos);   // store pos via base class
 
@@ -205,13 +191,6 @@ protected:
 
 
   /**
-   * Text mode is ignored, BA6x has no inverse video mode
-   */
-  virtual void text_mode(text_mode_type) final
-  { }
-
-
-  /**
    * Output one character at the actual position
    * \param ch Output character in ASCII/UNICODE (NOT UTF-8) format
    */
@@ -228,7 +207,7 @@ protected:
       write_command(reinterpret_cast<std::uint8_t*>(&ch), 1U);
     }
 
-    // inc x and reposition cursor if at end of line and implicit CR occured
+    // inc x and reposition cursor if an implicit CR occured at end of the line 
     if (++text_x_act_ == static_cast<std::int16_t>(screen_width())) {
       text_pos({ text_x_act_, text_y_act_ });
     }
@@ -385,8 +364,8 @@ private:
   {
     // write data command is 02H, 00H, Data Count, Data Bytes
     // maximum length of one message the display can handle is BA6X_MAX_CMD_LENGTH
-    std::uint16_t  offset = 0U;
-    std::uint8_t   msg[BA6X_MAX_CMD_LENGTH];
+    std::uint16_t offset = 0U;
+    std::uint8_t  msg[BA6X_MAX_CMD_LENGTH];
 
     do {
       const std::uint16_t blk_size = data_count - offset > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : data_count - offset;
