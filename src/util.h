@@ -96,6 +96,40 @@ typedef struct tag_pixel_type {
 } pixel_type;
 
 
+/**
+ * Structure to store rectangles
+ */
+typedef struct tag_rect_type {
+  std::int16_t left;
+  std::int16_t top;
+  std::int16_t right;
+  std::int16_t bottom;
+
+  inline vertex_type top_left() const
+  { return *((vertex_type*)this); }
+
+  inline vertex_type bottom_right() const
+  { return *((vertex_type*)this + 1U); }
+
+  inline std::int16_t width() const
+  { return right - left; }
+
+  inline std::int16_t height() const
+  { return bottom - top; }
+
+  inline bool contain(const vertex_type& vertex) const
+  { return (vertex.x <= right) && (vertex.y <= bottom) && (vertex.x >= left) && (vertex.y >= top); }
+
+  // operators
+  inline bool operator==(const tag_rect_type& rhs) const {
+    return (right == rhs.right) && (bottom == rhs.bottom) && (left == rhs.left) && (top == rhs.top);
+  }
+  inline bool operator!=(const tag_rect_type& rhs) const {
+    return !(*this == rhs);
+  }
+} rect_type;
+
+
 namespace util {
 
 
