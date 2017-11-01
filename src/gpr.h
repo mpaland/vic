@@ -32,93 +32,32 @@
 #ifndef _VIC_GPR_H_
 #define _VIC_GPR_H_
 
-#include "base.h"
+#include "vic_cfg.h"
+#include "util.h"
+#include "color.h"
+#include "shader/base.h"
 
 
 namespace vic {
 
 
-typedef enum tag_pen_style_type {
-  pen_style_solid = 0,
-  pen_style_dash,
-  pen_style_dot,
-  pen_style_dashdot
-} pen_style_type;
-
-
-typedef struct tag_pen_shape_type {
-  std::uint16_t       width;          // width of pen shape
-  std::uint16_t       height;         // height of pen shape
-  color::value_type   color;          // color of pen
-  pen_style_type      style;          // style of pen
-  std::uint8_t        style_ctl;      // internal style control, set to 0 on init
-  const std::uint8_t* alpha;          // pen shape as alpha value array
-} pen_shape_type;
-
-
 /**
  * Graphic Primitive Renderer
  */
-class gpr : virtual public base
+class gpr
 {
 protected:
 
-  /**
-   * Helper function to swap two vertexes (as coordinates)
-   * \param v0 First vertex
-   * \param v1 Second vertex
-   */
-  inline void vertex_swap(vertex_type& v0, vertex_type& v1) const
-  {
-    const vertex_type vt = v0;
-    v0 = v1;
-    v1 = vt;
-  }
+  // virtual context/driver functions
+  virtual std::uint16_t     screen_width(void) const = 0;
+  virtual std::uint16_t     screen_height(void) const = 0;
+  virtual shader::base*     shader_pipe(void) const = 0;
+  virtual void              present(void) = 0;
+  virtual void              present_lock(bool lock = true) = 0;
 
   /**
-   * Helper function to swap two vertexes so that first vertex contains min x
-   * \param v_min_x vertex
-   * \param v_max_x vertex
+   * Anti Alising renderer
    */
-  inline void vertex_min_x(vertex_type& v_min_x, vertex_type& v_max_x) const
-  {
-    if (v_min_x.x > v_max_x.x) {
-      vertex_swap(v_min_x, v_max_x);
-    }
-  }
-
-  /**
-   * Helper function to swap two vertexes that first vertex contains min y
-   * \param v_min_y vertex
-   * \param v_max_y vertex
-   */
-  inline void vertex_min_y(vertex_type& v_min_y, vertex_type& v_max_y) const
-  {
-    if (v_min_y.y > v_max_y.y) {
-      vertex_swap(v_min_y, v_max_y);
-    }
-  }
-
-  /**
-   * Helper function to change two vertexes so that the first vertex contains top/left
-   * \param v_min_y vertex
-   * \param v_max_y vertex
-   */
-  void vertex_top_left(vertex_type& v_top_left, vertex_type& v_bottom_right) const
-  {
-    if (v_top_left.x > v_bottom_right.x) {
-      const std::int16_t t = v_top_left.x;
-      v_top_left.x     = v_bottom_right.x;
-      v_bottom_right.x = t;
-    }
-    if (v_top_left.y > v_bottom_right.y) {
-      const std::int16_t t = v_top_left.y;
-      v_top_left.y     = v_bottom_right.y;
-      v_bottom_right.y = t;
-    }
-  }
-
-
   class anti_aliasing
   {
     gpr&        gpr_;
@@ -131,10 +70,10 @@ protected:
       , pipe_idx_(0)
     { }
 
-    inline void render(vertex_type v)
+    void render(vertex_type v)
     {
 //WIP
-      gpr_.drv_pixel_set_color({v.x, v.y}, color::yellow);
+      gpr_.shader_pipe()->pixel_set({v.x, v.y}, color::yellow);
 
       // calculate gradient
       const std::int16_t dx = v.x - pipe_[0].x;
@@ -147,12 +86,12 @@ protected:
       // check conditions
       if (util::abs<std::int16_t>(dx) > 2 || util::abs<std::int16_t>(dy) > 2) {
         // antialising not possible, distance too far
-        gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightred);
+        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::brightred);
         return;
       }
       if (dx == 0 || dy == 0) {
         // antialising not necessary, 90� or 180�
-        gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightgreen);
+        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::brightgreen);
         return;
       }
 
@@ -280,9 +219,25 @@ public:
    * Init vars
    */
   gpr()
-    : anti_aliasing_(false)     // no AA as default
-    , pen_shape_(nullptr)       // 1 pixel pen as default
+    : anti_aliasing_(false)   // no AA as default
+    , color_(color::gray)     // default drawing color
   { }
+
+
+  /**
+   * Set drawing color
+   * \param color Drawing color
+   */
+  void set_color(color::value_type color)
+  { color_ = color; }
+
+
+  /**
+   * Get drawing color
+   */
+  color::value_type get_color() const
+  { return color_; }
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -299,124 +254,34 @@ public:
 
 
   /**
-   * Select the actual drawing pen
-   * \param pen_shape Set the actual pen shape or nullptr for 1 pixel default pen (fastest)
+   * Set a pixel in the actual pen color, no present is called
+   * \param vertex Vertex to set
    */
-  inline void pen_set_shape(pen_shape_type* pen_shape = nullptr)
+  inline void pixel_set(vertex_type vertex)
   {
-    pen_shape_ = pen_shape;
+    shader_pipe()->pixel_set(vertex, color_);
   }
 
 
   /**
-   * Get a stock pen
-   * \param shape Receiving pen struct
-   * \param style Pen style 
-   * \param width Pen width
-   * \param color Pen color
-   */
-  void pen_get_stock(pen_shape_type& shape, pen_style_type style, std::uint8_t width, color::value_type color) const
-  {
-    // stock pens
-    static const std::uint8_t   pen_shape_width_1[1] = { 0 };         // one pixel pen
-    static const std::uint8_t   pen_shape_width_2[4] = { 0, 0,
-                                                         0, 0 };      // two pixel pen
-    static const std::uint8_t   pen_shape_width_3[9] = { 0, 0, 0,
-                                                         0, 0, 0,
-                                                         0, 0, 0 };   // three pixel pen
-    static const std::uint8_t* alpha[3] = { pen_shape_width_1, pen_shape_width_2, pen_shape_width_3 };
-
-    shape = { width, width, color, style, 0U, alpha[width - 1U] };
-  }
-
-
-  /**
-   * Render the pen at the given position
-   * \param center Pen center position
-   */
-  inline void pen_render(vertex_type center)
-  {
-    if (!pen_shape_) {
-      drv_pixel_set_color(center, pen_get_color(center));
-    }
-    else {
-      switch (pen_shape_->style) {
-        case pen_style_solid :
-          break;
-        case pen_style_dot :
-          // * * * *
-          if (pen_shape_->style_ctl >= pen_shape_->width * 2U) {
-            pen_shape_->style_ctl = 0U;
-          }
-          if (pen_shape_->style_ctl++ > 0U) {
-            return;
-          }
-          break;
-        case pen_style_dash :
-          // *** *** ***
-          if (pen_shape_->style_ctl >= pen_shape_->width * 4U) {
-            pen_shape_->style_ctl = 0U;
-          }
-          if (pen_shape_->style_ctl++ > pen_shape_->width * 2U) {
-            return;
-          }
-          break;
-        case pen_style_dashdot :
-          // *** * *** * ***
-          if (pen_shape_->style_ctl >= pen_shape_->width * 6U) {
-            pen_shape_->style_ctl = 0U;
-          }
-          if ((pen_shape_->style_ctl >  pen_shape_->width * 2U) &&
-              (pen_shape_->style_ctl != pen_shape_->width * 4U )) {
-            pen_shape_->style_ctl++;
-            return;
-          }
-          pen_shape_->style_ctl++;
-          break;
-        default:
-          break;
-      }
-      std::size_t i = 0U;
-      for (std::int16_t y = center.y - pen_shape_->height / 2, ye = y + pen_shape_->height; y < ye; ++y) {
-        for (std::int16_t x = center.x - pen_shape_->width / 2, xe = x + pen_shape_->width; x < xe; ++x, ++i) {
-          drv_pixel_set_color({ x, y }, pen_shape_->alpha[i] == 0U ? pen_shape_->color : color::mix(drv_pixel_get({ x, y }), pen_get_color({ x, y }), pen_shape_->alpha[i]));
-        }
-      }
-    }
-  }
-
-
-  /**
-   * Set a pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color, which is protected)
-   * Uncommon to override this function, but may be done for in case of a monochrome displays
-   * \param point Vertex to set
-   */
-  inline virtual void pixel_set(vertex_type point)
-  {
-    drv_pixel_set_color(point, pen_get_color(point));
-  }
-
-
-  /**
-   * Set a pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color, which is protected)
-   * Uncommon to override this function, but may be done for in case of a monochrome displays
-   * \param point Vertex to set
+   * Set a pixel in the given color, no present is called
+   * \param vertex Vertex to set
    * \param color Color of the pixel
    */
-  inline virtual void pixel_set(vertex_type point, color::value_type color)
+  inline void pixel_set(vertex_type vertex, color::value_type color)
   {
-    drv_pixel_set_color(point, color);
+    shader_pipe()->pixel_set(vertex, color);
   }
 
 
   /**
-   * Return the color of the pixel (is a slim wrapper for drv_pixel_get, which is protected)
+   * Return the color of the pixel (is a slim wrapper for drv_pixel_get)
    * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type pixel_get(vertex_type point)
+  inline color::value_type pixel_get(vertex_type point)
   {
-    return drv_pixel_get(point);
+    return shader_pipe()->pixel_get(point);
   }
 
 
@@ -424,27 +289,26 @@ public:
    * Plot a point (one pixel) in the actual drawing (pen) color
    * \param point Vertex to plot
    */
-  void plot(vertex_type point)
+  inline void plot(vertex_type point)
   {
-    drv_pixel_set_color(point, pen_get_color(point));
-    present();
+    plot(point, color_);
   }
 
 
   /**
-   * Plot a point (one pixel) with the given color, drawing color is not affected
+   * Plot a point (one pixel) in the given color
    * \param point Vertex to plot
    * \param color Color of the pixel
    */
-  void plot(vertex_type point, color::value_type color)
+  inline void plot(vertex_type point, color::value_type color)
   {
-    drv_pixel_set_color(point, color);
+    shader_pipe()->pixel_set(point, color);
     present();
   }
 
 
   /**
-   * Draw a line with the actual selected pen in drawing (pen) color
+   * Draw a line with the actual selected pen (with pen color)
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line
    */
@@ -458,24 +322,7 @@ public:
           std::int16_t er = dx - dy;
 
     // start Bresenham line algorithm
-    if (pen_shape_) {
-      for (;;) {
-        pen_render(v0);
-        if (v0 == v1) {
-          break;
-        }
-        std::int16_t er2 = er * 2;
-        if (er2 + dy > 0) {
-          er -= dy;
-          v0.x += sx;
-        }
-        if (er2 < dx) {
-          er += dx;
-          v0.y += sy;
-        }
-      }
-    }
-    else if (anti_aliasing_) {
+    if (anti_aliasing_) {
       anti_aliasing aa(*this);
       for (;;) {
         aa.render(v0);
@@ -495,7 +342,7 @@ public:
     }
     else {
       for (;;) {
-        pixel_set(v0);
+        shader_pipe()->pixel_set(v0, color_);
         if (v0 == v1) {
           break;
         }
@@ -515,51 +362,33 @@ public:
 
 
   /**
-   * Draw a horizontal line, width is one pixel, no pen style support
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * Draw a horizontal line, width is one pixel
+   * This is should be done by a high speed driver implementation if no shader is used
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
    * \return true if successful
    */
-  virtual void line_horz(vertex_type v0, vertex_type v1)
+  inline void line_horz(vertex_type v0, vertex_type v1)
   {
-    // set v0 to min x
-    vertex_min_x(v0, v1);
-
-    if (pen_color_is_function()) {
-      for (; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0);
-      }
-    }
-    else {
-      for (; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0, pen_get_color());
-      }
+    util::vertex_min_x(v0, v1);   // set v0 to min x
+    for (; v0.x <= v1.x; ++v0.x) {
+      shader_pipe()->pixel_set(v0, color_);
     }
     present();
   }
 
 
   /**
-   * Draw a vertical line, width is one pixel, no pen style support
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * Draw a vertical line, width is one pixel
+   * This is should be done by a high speed driver implementation if no shader is used
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
    */
-  virtual void line_vert(vertex_type v0, vertex_type v1)
+  inline void line_vert(vertex_type v0, vertex_type v1)
   {
-    // set v0 to min y
-    vertex_min_y(v0, v1);
-
-    if (pen_color_is_function()) {
-      for (; v0.y <= v1.y; ++v0.y) {
-        pixel_set(v0);
-      }
-    }
-    else {
-      for (; v0.y <= v1.y; ++v0.y) {
-        pixel_set(v0, pen_get_color());
-      }
+    util::vertex_min_y(v0, v1);   // set v0 to min y
+    for (; v0.y <= v1.y; ++v0.y) {
+      shader_pipe()->pixel_set(v0, color_);
     }
     present();
   }
@@ -567,20 +396,19 @@ public:
 
   /**
    * Draw a box (filled rectangle)
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * This is should be done by a high speed driver implementation if no shader is used
    * \param v0 top/left vertex
    * \param v1 bottom/right vertex
    */
-  virtual void box(vertex_type v0, vertex_type v1)
+  void box(vertex_type v0, vertex_type v1)
   {
-    // set v0 to min y
-    vertex_min_y(v0, v1);
-
-    present_lock();
-    for (; v0.y <= v1.y; ++v0.y) {
-      line_horz(v0, v1);
+    util::vertex_top_left(v0, v1);
+    for (std::int16_t x = v0.x; v0.y <= v1.y; ++v0.y) {
+      for (v0.x = x; v0.x <= v1.x; ++v0.x) {
+        shader_pipe()->pixel_set(v0, color_);
+      }
     }
-    present_lock(false);    // unlock and present
+    present();
   }
 
 
@@ -594,7 +422,7 @@ public:
   void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
     // make sure v0 is top/left
-    vertex_top_left(v0, v1);
+    util::vertex_top_left(v0, v1);
 
     present_lock();
     box({ static_cast<std::int16_t>(v0.x + border_radius), v0.y }, { static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) });
@@ -633,7 +461,7 @@ public:
   void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
     // make sure v0 is top/left
-    vertex_top_left(v0, v1);
+    util::vertex_top_left(v0, v1);
 
     present_lock();
     line({ static_cast<std::int16_t>(v1.x - border_radius), v0.y }, { static_cast<std::int16_t>(v0.x + border_radius), v0.y });
@@ -762,7 +590,7 @@ public:
    * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
-  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 360U)
+  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 359U)
   {
     const std::int16_t xs = center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384;
     const std::int16_t ys = center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384;
@@ -828,7 +656,7 @@ public:
             break;
         }
         if (render) {
-          pen_shape_ ? pen_render(p) : (anti_aliasing_ ? aa.render(p) : pixel_set(p));
+          anti_aliasing_ ? aa.render(p) : shader_pipe()->pixel_set(p, color_);
         }
         r = err;
         if (r <= x)
@@ -856,7 +684,9 @@ public:
       for (std::int16_t x = -radius; x <= 0; ++x) {
         if (x * x + y * y < radius_sqr) {
           line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
-          line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+          if (y != 0) {
+            line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+          }
           if (anti_aliasing_) {
             aa0.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
             aa1.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
@@ -1035,9 +865,7 @@ public:
       }
 
       inline segment_type& stack_pop()
-      {
-        return stack_[--stack_count_];
-      }
+      { return stack_[--stack_count_]; }
 
       // returns true if pixel is of border or drawing color
       // returns true if col != bg_color       && bounding_color == bg_color 
@@ -1045,10 +873,10 @@ public:
       // returns true if col == pen_color
       inline bool test(vertex_type point) const
       {
-        const color::value_type col = gpr_.drv_pixel_get({ point.x, point.y });
-        return (col == gpr_.pen_get_color())                                      ||
-               (col == bounding_color_ && bounding_color_ != gpr_.bg_get_color()) ||
-               (col != bounding_color_ && bounding_color_ == gpr_.bg_get_color());
+        const color::value_type col = gpr_.shader_pipe()->pixel_get({ point.x, point.y });
+        return (col == gpr_.color_);          //                        ||
+//             (col == bounding_color_ && bounding_color_ != gpr_.bg_get_color()) ||
+//             (col != bounding_color_ && bounding_color_ == gpr_.bg_get_color());
       }
 
       void fill(vertex_type& start)
@@ -1119,85 +947,11 @@ public:
   }
 
 
-  ///////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Move display area
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param source Source top/left vertex
-   * \param destination Destination top/left vertex
-   * \param width Width of the area
-   * \param height Height of the area
-   */
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
-  {
-    if (source.x < destination.x) {
-      if (source.y < destination.y) {
-        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-      else {
-        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-    }
-    else {
-      if (source.y < destination.y) {
-        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-      else {
-        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-    }
-    present();
-  }
-
-
-  /**
-   * move vertex wrapper
-   * \param orig_top_left Source top/left vertex
-   * \param orig_bottom_right Source bottom/right vertex
-   * \param dest_top_left Destination top/left vertex
-   */
-  inline void move(vertex_type orig_top_left, vertex_type orig_bottom_right, vertex_type dest_top_left) {
-    move(orig_top_left, dest_top_left, orig_bottom_right.x - orig_top_left.x, orig_bottom_right.y - orig_top_left.y);
-  }
-
-
-  /**
-   * Bit block image transfer to the display area
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param top_left
-   * \param bottom_right
-   * \param color_format
-   * \param data
-   */
-  virtual void blitter(vertex_type top_left, vertex_type bottom_right, color::format_type color_format, const void* data)
-  {
-    (void)top_left; (void)bottom_right; (void)color_format; (void)data;
-  }
-
-
-
 ///////////////////////////////////////////////////////////////////////////////
 
 protected:
-  bool            anti_aliasing_;   // true if AA is enabled
-  pen_shape_type* pen_shape_;       // actual selected drawing pen
+  bool                anti_aliasing_;   // true if AA is enabled
+  color::value_type   color_;           // actual drawing color
 
 private:
 
