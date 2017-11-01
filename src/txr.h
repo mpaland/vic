@@ -23,8 +23,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Text Renderer to render text on graphic displays.
-// The text renderer uses the fonts in the font folder.
+// \brief Text Renderer class to render text chars on graphic displays.
+// The text renderer uses the fonts in the 'fonts' folder.
 // Monospace and proportional fonts are supported.
 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -32,24 +32,33 @@
 #ifndef _VIC_TXR_H_
 #define _VIC_TXR_H_
 
-#include "base.h"
 #include "font.h"
+#include "util.h"
+#include "color.h"
 
 
 namespace vic {
 
 
-typedef enum tag_text_mode_type {
-  text_mode_normal = 0,
-  text_mode_inverse
-} text_mode_type;
-
-
 /**
  * TeXt Renderer
  */
-class txr : virtual public base
+class txr
 {
+protected:
+
+  // virtual context/driver functions
+  //virtual shader::base*     shader_pipe(void) const = 0;
+
+  /**
+   * Set a pixel in the given color, no present is called
+   * \param vertex Vertex to set
+   * \param color Color of the pixel
+   */
+  virtual void      pixel_set(vertex_type vertex, color::value_type color) = 0;
+  virtual void      present(void) = 0;
+  virtual void      present_lock(bool lock = true) = 0;
+
 public:
 
   /**
@@ -57,11 +66,12 @@ public:
    * Init vars
    */
   txr()
-    : text_font_(nullptr)
-    , text_x_set_(0)
-    , text_x_act_(0)
-    , text_y_act_(0)
-    , text_mode_(text_mode_normal)
+    : font_(nullptr)
+    , x_set_(0)
+    , x_act_(0)
+    , y_act_(0)
+    , inverse_(false)
+    , color_(color::white)
   { }
 
 
@@ -73,9 +83,9 @@ public:
    * Select the font
    * \param Reference to font to use
    */
-  inline virtual void text_font_select(const font::font_type& font)
+  inline void select_font(const font::font_type& font)
   {
-    text_font_ = &font;
+    font_ = &font;
   }
 
 
@@ -83,9 +93,9 @@ public:
    * Get the height of the actual selected font
    * \return Height in pixel units of the selected font, 1 on alpha numeric heads
    */
-  inline std::uint8_t text_line_height() const
+  inline std::uint8_t get_line_height() const
   {
-    return drv_is_graphic() ? text_font_->ysize : 1U;
+    return font_->ysize;
   }
 
 
@@ -93,55 +103,41 @@ public:
    * Set the new text position
    * \param pos Position (left/top) in pixel on graphic displays, position in chars on text displays
    */
-  virtual void text_pos(vertex_type pos)
+  virtual void set_pos(vertex_type pos)
   {
-    text_x_act_ = text_x_set_ = pos.x;
-    text_y_act_ = pos.y;
+    x_act_ = x_set_ = pos.x;
+    y_act_ = pos.y;
   }
 
 
   /**
-   * Set the text mode
-   * \param mode Set normal or inverse video
+   * Set inverse text mode
+   * \param inverse Set normal or inverse video
    */
-  virtual void text_mode(text_mode_type mode)
+  virtual void set_inverse(bool inverse = true)
   {
-    text_mode_ = mode;
+    inverse_ = inverse;
   }
 
 
   /**
-   * Clear actual line from cursor pos to end
+   * Set the text color
+   * \param color Set the text color
    */
-  virtual void text_clear_eol()
+  virtual void set_color(color::value_type color)
   {
+    color_ = color;
   }
 
 
   /**
-   * Clear actual line from start to cursor pos
-   */
-  virtual void text_clear_sol()
-  {
-  }
-
-
-  /**
-   * Clear the actual line
-   */
-  virtual void text_clear_line()
-  {
-  }
-
-
-  /**
-   * Output a single ASCII/UNICODE char at the actual cursor position
+   * Render a single ASCII/UNICODE char at the actual cursor position
    * The cursor position is moved by the char width (distance)
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
    */
-  virtual void text_char(std::uint16_t ch)
+  void out(std::uint16_t ch)
   {
-    const std::uint8_t color_depth = (text_font_->attr & font::AA_MASK);
+    const std::uint8_t color_depth = (font_->attr & font::AA_MASK);
     const std::uint8_t color_mask = (1U << color_depth) - 1U;
     const std::uint8_t color_shift = 8U - color_depth;
 
@@ -150,9 +146,9 @@ public:
       return;
     }
 
-    if ((text_font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
+    if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
       // extended (UNICODE) font
-      const font::prop_ext_type* font_prop_ext = text_font_->font_type_type.prop_ext;
+      const font::prop_ext_type* font_prop_ext = font_->font_type_type.prop_ext;
       do {
         if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
           // found char
@@ -163,11 +159,12 @@ public:
               std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
-                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + info->xpos + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + info->ypos + (std::int16_t)y) }, color::set_alpha(pen_get_color(), static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(pen_get_color()) * (255U - intensity) / 255U)));
+                pixel_set({ static_cast<std::int16_t>(x_act_ + info->xpos + (std::int16_t)x), static_cast<std::int16_t>(y_act_ + info->ypos + (std::int16_t)y) },
+                          color::set_alpha(color_, static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(color_) * (255U - intensity) / 255U)));
               }
             }
           }
-          text_x_act_ += info->xdist;
+          x_act_ += info->xdist;
           return;
         }
         font_prop_ext = font_prop_ext->next;
@@ -177,24 +174,25 @@ public:
     }
     else {
       // normal (ASCII) font
-      if ((text_font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
+      if ((font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
         // prop font
-        const font::prop_type* font_prop = text_font_->font_type_type.prop;
+        const font::prop_type* font_prop = font_->font_type_type.prop;
         do {
           if (ch >= font_prop->first && ch <= font_prop->last) {
             // found char
             const font::charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
-            for (std::uint_fast8_t y = 0U; y < text_font_->ysize; ++y) {
+            for (std::uint_fast8_t y = 0U; y < font_->ysize; ++y) {
               std::uint16_t d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
               for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
                 std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {
                   intensity = ((intensity + 1U) << color_shift) - 1U;
-                  drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + (std::int16_t)y) }, color::set_alpha(pen_get_color(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(pen_get_color())) * intensity / 255U)));
+                  pixel_set({ static_cast<std::int16_t>(x_act_ + (std::int16_t)x), static_cast<std::int16_t>(y_act_ + (std::int16_t)y) },
+                            color::set_alpha(color_, 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_)) * intensity / 255U)));
                 }
               }
             }
-            text_x_act_ += info->xdist;
+            x_act_ += info->xdist;
             return;
           }
           font_prop = font_prop->next;
@@ -204,19 +202,20 @@ public:
       }
       else {
         // mono font
-        const font::mono_type* font_mono = text_font_->font_type_type.mono;
+        const font::mono_type* font_mono = font_->font_type_type.mono;
         if (ch >= font_mono->first && ch <= font_mono->last) {
-          for (std::uint_fast8_t y = 0U; y < text_font_->ysize; ++y) {
-            std::uint16_t d = (ch - font_mono->first) * text_font_->ysize * font_mono->bytes_per_line + (std::int16_t)y * font_mono->bytes_per_line;
+          for (std::uint_fast8_t y = 0U; y < font_->ysize; ++y) {
+            std::uint16_t d = (ch - font_mono->first) * font_->ysize * font_mono->bytes_per_line + (std::int16_t)y * font_mono->bytes_per_line;
             for (std::uint_fast8_t x = 0U; x < font_mono->xsize; ++x) {
               std::uint16_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
                 intensity = ((intensity + 1U) << color_shift) - 1U;
-                drv_pixel_set_color({ static_cast<std::int16_t>(text_x_act_ + (std::int16_t)x), static_cast<std::int16_t>(text_y_act_ + (std::int16_t)y) }, color::set_alpha(pen_get_color(), 255U - static_cast<std::uint8_t>((255U - color::get_alpha(pen_get_color())) * intensity / 255U)));
+                pixel_set({ static_cast<std::int16_t>(x_act_ + (std::int16_t)x), static_cast<std::int16_t>(y_act_ + (std::int16_t)y) },
+                          color::set_alpha(color_, 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_)) * intensity / 255U)));
               }
             }
           }
-          text_x_act_ += font_mono->xsize;
+          x_act_ += font_mono->xsize;
           return;
         }
       }
@@ -225,11 +224,11 @@ public:
 
 
   /**
-   * Render an UTF-8 / ASCII coded string
+   * Render an UTF-8 / ASCII coded string at the actual cursor position
    * \param string Output string in UTF-8/ASCII format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  virtual std::uint16_t text_string(const std::uint8_t* string)
+  virtual std::uint16_t out(const std::uint8_t* string)
   {
     std::uint16_t ch, cnt = 0U;
     while (*string) {
@@ -256,15 +255,23 @@ public:
       // handling of special chars
       if ((char)ch == '\n') {
         // LF: X = 0, Y = next line
-        text_x_act_ = text_x_set_;
-        text_y_act_ = text_y_act_ + text_font_->ysize;
+        x_act_ = x_set_;
+        y_act_ = y_act_ + font_->ysize;
       }
       else if ((char)ch == '\r') {
         // CR: X = 0
-        text_x_act_ = text_x_set_;
+        x_act_ = x_set_;
+      }
+      else if ((char)ch == 0x0CU) {
+        // handling of color control: \x0CRRGGBB
+        const std::uint8_t r = hex2bin(string); string += 2U;
+        const std::uint8_t g = hex2bin(string); string += 2U;
+        const std::uint8_t b = hex2bin(string); string += 2U;
+        set_color(color::argb(r, g, b));
+
       }
       else {
-        text_char(ch);
+        out(ch);
       }
       cnt++;
     }
@@ -279,10 +286,10 @@ public:
    * \param string Output string in ASCII/UTF-8 format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  inline virtual std::uint16_t text_string_pos(vertex_type pos, const std::uint8_t* string)
+  inline virtual std::uint16_t out(vertex_type pos, const std::uint8_t* string)
   {
-    text_pos(pos);
-    return text_string(string);
+    set_pos(pos);
+    return out(string);
   }
 
 
@@ -293,13 +300,15 @@ public:
    * \param string Output string in ASCII/UTF-8 format, zero terminated
    * \return Number of written characters, not bytes (as a character may consist out of two bytes)
    */
-  std::uint16_t text_string_rotate(vertex_type pos, std::uint16_t angle, const std::uint8_t* string)
+#if 0
+  std::uint16_t out_rotate(vertex_type pos, std::uint16_t angle, const std::uint8_t* string)
   {
-    text_pos(pos);
+    set_pos(pos);
 //  TBD
     (void)angle; (void)string;
     return 0U;
   }
+#endif
 
 
   /**
@@ -310,9 +319,11 @@ public:
    * \param string String in UTF-8 format, zero terminated
    * \return Number of string characters, not bytes (as a character may consist out of two bytes)
    */
-  std::uint16_t text_string_get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string) const
+  std::uint16_t get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string) const
   {
     std::uint16_t ch, cnt = 0U;
+    width  = 0U;
+    height = 1U;
     while (*string) {
       if ((*string & 0x80U) == 0x00U) {
         // 1 byte sequence (ASCII char)
@@ -334,67 +345,74 @@ public:
         continue;
       }
 
-      if (drv_is_graphic())
-      {
-        if ((text_font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
-          // extended (UNICODE) font
-          const font::prop_ext_type* font_prop_ext = text_font_->font_type_type.prop_ext;
+      if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
+        // extended (UNICODE) font
+        const font::prop_ext_type* font_prop_ext = font_->font_type_type.prop_ext;
+        do {
+          if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
+            // found char
+            const font::charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
+            width += info->xdist;
+          }
+          font_prop_ext = font_prop_ext->next;
+        } while (font_prop_ext);
+        // char not found
+      }
+      else {
+        // normal (ASCII) font
+        if ((font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
+          // prop font
+          const font::prop_type* font_prop = font_->font_type_type.prop;
           do {
-            if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
+            if (ch >= font_prop->first && ch <= font_prop->last) {
               // found char
-              const font::charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
+              const font::charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
               width += info->xdist;
             }
-            font_prop_ext = font_prop_ext->next;
-          } while (font_prop_ext);
+            font_prop = font_prop->next;
+          } while (font_prop);
           // char not found
         }
         else {
-          // normal (ASCII) font
-          if ((text_font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
-            // prop font
-            const font::prop_type* font_prop = text_font_->font_type_type.prop;
-            do {
-              if (ch >= font_prop->first && ch <= font_prop->last) {
-                // found char
-                const font::charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
-                width += info->xdist;
-              }
-              font_prop = font_prop->next;
-            } while (font_prop);
-            // char not found
-          }
-          else {
-            // mono font
-            const font::mono_type* font_mono = text_font_->font_type_type.mono;
-            if (ch >= font_mono->first && ch <= font_mono->last) {
-              width += font_mono->xsize;   // x-distance is xsize
-            }
+          // mono font
+          const font::mono_type* font_mono = font_->font_type_type.mono;
+          if (ch >= font_mono->first && ch <= font_mono->last) {
+            width += font_mono->xsize;   // x-distance is xsize
           }
         }
       }
+
       cnt++;
     }
-    width  = cnt;
-    height = 1U;
     return cnt;
   }
 
 
 ///////////////////////////////////////////////////////////////////////////////
 
-protected:
-  const font::font_type*  text_font_;       // actual selected font
-  std::int16_t            text_x_set_;      // x cursor position for new line
-  std::int16_t            text_x_act_;      // actual x cursor position
-  std::int16_t            text_y_act_;      // actual y cursor position
-  text_mode_type          text_mode_;       // text mode
+private:
+  color::value_type       color_;      // actual text color
+  const font::font_type*  font_;       // actual selected font
+  std::int16_t            x_set_;      // x cursor position for new line
+  std::int16_t            x_act_;      // actual x cursor position
+  std::int16_t            y_act_;      // actual y cursor position
+  bool                    inverse_;    // inverse text mode
 
 private:
 
   // non copyable
   const txr& operator=(const txr& rhs)
   { return rhs; }
+
+
+  // fast hex to bin
+  std::uint8_t hex2bin(const std::uint8_t* string) const
+  {
+    std::uint8_t bin = 0U;
+
+    return bin;
+  }
+
 };
 
 } // namespace vic
