@@ -31,8 +31,6 @@
 #define _VIC_COLOR_H_
 
 #include <cstdint>
-#include <initializer_list>
-
 #include "util.h"
 
 
@@ -68,7 +66,7 @@ namespace color {
   */
   typedef enum tag_format_type
   {
-    format_L1       = 0x10,   //  1 bit luminance (monochrome), XBM format
+    format_L1       = 0x10,   //  1 bit luminance (monochrome), like XBM format
     format_L2       = 0x11,   //  2 bit grayscale
     format_L4       = 0x12,   //  4 bit grayscale
     format_L8       = 0x13,   //  8 bit, 256 luminance (gray) levels (0 = black, 255 = white)
@@ -81,9 +79,9 @@ namespace color {
     format_RGB666   = 0x30,   // 18 bit RGB
     format_RGB888   = 0x31,   // 24 bit RGB, no alpha
     format_ARGB4444 = 0x24,   // 16 bit ARGB, 4 bit alpha
-    format_ARGB1555 = 0x25,   // 16 bit ARGB, 1 bit alpha (0 = transparent, 1 = opaque, 1)
     format_ARGB6666 = 0x32,   // 18 bit ARGB, 6 bit alpha
-    format_ARGB8888 = 0x40    // 24 bit ARGB, 8 bit alpha (the internal default format of vic)
+    format_ARGB8888 = 0x40,   // 24 bit ARGB, 8 bit alpha (the internal default format of vic)
+    format_RGBA8888 = 0x41    // 24 bit ARGB, 8 bit alpha, A on least significant byte
   } format_type;
 
   /**
@@ -112,7 +110,7 @@ namespace color {
    * \param alpha Alpha level, 0 = completely transparent, 255 = opaque (default)
    * \return ARGB color
    */
-  inline value_type hsv(const std::uint16_t hue, const std::uint8_t saturation, const std::uint8_t value, const std::uint8_t alpha = 255U)
+  inline value_type hsv(std::uint16_t hue, std::uint8_t saturation, std::uint8_t value, std::uint8_t alpha = 255U)
   {
     const std::uint16_t h   = hue % 360U;
     const std::uint16_t hi  = static_cast<std::uint16_t>(h / 60U);
@@ -154,11 +152,11 @@ namespace color {
   // generic color dimming, alpha channel is unaffected
   // color is dimmed to 25%
   inline value_type dim_25(value_type color)
-  { return ((color & (0x00FCFCFCUL)) >> 2U); }
+  { return ((color & 0xFF000000UL) | (color & (0x00FCFCFCUL)) >> 2U); }
 
   // color is dimmed to 50%
   inline value_type dim_50(value_type color)
-  { return ((color & (0x00FEFEFEUL)) >> 1U); }
+  { return ((color & 0xFF000000UL) | (color & (0x00FEFEFEUL)) >> 1U); }
 
   // color is dimmed to 75%
   inline value_type dim_75(value_type color)
@@ -171,7 +169,9 @@ namespace color {
    * \return dimmed color in ARGB format
    */
   inline value_type dim(value_type color, std::uint8_t lum)
-  { return ((color & 0xFF000000UL) | ((((color & 0x00FF0000UL) * (lum + 1U)) >> 8U) & 0x00FF0000UL) | ((((color & 0x0000FF00UL) * (lum + 1U)) >> 8U) & 0x0000FF00UL) | ((((color & 0x000000FFUL) * (lum + 1U)) >> 8U) & 0x000000FFUL)); }
+  { return ((color & 0xFF000000UL) | ((((color & 0x00FF0000UL) * (static_cast<std::uint16_t>(lum) + 1U)) >> 8U) & 0x00FF0000UL) |
+                                     ((((color & 0x0000FF00UL) * (static_cast<std::uint16_t>(lum) + 1U)) >> 8U) & 0x0000FF00UL) |
+                                     ((((color & 0x000000FFUL) * (static_cast<std::uint16_t>(lum) + 1U)) >> 8U) & 0x000000FFUL)); }
 
   // generic color mixing, alpha channel is unaffected
   // color mix: 25% foreground, 75% background
@@ -211,8 +211,16 @@ namespace color {
       return front_color;
     }
 
-    const std::uint16_t aF  = get_alpha(front_color);
-    const std::uint16_t aB  = get_alpha(back_color);
+    const std::uint16_t aB = get_alpha(back_color);
+    if (aB == 0U) {
+      return front_color;
+    }
+
+    const std::uint16_t aF = get_alpha(front_color);
+    if (aF == 0U) {
+      return back_color;
+    }
+
     const std::uint16_t aFB = aB * (255U - aF) / 255U;
     const std::uint16_t aS  = aF + aFB;
 
@@ -245,103 +253,6 @@ namespace color {
                );
   }
 
-
-  //////////////////////////////////////////////////////////////////////////
-  // G R A D I E N T
-
-  /**
-   * Color gradient structure
-   * A gradient is a collection of pixels which returns an interpolated color for a given vertex
-   * Construct a gradient with 3 pixels like
-   * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{500, 0}, vic::color::yellow}, {{750,100}, vic::color::red} };
-   * color = gr.mix({300,0});   // get the color at position 300,0
-   */
-  template<std::size_t Max_Pixel>
-  class gradient
-  {
-    // array of the gradient colors and the according color values
-    pixel_type  gradient_color_[Max_Pixel];
-    std::size_t size_;
-
-  public:
-    /**
-     * Initializer list ctor
-     * \param il Initializer list of N pixels
-     */
-    gradient(const std::initializer_list<pixel_type>& il)
-      : size_(0U)
-    {
-      for (std::initializer_list<pixel_type>::const_iterator it = il.begin(); (it != il.end()) && (size_ < Max_Pixel); ++it) {
-        gradient_color_[size_++] = *it;
-      }
-    }
-
-    /**
-     * Array ctor
-     * \param gradient_pixels Array of exact Max_Pixel pixels
-     */
-    gradient(const pixel_type* gradient_pixels)
-    {
-      set(gradient_pixels, Max_Pixel);
-    }
-
-    void set(const pixel_type* gradient_pixels, std::size_t pixel_count)
-    {
-      size_ = pixel_count < Max_Pixel ? pixel_count : Max_Pixel;
-      for (std::size_t n = 0U; n < size_; ++n) {
-        gradient_color_[n] = gradient_pixels[n];
-      }
-    }
-
-    /**
-     * Return the mixed color at the given position
-     * \param pos The position of the vertex
-     * \return The mixed color at the given vertex position
-     */
-    value_type mix(vertex_type pos) const
-    {
-      // calculate the sum of all inverse squared distances from pos to all points
-      const std::uint32_t factor = 10000000UL;  // use 10M as factor
-      std::uint32_t sd_sum = 0U;
-      for (std::size_t n = 0U; n < size_; ++n) {
-        sd_sum += factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex));
-      }
-
-      // assemble the mixed color at given pos
-      value_type c = 0U;
-      for (std::size_t n = 0U; n < size_; ++n) {
-        c += dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * (factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex))) / sd_sum));
-      }
-      return c;
-    }
-
-    /**
-     * Return the solid base color at the given position
-     * \param pos The position of the vertex
-     * \return The solid base color at the given position
-     */
-    value_type solid(vertex_type pos) const
-    {
-      // calculate the sum of all inverse squared distances from pos to all points
-      const std::uint32_t factor = 10000000UL;  // use 10M as factor
-      std::uint32_t sd_sum = 0U;
-      for (std::size_t n = 0U; n < size_; ++n) {
-        sd_sum += factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex));   // use 10M as factor
-      }
-
-      // get the solid color at given pos
-      std::uint32_t lum_max = 0U;
-      std::size_t   n_max = 0U;
-      for (std::size_t n = 0U; n < size_; ++n) {
-        const std::uint32_t lum = 0x100UL * (factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex))) / sd_sum;
-        if (lum > lum_max) {
-          lum_max = lum;
-          n_max   = n;
-        }
-      }
-      return gradient_color_[n_max].color;
-    }
-  };
 
 
   //////////////////////////////////////////////////////////////////////////
