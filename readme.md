@@ -48,7 +48,7 @@ Of cource, native rendering on a specialized LCD controller is always faster and
 
 
 ## Class design
-![](https://cdn.rawgit.com/mpaland/vic/master/docs/viclib.svg)
+![](https://cdn.rawgit.com/mpaland/vic/v.0.3.0/doc/viclib.svg)
 
 ### gpr
 The Graphic Primitive Renderer provides fast rendering functions for graphic primitives.
