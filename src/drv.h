@@ -30,82 +30,25 @@
 #ifndef _VIC_DRV_H_
 #define _VIC_DRV_H_
 
-#include "gpr.h"
-#include "txr.h"
+#include "util.h"
+#include "color.h"
 #include "io.h"     // hardware dependent IO access
 
 
 namespace vic {
 
+namespace sprite { class base; }
+namespace shader { class output; }
 
-typedef struct tag_clipping_type
+
+class drv
 {
-  /**
-   * ctor
-   * Create a clipping region, default disabled
-   */
-  tag_clipping_type()
-    : active_(false)
-  { }
+  // friends which can access protected functions
+  friend class dc;
+  friend class tc;
+  friend class shader::output;
+  friend class sprite::base;
 
-  /**
-   * ctor
-   * Create an enabled clipping region
-   * \param v0 Left top corner of the region
-   * \param v1 Bottom right corner of the region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
-   */
-  tag_clipping_type(vertex_type v0, vertex_type v1, bool inside = true) {
-    set(v0, v1, inside);
-  }
-
-  /**
-   * Set the clipping region
-   * \param v0 Left top corner of the region
-   * \param v1 Bottom right corner of the region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
-   */
-  void set(vertex_type v0, vertex_type v1, bool inside = true) {
-    v0_ = v0; v1_ = v1; inside_ = inside; active_ = true;
-    if (v0_.x > v1_.x) { std::int16_t t = v0_.x; v0_.x = v1_.x; v1_.x = t; }
-    if (v0_.y > v1_.y) { std::int16_t t = v0_.y; v0_.y = v1_.y; v1_.y = t; }
-  }
-
-  /**
-   * Test if clipping is active and if the given vertex is inside the clipping region
-   * \param v Vertex to test
-   * \return True if given vertex is within the active clipping region and should be drawn
-   */
-  inline bool is_inside(vertex_type v) const {
-    return !active_ || ((v.x >= v0_.x && v.x <= v1_.x && v.y >= v0_.y && v.y <= v1_.y) ? inside_ : !inside_);
-  }
-
-  /**
-   * Enable the clipping function
-   * \param enable True to enable
-   */
-  inline void enable(bool _enable = true) {
-    active_ = _enable;
-  }
-
-  /**
-   * Return the clipping status
-   * \return True if clipping is enabled
-   */
-  inline bool is_enabled() const {
-    return active_;
-  }
-
-private:
-  vertex_type v0_;
-  vertex_type v1_;
-  bool        active_;
-  bool        inside_;
-} clipping_type;
-
-
-class drv : public gpr, public txr
-{
 public:
 
   /**
