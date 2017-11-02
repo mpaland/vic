@@ -210,15 +210,14 @@ protected:
   /**
    * Draw a box (filled rectangle) in given color
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param rect Box bounding
+   * \param color Box color
    */
-  virtual void box(vertex_type v0, vertex_type v1, std::uint32_t color)
+  virtual void box(rect_type rect, std::uint32_t color)
   {
-    util::vertex_top_left(v0, v1);
-    for (std::int16_t x = v0.x; v0.y <= v1.y; ++v0.y) {
-      for (v0.x = x; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0, color);
+    for (std::int16_t y = rect.top; y <= rect.bottom; ++y) {
+      for (std::int16_t x = rect.left; x <= rect.right; ++x) {
+        pixel_set({ x, y }, color);
       }
     }
   }
@@ -400,7 +399,7 @@ public:
    * \return true if the given vertex is within the screen area
    */
   inline bool screen_is_inside(const vertex_type& v) const
-  { return v.x >= 0 && v.x < screen_size_x_ && v.y >= 0 && v.y < screen_size_y_; }
+  { return v.x < screen_size_x_ && v.y < screen_size_y_ && v.x >= 0 && v.y >= 0; }
 
 
   /**

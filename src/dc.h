@@ -224,20 +224,31 @@ public:
 
   /**
    * Draw a box (filled rectangle)
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param rect Box bounding
    */
-  void box(vertex_type v0, vertex_type v1)
+  void box(rect_type rect)
   {
     if (!shader_is_active()) {
       // no active shaders, let the driver draw the box
-      head_.box(v0, v1, get_color());
+      head_.box(rect, get_color());
       present();
     }
     else {
       // let the gpr do the work
-      gpr::box(v0, v1);
+      gpr::box(rect);
     }
+  }
+
+
+  /**
+   * Draw a box (filled rectangle), vertex to rect wrapper
+   * \param v0 top/left vertex
+   * \param v1 bottom/right vertex
+   */
+  inline void box(vertex_type v0, vertex_type v1)
+  {
+    util::vertex_top_left(v0, v1);
+    box({ v0.x, v0.y, v1.x, v1.y });
   }
 
 
