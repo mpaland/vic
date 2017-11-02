@@ -43,13 +43,15 @@
 #define VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL  4U
 
 // Entrys in the Color LookUp Table for XPM bitmaps
-// 16/32 is a good value, so CLUT takes 128/256 byte
-#define VIC_CTRL_BITMAP_XPM_CLUT_SIZE 16U
+// 16/32 is a good value, so the CLUT takes 128/256 byte
+#define VIC_CTRL_BITMAP_XPM_CLUT_SIZE         16U
 
 
 namespace vic {
+namespace ctrl {
 
-class bitmap : public ctrl
+
+class bitmap : public base
 {
 public:
 
@@ -121,7 +123,7 @@ public:
       case color::format_RGB555 :
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 2U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB555(*bitmap));
+            head_.plot({ x, y }, head_.color_from_head_RGB555(*reinterpret_cast<std::uint16_t*>(bitmap));
           }
         }
         break;
@@ -129,7 +131,7 @@ public:
       case color::format_RGB565 :
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 2U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB565(*bitmap));
+            head_.plot({ x, y }, head_.color_from_head_RGB565(*reinterpret_cast<std::uint16_t*>(bitmap));
           }
         }
         break;
@@ -137,7 +139,7 @@ public:
       case color::format_RGB888 :
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 3U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB888(*bitmap));
+            head_.plot({ x, y }, head_.color_from_head_RGB888(*reinterpret_cast<std::uint32_t*>(bitmap)));
           }
         }
         break;
@@ -145,7 +147,7 @@ public:
       case color::format_ARGB8888 :
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 4U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB555(*bitmap));
+            head_.plot({ x, y }, *reinterpret_cast<color::value_type*>(bitmap));
           }
         }
         break;
@@ -304,6 +306,7 @@ private:
   std::size_t   clut_idx_;
 };
 
+} // namespace ctrl
 } // namespace vic
 
 #endif  // _VIC_CTRL_BITMAP_H_

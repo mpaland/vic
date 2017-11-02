@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2015, PALANDesign Hannover, Germany
+//             2014-2017, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -35,15 +35,20 @@
 
 
 namespace vic {
+namespace ctrl {
 
-class ctrl
+
+/**
+ * Ctrl base class
+ */
+class base
 {
 public:
   /**
    * ctor
    * \param driver Reference to driver
    */
-  ctrl(drv& head)
+  base(drv& head)
     : head_(head)
   { }
 
@@ -61,6 +66,7 @@ private:
   const ctrl& operator=(const ctrl& rhs) { return rhs; }  // non copyable
 };
 
+} // namespace ctrl
 } // namespace vic
 
 #endif  // _VIC_CTRL_H
