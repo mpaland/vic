@@ -345,7 +345,7 @@ inline void vertex_top_left(vertex_type& top_left, vertex_type& bottom_right)
  * Helper function to rotate a vertex of a given angle in respect to given center
  * \param point Vertex to rotate
  * \param center Rotation center
- * \param angle Rotation angle in degree, direction is math positive (counter clockwise)
+ * \param angle Rotation angle in degree, direction is math positive (clockwise in screen coords system)
  * \return Rotated vertex
  */
 inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int16_t angle)
@@ -357,8 +357,8 @@ inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int
   point = point - center;
 
   // rotate point and translate back
-  return { static_cast<std::int16_t>(((std::int32_t)point.x * c + (std::int32_t)point.y * s) / 16384 + center.x),
-           static_cast<std::int16_t>(((std::int32_t)point.x * s + (std::int32_t)point.y * c) / 16384 + center.y)
+  return { static_cast<std::int16_t>(div_round_closest(((std::int32_t)point.x * c - (std::int32_t)point.y * s), 16384) + center.x),
+           static_cast<std::int16_t>(div_round_closest(((std::int32_t)point.x * s + (std::int32_t)point.y * c), 16384) + center.y)
          };
 }
 
