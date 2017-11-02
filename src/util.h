@@ -201,6 +201,17 @@ inline std::uint16_t div255(std::uint16_t data)
 
 
 /**
+ * Helper function for integer division with round to closest
+ * \param data Input data
+ * \return data / divisor
+ */
+inline std::int16_t div_round_closest(std::int32_t data, std::int16_t divisor)
+{
+  return static_cast<std::int16_t>(((data < 0) ^ (divisor < 0)) ? ((data - divisor / 2) / divisor) : ((data + divisor / 2) / divisor));
+}
+
+
+/**
  * Calculate the squared distance between two vertices
  * \param a Vertex a
  * \param b Vertex b
