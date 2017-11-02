@@ -121,7 +121,7 @@ typedef struct tag_rect_type {
   inline std::int16_t height() const
   { return bottom - top; }
 
-  inline bool contain(const vertex_type& vertex) const
+  inline bool contain(vertex_type vertex) const
   { return (vertex.x <= right) && (vertex.y <= bottom) && (vertex.x >= left) && (vertex.y >= top); }
 
   // operators
@@ -337,17 +337,17 @@ inline void vertex_top_left(vertex_type& top_left, vertex_type& bottom_right)
  * \param angle Rotation angle in degree, direction is math positive (counter clockwise)
  * \return Rotated vertex
  */
-inline vertex_type vertex_rotate(const vertex_type& point, const vertex_type& center, std::int16_t angle)
+inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int16_t angle)
 {
   const std::int32_t s = sin(angle);  // normalized to 16384
   const std::int32_t c = cos(angle);  // normalized to 16384
 
   // translate point to center
-  const vertex_type v = point - center;
+  point = point - center;
 
   // rotate point and translate back
-  return { static_cast<std::int16_t>(((std::int32_t)v.x * c + (std::int32_t)v.y * s) / 16384 + center.x),
-           static_cast<std::int16_t>(((std::int32_t)v.x * s + (std::int32_t)v.y * c) / 16384 + center.y)
+  return { static_cast<std::int16_t>(((std::int32_t)point.x * c + (std::int32_t)point.y * s) / 16384 + center.x),
+           static_cast<std::int16_t>(((std::int32_t)point.x * s + (std::int32_t)point.y * c) / 16384 + center.y)
          };
 }
 
