@@ -191,6 +191,7 @@ inline std::uint8_t byte_reverse(std::uint8_t data)
 
 /**
  * Helper function for fast division by 255
+ * Normall a modern compiler should use this / 255 replacement under the hood.
  * \param data Input data
  * \return data / 255U
  */
@@ -203,11 +204,12 @@ inline std::uint16_t div255(std::uint16_t data)
 /**
  * Helper function for integer division with round to closest
  * \param data Input data
+ * \param divisor Divisor
  * \return data / divisor
  */
-inline std::int16_t div_round_closest(std::int32_t data, std::int16_t divisor)
+inline std::int32_t div_round_closest(std::int32_t data, std::int16_t divisor)
 {
-  return static_cast<std::int16_t>(((data < 0) ^ (divisor < 0)) ? ((data - divisor / 2) / divisor) : ((data + divisor / 2) / divisor));
+  return ((data < 0) ^ (divisor < 0)) ? ((data - divisor / 2) / divisor) : ((data + divisor / 2) / divisor);
 }
 
 
