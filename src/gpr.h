@@ -397,15 +397,13 @@ public:
   /**
    * Draw a box (filled rectangle)
    * This is should be done by a high speed driver implementation if no shader is used
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param rect Box bounding
    */
-  void box(vertex_type v0, vertex_type v1)
+  void box(rect_type rect)
   {
-    util::vertex_top_left(v0, v1);
-    for (std::int16_t x = v0.x; v0.y <= v1.y; ++v0.y) {
-      for (v0.x = x; v0.x <= v1.x; ++v0.x) {
-        shader_pipe()->pixel_set(v0, color_);
+    for (std::int16_t y = rect.top; y <= rect.bottom; ++y) {
+      for (std::int16_t x = rect.left; x <= rect.right; ++x) {
+        shader_pipe()->pixel_set({ x, y }, color_);
       }
     }
     present();
@@ -413,66 +411,94 @@ public:
 
 
   /**
-   * Draw a box (filled rectangle)
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * Draw a box (filled rectangle) with a corner radius
+   * \param rect Box bounding
    * \param border_radius Radius of the corner, 0 for angular
    */
-  void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  void box(rect_type rect, std::uint16_t border_radius)
   {
-    // make sure v0 is top/left
-    util::vertex_top_left(v0, v1);
-
     present_lock();
-    box({ static_cast<std::int16_t>(v0.x + border_radius), v0.y }, { static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) });
-    box({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v1.x, static_cast<std::int16_t>(v1.y - border_radius) });
-    box({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, { static_cast<std::int16_t>(v1.x - border_radius), v1.y });
-    disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 0U);
-    disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 1U);
-    disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 2U);
-    disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 3U);
+    box({ static_cast<std::int16_t>(rect.left + border_radius), rect.top, static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top + border_radius) });
+    box({ rect.left, static_cast<std::int16_t>(rect.top + border_radius), rect.right, static_cast<std::int16_t>(rect.bottom - border_radius) });
+    box({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - border_radius), static_cast<std::int16_t>(rect.right - border_radius), rect.bottom });
+    disc_sector({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top    + border_radius) }, border_radius, 0U);
+    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.top    + border_radius) }, border_radius, 1U);
+    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 2U);
+    disc_sector({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 3U);
     present_lock(false);    // unlock and present
   }
 
 
   /**
+   * Draw a box (filled rectangle) with a corner radius, vertex to rect wrapper
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
+   * \param border_radius Radius of the corner, 0 for angular
+   */
+  inline void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  {
+    util::vertex_top_left(v0, v1);
+    box({ v0.x, v0.y, v1.x, v1.y }, border_radius);
+  }
+
+
+  /**
    * Draw a rectangle (frame) with the current pen
+   * \param rect Rectangle
+   */
+  void rectangle(rect_type rect)
+  {
+    present_lock();
+    line(rect.top_left(), { rect.right, rect.top });
+    line({ rect.right, rect.top }, rect.bottom_right());
+    line(rect.bottom_right(), { rect.left, rect.bottom });
+    line({ rect.left, rect.bottom }, rect.top_left());
+    present_lock(false);    // unlock and present
+  }
+
+
+  /**
+   * Draw a rectangle (frame) with the current pen, vertex to rect wrapper
    * \param v0 top/left vertex
    * \param v1 bottom/right vertex
    */
   void rectangle(vertex_type v0, vertex_type v1)
   {
+    util::vertex_top_left(v0, v1);
+    rectangle({ v0.x, v0.y, v1.x, v1.y });
+  }
+
+
+  /**
+   * Draw a rectangle (frame) with a corner radius
+   * \param rect Rectangle
+   * \param border_radius Radius of the corner, 0 for angular
+   */
+  void rectangle(rect_type rect, std::uint16_t border_radius)
+  {
     present_lock();
-    line(v0, { v0.x, v1.y });
-    line({ v0.x, v1.y }, v1);
-    line(v1, { v1.x, v0.y });
-    line({ v1.x, v0.y },  v0);
+    line({ static_cast<std::int16_t>(rect.right - border_radius), rect.top }, { static_cast<std::int16_t>(rect.left + border_radius), rect.top });
+    circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 90U, 180U);
+    line({ rect.left, static_cast<std::int16_t>(rect.top + border_radius) }, { rect.left, static_cast<std::int16_t>(rect.bottom - border_radius) });
+    circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 180U, 270U);
+    line({ static_cast<std::int16_t>(rect.left + border_radius), rect.bottom }, { static_cast<std::int16_t>(rect.right - border_radius), rect.bottom });
+    circle({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 270U, 360U);
+    line({ rect.right, static_cast<std::int16_t>(rect.bottom - border_radius) }, { rect.right, static_cast<std::int16_t>(rect.top + border_radius) });
+    circle({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 0U,  90U);
     present_lock(false);    // unlock and present
   }
 
 
   /**
-   * Draw a rectangle (frame) with the current pen
+   * Draw a rectangle (frame) with a corner radius, vertex to rect wrapper
    * \param v0 top/left vertex
    * \param v1 bottom/right vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
   void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
-    // make sure v0 is top/left
     util::vertex_top_left(v0, v1);
-
-    present_lock();
-    line({ static_cast<std::int16_t>(v1.x - border_radius), v0.y }, { static_cast<std::int16_t>(v0.x + border_radius), v0.y });
-    circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,  90U, 180U);
-    line({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v0.x, static_cast<std::int16_t>(v1.y - border_radius) });
-    circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 180U, 270U);
-    line({ static_cast<std::int16_t>(v0.x + border_radius), v1.y }, { static_cast<std::int16_t>(v1.x - border_radius), v1.y });
-    circle({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 270U, 360U);
-    line({ v1.x, static_cast<std::int16_t>(v1.y - border_radius) }, { v1.x, static_cast<std::int16_t>(v0.y + border_radius) });
-    circle({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,   0U,  90U);
-    present_lock(false);    // unlock and present
+    rectangle({ v0.x, v0.y, v1.x, v1.y }, border_radius);
   }
 
 
@@ -832,7 +858,7 @@ public:
 
   /**
    * Fill region up to the bounding color with the drawing color
-   * Fill routine is only working on displays which support drv_pixel_get() (or using the framebuffer ctrl)
+   * Fill routine is only working on displays which support pixel_get()
    * \param start Start value inside region to fill
    * \param bounding_color Color of the surrounding bound or bg_color to fill all what is of bg_color
    * \return true if successful
