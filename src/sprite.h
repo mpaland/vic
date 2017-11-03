@@ -23,18 +23,20 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Sprite support - WIP - DON'T USE YET!
+// \brief Canvas and sheet sprite support
 //
 // sprite usage:
 //
-// vic::sprite<100, 8> my_sprite(_head0);   // create a sprite with 100 points and 8 planes on head0
-// my_sprite.triangle_solid(10,10,20,20,30,30);
-// my_sprite.render( 0, 0, 0);
-// my_sprite.render(10, 0, 1);
+// vic::sprite::canvas<400, 1> greenball(_head, 5);   // create 400 pixel sprite object with one frame, z-index 5
+// greenball.set_color(vic::color::brightgreen);      // set drawing color to brightgreen
+// greenball.disc({ 10, 10 }, 10);                    // draw a green filled circle
+// greenball.render({ 50, 10 });                      // render the sprite to 50,10
 //
 // support:
-// - configurable amount of sprites
+// - unlimited amount of sprites
 // - z-order of sprites
+//
+// todo:
 // - collision detection
 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -53,7 +55,7 @@ namespace sprite {
 /**
  * Base class for canvas and sheet sprites
  */
-class base
+class base : public dc
 {
 public:
   drv&  head_;                // head instance
@@ -70,11 +72,12 @@ protected:
    * \param z_index, Z-index of the sprite, 0 = default, bigger z-index moves to front, lower z-index to back
    */
   base(drv& head, std::int16_t z_index)
-    : head_(head)
+    : dc(head)
+    , head_(head)
     , next_(nullptr)
     , z_index_(z_index)
     , frame_(0U)
-    , position_({ 0,0 })
+    , position_({ 0, 0 })
   {
     // register sprite
     if (!*get_root()) {
@@ -156,7 +159,9 @@ public:
 
 
   /**
-   * Render the sprite
+   * Render the sprite on the head
+   * \param position Screen vertex where the origin of the sprite is rendered
+   * \param frame Frame of the sprite to render
    */
   void render(vertex_type position, std::uint16_t frame = 0U)
   {
@@ -321,7 +326,7 @@ public:
 
 
 template <std::uint16_t Pixel, std::uint16_t Frames>
-class canvas : public base, public dc
+class canvas : public base
 {
   typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false>::iterator pattern_iterator_type;
   typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, true>::iterator  restore_iterator_type;
@@ -342,7 +347,6 @@ public:
    */
   canvas(drv& head, std::int16_t z_index = 0)
     : base(head, z_index)
-    , dc(head)
     , output_shader_(frame_, pattern_, pattern_bounding_)
   {
     // use own canvas output shader as shader pipeline output
@@ -355,6 +359,9 @@ public:
   }
 
 
+  /**
+   * Clear the actual frame
+   */
   void cls()
   {
     pattern_[frame_].clear();
@@ -452,7 +459,7 @@ typedef struct tag_sheet_info_type {
 
 
 template <std::uint16_t Frame_Width, std::uint16_t Frame_Height>
-class sheet : public base, public dc
+class sheet : public base
 {
   std::size_t pattern_it_;      // pattern iterator
   std::size_t pattern_size_;    // pattern size (vertexes)
@@ -474,7 +481,6 @@ public:
    */
   sheet(drv& head, const sheet_info_type* sheet_info, std::int16_t z_index = 0)
     : base(head, z_index)
-    , dc(head)
     , sheet_info_(sheet_info)
   {
     // sheet constants
@@ -578,12 +584,18 @@ public:
 
 private:
   // format conversion
+  // the format color is expected to have the LSB (least significant byte) FIRST
   color::value_type format_to_color(const std::uint8_t* format_color)
   {
     switch (sheet_info_->format)
     {
-      case color::format_RGB332   : return color::argb(static_cast<std::uint8_t>(*format_color & 0xE0U), static_cast<std::uint8_t>((*format_color & 0x1CU) << 3U), static_cast<std::uint8_t>((*format_color & 0x03U) << 6U));
-      case color::format_RGB565   : return color::argb(static_cast<std::uint8_t>((*reinterpret_cast<const std::uint16_t*>(format_color) & 0xF800U) >> 8U), static_cast<std::uint8_t>((*reinterpret_cast<const std::uint16_t*>(format_color) & 0x07E0U) >> 3U), static_cast<std::uint8_t>((*reinterpret_cast<const std::uint16_t*>(format_color) & 0x001FU) << 3U));
+      case color::format_RGB332   :
+        return color::RGB332_to_color(*format_color);
+      case color::format_RGB565   : {
+        const std::uint16_t clr = (static_cast<std::uint16_t>(*format_color)) |
+                                  (static_cast<std::uint16_t>(*(format_color + 1U)) << 8U);
+        return color::RGB565_to_color(clr);
+      }
       case color::format_RGB888   : return color::set_alpha(*reinterpret_cast<const color::value_type*>(format_color), 255);
       case color::format_RGBA8888 : return *reinterpret_cast<const color::value_type*>(format_color) >> 8U | ((*reinterpret_cast<const color::value_type*>(format_color) & 0xFFU) << 24U);
       default                     : return *reinterpret_cast<const color::value_type*>(format_color);
