@@ -256,6 +256,82 @@ namespace color {
 
 
   //////////////////////////////////////////////////////////////////////////
+  // C O L O R   F O R M A T   C O N V E R S I O N
+
+  /**
+   * Helper functions to convert internal ARGB color to native (head/bitmap) color format
+   * \param color Internal ARGB color value
+   * \return Native head color value
+   */
+  inline std::uint8_t color_to_L1(value_type color)
+  { return static_cast<std::uint8_t>((color & 0x00FFFFFFUL) != (std::uint32_t)0U ? 1U : 0U); }
+
+  inline std::uint8_t color_to_L2(value_type color)
+  { return static_cast<std::uint8_t>(((std::uint16_t)((std::uint16_t)get_red(color) + (std::uint16_t)get_green(color) + (std::uint16_t)get_blue(color)) / 3U) >> 6U); }
+
+  inline std::uint8_t color_to_L4(value_type color)
+  { return static_cast<std::uint8_t>(((std::uint16_t)((std::uint16_t)get_red(color) + (std::uint16_t)get_green(color) + (std::uint16_t)get_blue(color)) / 3U) >> 4U); }
+
+  inline std::uint8_t color_to_L8(value_type color)
+  { return static_cast<std::uint8_t>((std::uint16_t)((std::uint16_t)get_red(color) + (std::uint16_t)get_green(color) + (std::uint16_t)get_blue(color)) / 3U); }
+
+  inline std::uint8_t color_to_RGB332(value_type color)
+  { return static_cast<std::uint8_t>((std::uint8_t)(get_red(color) & 0xE0U) | (std::uint8_t)((get_green(color) & 0xE0U) >> 3U) | (std::uint8_t)((get_blue(color)) >> 6U)); }
+
+  inline std::uint16_t color_to_RGB444(value_type color)
+  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF0U) <<  8U) | ((std::uint16_t)(get_green(color) & 0xF0U) << 4U) | (std::uint16_t)(get_blue(color) >> 4U)); }
+
+  inline std::uint16_t color_to_RGB555(value_type color)
+  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF8U) << 10U) | ((std::uint16_t)(get_green(color) & 0xF8U) << 5U) | (std::uint16_t)(get_blue(color) >> 3U)); }
+
+  inline std::uint16_t color_to_RGB565(value_type color)
+  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF8U) << 11U) | ((std::uint16_t)(get_green(color) & 0xFCU) << 5U) | (std::uint16_t)(get_blue(color) >> 3U)); }
+
+  inline std::uint32_t color_to_RGB666(value_type color)
+  { return static_cast<std::uint32_t>(((std::uint32_t)(get_red(color) & 0xFCU) << 12U) | ((std::uint32_t)(get_green(color) & 0xFCU) << 6U) | (std::uint32_t)(get_blue(color) >> 2U)); }
+
+  inline std::uint32_t color_to_RGB888(value_type color)
+  { return static_cast<std::uint32_t>(color & 0x00FFFFFFUL); }
+
+
+  /**
+   * Helper functions to convert native (head/bitmap) color format to internal ARGB color
+   * \param Native head/bitmap color value
+   * \return Internal ARGB color value
+   */
+  inline value_type L1_to_color(std::uint8_t head_color)
+  { return head_color ? 0xFFFFFFFFUL : 0xFF000000UL; }
+
+  inline value_type L2_to_color(std::uint8_t head_color)
+  { return dim(0xFFFFFFFFUL, 255U / ( 3U * (head_color & 0x03U))); }
+
+  inline value_type L4_to_color(std::uint8_t head_color)
+  { return dim(0xFFFFFFFFUL, 255U / (15U * (head_color & 0x0FU))); }
+
+  inline value_type L8_to_color(std::uint8_t head_color)
+  { return dim(0xFFFFFFFFUL, head_color); }
+
+  inline value_type RGB332_to_color(std::uint8_t head_color)
+  { return argb(static_cast<std::uint8_t>(head_color & 0xE0U), static_cast<std::uint8_t>((head_color & 0x1CU) << 3U), static_cast<std::uint8_t>((head_color & 0x03U) << 6U)); }
+
+  inline value_type RGB444_to_color(std::uint16_t head_color)
+  { return argb(static_cast<std::uint8_t>((head_color & 0x0F00U) >> 4U), static_cast<std::uint8_t>((head_color & 0x00F0U)      ), static_cast<std::uint8_t>((head_color & 0x000FU) << 4U)); }
+
+  inline value_type RGB555_to_color(std::uint16_t head_color)
+  { return argb(static_cast<std::uint8_t>((head_color & 0x7C00U) >> 7U), static_cast<std::uint8_t>((head_color & 0x03E0U) >> 2U), static_cast<std::uint8_t>((head_color & 0x001FU) << 3U)); }
+
+  inline value_type RGB565_to_color(std::uint16_t head_color)
+  { return argb(static_cast<std::uint8_t>((head_color & 0xF800U) >> 8U), static_cast<std::uint8_t>((head_color & 0x07E0U) >> 3U), static_cast<std::uint8_t>((head_color & 0x001FU) << 3U)); }
+
+  inline value_type RGB666_to_color(std::uint32_t head_color)
+  { return argb(static_cast<std::uint8_t>((head_color & 0x0003F000UL) >> 10U), static_cast<std::uint8_t>((head_color & 0x00000FC0UL) >> 4U), static_cast<std::uint8_t>((head_color & 0x0000003FUL) << 2U)); }
+
+  inline value_type RGB888_to_color(std::uint32_t head_color)
+  { return static_cast<value_type>(head_color & 0x00FFFFFFUL) | 0xFF000000UL; }
+
+
+
+  //////////////////////////////////////////////////////////////////////////
   // P R E D E F I N E D   S T O C K   C O L O R S
 
   // static RGB color assembly
