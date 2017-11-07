@@ -135,10 +135,11 @@ protected:
 
   /**
    * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
    */
-  virtual void cls(color::value_type bk_color = color::none)
+  virtual void cls(color::value_type bg_color = color::none)
   {
-    (void)bk_color;
+    (void)bg_color;
   }
 
 
@@ -157,7 +158,7 @@ protected:
   /**
    * Set pixel in given color
    * \param vertex Pixel coordinates
-   * \param color Color of pixel in 0RGB format
+   * \param color Color of pixel in 0RGB format, alpha channel is not evaluated
    */
   virtual void pixel_set(vertex_type vertex, std::uint32_t color)
   {
@@ -168,7 +169,7 @@ protected:
   /**
    * Return the color of the pixel
    * \param point Vertex of the pixel
-   * \return Color of pixel in 0RGB format
+   * \return Color of pixel in 0RGB format, alpha channel not set/undefined
    */
   virtual color::value_type pixel_get(vertex_type vertex)
   {
@@ -182,6 +183,7 @@ protected:
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
+   * \param color Line color - only RGB, no alpha channel
    */
   virtual void line_horz(vertex_type v0, vertex_type v1, std::uint32_t color)
   {
@@ -197,6 +199,7 @@ protected:
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
+   * \param color Line color - only RGB, no alpha channel
    */
   virtual void line_vert(vertex_type v0, vertex_type v1, std::uint32_t color)
   {
@@ -210,8 +213,8 @@ protected:
   /**
    * Draw a box (filled rectangle) in given color
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param rect Box bounding
-   * \param color Box color
+   * \param rect Box bounding, included in box
+   * \param color Box color - only RGB, no alpha channel
    */
   virtual void box(rect_type rect, std::uint32_t color)
   {
@@ -284,7 +287,7 @@ protected:
 
   /**
    * Set inverse text mode
-   * \param mode Set normal or inverse video
+   * \param inverse Set normal or inverse video
    */
   virtual void text_set_inverse(bool inverse)
   {
@@ -393,9 +396,8 @@ public:
 
 
   /**
-   * Returns the true if the given vertex is within the screen area
-   * \param x X value in screen coordinates
-   * \param y Y value in screen coordinates
+   * Returns true if the given vertex is within the screen area
+   * \param v Vertex in screen coordinates
    * \return true if the given vertex is within the screen area
    */
   inline bool screen_is_inside(const vertex_type& v) const
@@ -403,8 +405,8 @@ public:
 
 
   /**
-   * Returns the viewport (display) height
-   * \return Viewport height in pixel or chars
+   * Returns the viewport (display) width
+   * \return Viewport width in pixel or chars
    */
   inline std::uint16_t viewport_width() const
   { return viewport_size_x_; }
@@ -420,8 +422,7 @@ public:
 
   /**
    * Returns true, if the given vertex is within the visible viewport
-   * \param x X value in screen coordinates
-   * \param y Y value in screen coordinates
+   * \param v Vertex in screen coordinates
    * \return true if the given vertex is within the viewport area
    */
   inline bool viewport_is_inside(vertex_type v) const
@@ -431,8 +432,7 @@ public:
 
   /**
    * Set the new viewport origin
-   * \param x Left corner in screen coordinates
-   * \param y Top corner in screen coordinates
+   * \param v New viewport origin in screen coordinates
    */
   inline virtual void viewport_set(vertex_type v)
   {
@@ -443,8 +443,7 @@ public:
 
   /**
    * Get the actual viewport origin
-   * \param x Left corner in screen coordinates
-   * \param y Top corner in screen coordinates
+   * \return Viewport origin in screen coordinates
    */
   inline virtual vertex_type viewport_get() const
   { return viewport_; }
@@ -464,7 +463,7 @@ public:
 
 
  /**
-   * Use the given framebuffer plane as as read/write buffer
+   * Use the given framebuffer plane as read/write buffer
    * \param plane The index of the framebuffer/plane to access, 0 for 1st
    */
   virtual bool framebuffer_set_access(std::size_t plane)
@@ -488,14 +487,6 @@ public:
    * \param enable True to switch the display on, false to switch it off (standby, powersave)
    */
   virtual void display_enable(bool enable = true)
-  { (void)enable; }
-
-
-  /**
-   * Set display or backlight brightness
-   * \param enable True to switch the backlight on, false to switch it off
-   */
-  virtual void display_backlight(bool enable = true)
   { (void)enable; }
 
 
