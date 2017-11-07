@@ -327,7 +327,7 @@ namespace color {
   { return argb(static_cast<std::uint8_t>((head_color & 0x0003F000UL) >> 10U), static_cast<std::uint8_t>((head_color & 0x00000FC0UL) >> 4U), static_cast<std::uint8_t>((head_color & 0x0000003FUL) << 2U)); }
 
   inline value_type RGB888_to_color(std::uint32_t head_color)
-  { return static_cast<value_type>(head_color & 0x00FFFFFFUL) | 0xFF000000UL; }
+  { return static_cast<value_type>(head_color | 0xFF000000UL); }
 
 
 
