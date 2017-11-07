@@ -31,7 +31,7 @@
 #ifndef _VIC_CTRL_H_
 #define _VIC_CTRL_H_
 
-#include "drv.h"
+#include "../drv.h"
 
 
 namespace vic {
@@ -43,27 +43,72 @@ namespace ctrl {
  */
 class base
 {
+protected:
+  drv&  head_;    // head instance
+  base* next_;    // next ctrl in chain
+
 public:
   /**
    * ctor
-   * \param driver Reference to driver
+   * \param head Reference to the head instance
    */
   base(drv& head)
     : head_(head)
-  { }
+    , next_(nullptr)
+  {
+    // register ctrl
+    if (!*get_root()) {
+      // set ctrl as root element
+      *get_root() = this;
+    }
+    else {
+      // append ctrl in the chain
+      for (base* b = *get_root(); b != nullptr; b = b->next_) {
+        if (!b->next_) {
+          b->next_ = this;
+          return;
+        }
+      }
+    }
+  }
+
+
+  ~base()
+  {
+    // remove from list
+    if (this == *get_root()) {
+      // set as root element
+      *get_root() = next_;
+    }
+    else {
+      for (base* b = *get_root(); b != nullptr; b = b->next_) {
+        if (this == b->next_) {
+          b->next_ = next_;
+          return;
+        }
+      }
+    }
+  }
+
 
   /**
-   * Check if the given point is inside the control
+   * Check if the given vertex is inside the control
    * \param point Point to check
    * \return true if point is inside the control
    */
-  virtual bool is_inside(vertex_type point) = 0;
+  virtual bool is_inside(vertex_type vertex) = 0;
+  
 
 protected:
-  drv& head_;
+  inline base** get_root()
+  {
+    static base* _root = nullptr;
+    return &_root;
+  }
+
 
 private:
-  const ctrl& operator=(const ctrl& rhs) { return rhs; }  // non copyable
+  const base& operator=(const base& rhs) { return rhs; }  // non copyable
 };
 
 } // namespace ctrl

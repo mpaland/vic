@@ -53,17 +53,42 @@ namespace ctrl {
 
 class bitmap : public base
 {
-public:
+private:
+  // xpm color lookup table
+  typedef struct tag_clut_type {
+    char              code[VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL];  // color code
+    color::value_type color;                                        // assigned color
+  } clut_type;
 
+  // xpm data
+  typedef struct tag_xpm_data_type {
+    std::uint16_t colors;           // colors of the bitmap
+    std::uint16_t char_on_pixel;    // chars per pixel
+    const char**  image;            // pointer to the bitmap
+  } xpm_data_type;
+
+  // vars
+  dc            dc_;                // drawing context
+  std::uint16_t bmp_width_;         // bitmap width
+  std::uint16_t bmp_height_;        // bitmap height
+  vertex_type   bmp_origin_;        // top-left corner
+  xpm_data_type xpm_data_;          // XPM data
+ 
+  // XPM color lookup table
+  clut_type     clut_[VIC_CTRL_BITMAP_XPM_CLUT_SIZE] = { 0 };
+  std::size_t   clut_idx_;
+
+public:
   /**
    * ctor
    * \param head Reference to the head driver
    * \param config Configuration params
    */
   bitmap(drv& head)
-    : ctrl(head)
-    , bmp_width_(0)
-    , bmp_height_(0)
+    : base(head)
+    , dc_(head)
+    , bmp_width_(0U)
+    , bmp_height_(0U)
     , bmp_origin_({ 0, 0 })
     , clut_idx_(0U)
   { }
@@ -81,20 +106,23 @@ public:
 
 
   /**
-   * Render the bitmap of the given format
+   * Render the bitmap from the given raw color format
+   * \param origin Origin (left/top) where the bitmap is rendered
+   * \parma width Width of the bitmap
+   * \param height Height of the bitmap
+   * \param format Data format
+   * \param bitmap Bitmap data in the given raw format
    */
-  void render_bmp(vertex_type origin, std::uint16_t width, std::uint16_t height, color::format_type format, const std::uint8_t* bitmap)
+  void render_raw(vertex_type origin, std::uint16_t width, std::uint16_t height, color::format_type format, const std::uint8_t* bitmap)
   {
     bmp_origin_ = origin;
     bmp_width_  = width;
     bmp_height_ = height;
 
-    // lock output
-    head_.present_lock();
-
     switch (format)
     {
       case color::format_L1 :
+        // monochrom format
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           std::uint16_t bit = 0U;
           std::uint8_t  data = *bitmap;
@@ -106,48 +134,53 @@ public:
               data >>= 1U;
             }
             if (data & 0x01U) {
-              head_.plot({ x, y });
+              dc_.pixel_set({ x, y });
             }
           }
         }
         break;
 
       case color::format_RGB332 :
+        // 8 bit color
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap++) {
-            head_.plot({ x, y }, head_.color_from_head_RGB332(*bitmap));
+            dc_.pixel_set({ x, y }, color::RGB332_to_color(*bitmap));
           }
         }
         break;
 
       case color::format_RGB555 :
+        // 15 bit color
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 2U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB555(*reinterpret_cast<std::uint16_t*>(bitmap));
+            dc_.pixel_set({ x, y }, color::RGB555_to_color(*reinterpret_cast<const std::uint16_t*>(bitmap)));
           }
         }
         break;
 
       case color::format_RGB565 :
+        // 16 bit color
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 2U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB565(*reinterpret_cast<std::uint16_t*>(bitmap));
+            dc_.pixel_set({ x, y }, color::RGB565_to_color(*reinterpret_cast<const std::uint16_t*>(bitmap)));
           }
         }
         break;
 
       case color::format_RGB888 :
+        // 24 bit color, no alpha
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 3U) {
-            head_.plot({ x, y }, head_.color_from_head_RGB888(*reinterpret_cast<std::uint32_t*>(bitmap)));
+            dc_.pixel_set({ x, y }, color::RGB888_to_color(*reinterpret_cast<const std::uint32_t*>(bitmap)));
           }
         }
         break;
 
       case color::format_ARGB8888 :
+        // 24 bit color and alpha channel
         for (std::int16_t y = origin.y, ye = origin.y + height; y < ye; ++y) {
           for (std::int16_t x = origin.x, xe = origin.x + width; x < xe; ++x, bitmap += 4U) {
-            head_.plot({ x, y }, *reinterpret_cast<color::value_type*>(bitmap));
+            dc_.pixel_set({ x, y }, *reinterpret_cast<const color::value_type*>(bitmap));
           }
         }
         break;
@@ -156,15 +189,13 @@ public:
         // unsupported format
         break;
     }
-    head_.present_lock(false);
+    dc_.present();
   }
 
 
   /**
-   * Render a bitmap in XPM3 format
-   * \param destination Destination vertex (left/top)
-   * \param max_width Maximum width of the bitmap
-   * \param max_height Maximum height of the bitmap
+   * Render the bitmap from the XPM3 format
+   * \param origin Origin (left/top) where the bitmap is rendered
    * \param xpm3_image Image data in XPM3 format
    */
   void render_xpm(vertex_type origin, const char* xpm3_image[])
@@ -182,17 +213,16 @@ public:
     memset(clut_, 0, sizeof(clut_));
 
     // render the bitmap
-    head_.present_lock();
     std::uint16_t ix = 0U, iy = xpm_data_.colors + 1U;
     for (std::int16_t y = origin.y, ye = origin.y + bmp_height_; y < ye; ++y, ++iy, ix = 0U) {
       for (std::int16_t x = origin.x, xe = origin.x + bmp_width_; x < xe; ++x, ix += xpm_data_.char_on_pixel) {
         const color::value_type _color = xpm_get_clut_color(&xpm3_image[iy][ix]);
         if (_color != color::none) {
-          head_.plot({ x, y }, _color);
+          dc_.pixel_set({ x, y }, _color);
         }
       }
     }
-    head_.present_lock(false);
+    dc_.present();
   }
 
 
@@ -213,7 +243,7 @@ private:
 
         if (*p == '#') {
           // read RGB color
-          return static_cast<color::value_type>(strtol(++p, nullptr, 16U));
+          return static_cast<color::value_type>(strtol(++p, nullptr, 16U) | 0xFF000000UL);
         }
         else if (memcmp(p, "None", 4U)) {
           return color::none;
@@ -279,31 +309,6 @@ private:
       res = res * base + digit;
     }
   }
-
-
-private:
-
-  // xpm color lookup table
-  typedef struct tag_clut_type {
-    char              code[VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL];  // color code
-    color::value_type color;                                        // assigned color
-  } clut_type;
-
-  // xpm data
-  typedef struct tag_xpm_data_type {
-    std::uint16_t colors;           // colors of the bitmap
-    std::uint16_t char_on_pixel;    // chars per pixel
-    const char**  image;            // pointer to the bitmap
-  } xpm_data_type;
-
-  std::uint16_t bmp_width_;         // bitmap width
-  std::uint16_t bmp_height_;        // bitmap height
-  vertex_type   bmp_origin_;        // top-left corner
-  xpm_data_type xpm_data_;          // XPM data
- 
-  // XPM color lookup table
-  clut_type     clut_[VIC_CTRL_BITMAP_XPM_CLUT_SIZE] = { 0 };
-  std::size_t   clut_idx_;
 };
 
 } // namespace ctrl
