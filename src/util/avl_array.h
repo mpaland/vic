@@ -279,11 +279,17 @@ public:
    */
   inline bool find(const key_type& key, value_type& val) const
   {
-    for (size_type i = root_; i != INVALID_IDX; i = (key < key_[i]) ? child_[i].left : child_[i].right) {
-      if (key == key_[i]) {
+    for (size_type i = root_; i != INVALID_IDX;) {
+      if (key < key_[i]) {
+        i = child_[i].left;
+      }
+      else if (key == key_[i]) {
         // found key
         val = val_[i];
         return true;
+      }
+      else {
+        i = child_[i].right;
       }
     }
     // key not found
@@ -298,10 +304,15 @@ public:
    */
   inline iterator find(const key_type& key)
   {
-    for (size_type i = root_; i != INVALID_IDX; i = (key < key_[i]) ? child_[i].left : child_[i].right) {
-      if (key == key_[i]) {
+    for (size_type i = root_; i != INVALID_IDX;) {
+      if (key < key_[i]) {
+        i = child_[i].left;
+      } else if (key == key_[i]) {
         // found key
         return iterator(this, i);
+      }
+      else {
+        i = child_[i].right;
       }
     }
     // key not found, return end() iterator
@@ -496,11 +507,12 @@ public:
         // wrong key order to the right
         return false;
       }
-      if ((i != root_) && (get_parent(i) == INVALID_IDX)) {
+      const size_type parent = get_parent(i);
+      if ((i != root_) && (parent == INVALID_IDX)) {
         // no parent
         return false;
       }
-      if ((i == root_) && (get_parent(i) != INVALID_IDX)) {
+      if ((i == root_) && (parent != INVALID_IDX)) {
         // invalid root parent
         return false;
       }
@@ -622,11 +634,13 @@ private:
         return;
       }
 
-      const size_type parent = get_parent(node);
-      if (parent != INVALID_IDX) {
-        balance = child_[parent].left == node ? -1 : 1;
+      if (node != INVALID_IDX) {
+        const size_type parent = get_parent(node);
+        if (parent != INVALID_IDX) {
+          balance = child_[parent].left == node ? -1 : 1;
+        }
+        node = parent;
       }
-      node = parent;
     }
   }
 
