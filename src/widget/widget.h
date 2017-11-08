@@ -23,29 +23,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Base class for complex controls like gauges, buttons, progress bars,
+// \brief Base class for complex widgets like gauges, buttons, progress bars,
 //        checkboxes, switches, etc.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_CTRL_H_
-#define _VIC_CTRL_H_
+#ifndef _VIC_WIDGET_H_
+#define _VIC_WIDGET_H_
 
 #include "../drv.h"
 
 
 namespace vic {
-namespace ctrl {
+namespace widget {
 
 
 /**
- * Ctrl base class
+ * Widget base class
  */
 class base
 {
 protected:
   drv&  head_;    // head instance
-  base* next_;    // next ctrl in chain
+  base* next_;    // next widget in chain
 
 public:
   /**
@@ -58,11 +58,11 @@ public:
   {
     // register ctrl
     if (!*get_root()) {
-      // set ctrl as root element
+      // set widget as root element
       *get_root() = this;
     }
     else {
-      // append ctrl in the chain
+      // append widget in the chain
       for (base* b = *get_root(); b != nullptr; b = b->next_) {
         if (!b->next_) {
           b->next_ = this;
@@ -75,7 +75,7 @@ public:
 
   ~base()
   {
-    // remove from list
+    // remove widget from list
     if (this == *get_root()) {
       // set as root element
       *get_root() = next_;
@@ -92,14 +92,42 @@ public:
 
 
   /**
-   * Check if the given vertex is inside the control
-   * \param point Point to check
-   * \return true if point is inside the control
+   * Init the widget
+   * Initially draw the widget, init structures etc.
    */
-  virtual bool is_inside(vertex_type vertex) = 0;
-  
+  virtual void init(void) = 0;
+
+
+  /**
+   * Find a widget by vertex
+   * This can be used to find the according widget if a touch event happend
+   * \param vertex Vertex to check
+   * \return Pointer to the widget containing the vertex, nullptr if no widget was found
+   */
+  base* find(vertex_type vertex)
+  {
+    for (base* b = *get_root(); b != nullptr; b = b->next_) {
+      if (b->is_inside(vertex)) {
+        // widget found
+        return b;
+      }
+    }
+    // no widget found
+    return nullptr;
+  }
+
 
 protected:
+
+  /**
+   * Check if the given vertex is inside the widget
+   * \param vertex Vertex to check
+   * \return true if point is inside the widget
+   */
+  virtual bool is_inside(vertex_type vertex) const = 0;
+
+
+  // get the root of the widget chain
   inline base** get_root()
   {
     static base* _root = nullptr;
@@ -111,7 +139,7 @@ private:
   const base& operator=(const base& rhs) { return rhs; }  // non copyable
 };
 
-} // namespace ctrl
+} // namespace widget
 } // namespace vic
 
-#endif  // _VIC_CTRL_H
+#endif  // _VIC_WIDGET_H_
