@@ -166,6 +166,22 @@ inline std::int16_t max3(std::int16_t a, std::int16_t b, std::int16_t c)
 
 
 /**
+ * Swap values so that minimum contains the minimum afterwarts
+ * \param minimum Minimum value after swap
+ * \param maximum Maximum value after swap
+ */
+template<typename T>
+inline void min_max_swap(T& minimum, T& maximum)
+{
+  if (minimum > maximum) {
+    const T tmp = minimum;
+    minimum     = maximum;
+    maximum     = tmp;
+  }
+}
+
+
+/**
  * Return the absolue value
  * \param val Input value, negative or positive
  * \return Positive value
@@ -202,10 +218,10 @@ inline std::uint16_t div255(std::uint16_t data)
 
 
 /**
- * Helper function for integer division with round to closest
+ * Helper function for integer division with round to closest, like 8 / 3 = 3
  * \param data Input data
  * \param divisor Divisor
- * \return data / divisor
+ * \return data / divisor 
  */
 inline std::int32_t div_round_closest(std::int32_t data, std::int16_t divisor)
 {
