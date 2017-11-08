@@ -192,8 +192,8 @@ public:
    */
   void line_horz(vertex_type v0, vertex_type v1)
   {
-    if (!shader_is_active()) {
-      // no active shaders, let the driver draw the line
+    if (!shader_is_active() && (color::is_opaque(get_color()))) {
+      // no active shaders, opaque color: let the driver draw the line
       head_.line_horz(v0, v1, get_color());
       present();
     }
@@ -211,8 +211,8 @@ public:
    */
   void line_vert(vertex_type v0, vertex_type v1)
   {
-    if (!shader_is_active()) {
-      // no active shaders, let the driver draw the line
+    if (!shader_is_active() && (color::is_opaque(get_color()))) {
+      // no active shaders, opaque color: let the driver draw the line
       head_.line_vert(v0, v1, get_color());
       present();
     }
@@ -229,8 +229,8 @@ public:
    */
   void box(rect_type rect)
   {
-    if (!shader_is_active()) {
-      // no active shaders, let the driver draw the box
+    if ((!shader_is_active()) && (color::is_opaque(get_color()))) {
+      // no active shaders, opaque color: let the driver draw the box
       head_.box(rect, get_color());
       present();
     }
