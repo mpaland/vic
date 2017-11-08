@@ -151,13 +151,6 @@ public:
   virtual void restore_set(const pixel_type& pixel) = 0;
 
 
-  // select the actual frame
-  inline void select_frame(std::uint16_t frame)
-  {
-    frame_ = frame;
-  }
-
-
   /**
    * Render the sprite on the head
    * \param position Screen vertex where the origin of the sprite is rendered
@@ -283,6 +276,13 @@ public:
   inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
     avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false>::iterator it = pattern_[frame_].find(vertex);
+    // delete pixel, if color is color::none, e.g. to punch out pixels
+    if (color == color::none) {
+      pattern_[frame_].erase(it);
+      return;
+    }
+
+    // modify/add pixel
     if (it != pattern_->end()) {
       // alpha blending and pixel modification
       *it = color::alpha_blend(color, *it);
@@ -338,8 +338,8 @@ class canvas : public base
   restore_iterator_type restore_it_;    // restore iterator
 
   rect_type pattern_bounding_[Frames];  // pattern bounding box
-
-  canvas_output<Pixel> output_shader_;
+  canvas_output<Pixel> output_shader_;  // shader output
+  std::uint16_t frame_edit_;            // actual edit frame
 
 public:
   /**
@@ -347,7 +347,8 @@ public:
    */
   canvas(drv& head, std::int16_t z_index = 0)
     : base(head, z_index)
-    , output_shader_(frame_, pattern_, pattern_bounding_)
+    , output_shader_(frame_edit_, pattern_, pattern_bounding_)
+    , frame_edit_(0U)
   {
     // use own canvas output shader as shader pipeline output
     shader_pipe_ = &output_shader_;
@@ -360,12 +361,22 @@ public:
 
 
   /**
+   * Select the actual frame for editing
+   * \param frame Edit frame
+   */
+  inline void select_frame(std::uint16_t frame)
+  {
+    frame_edit_ = frame;
+  }
+
+
+  /**
    * Clear the actual frame
    */
   void cls()
   {
-    pattern_[frame_].clear();
-    pattern_bounding_[frame_].clear();
+    pattern_[frame_edit_].clear();
+    pattern_bounding_[frame_edit_].clear();
   }
 
 
