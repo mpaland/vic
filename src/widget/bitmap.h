@@ -23,32 +23,29 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Bitmap control
-// This control renders a bitmap in XPM format or other various XBM formats
+// \brief Bitmap widget
+// This widget renders a bitmap in XPM format or other various XBM formats
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_CTRL_BITMAP_H_
-#define _VIC_CTRL_BITMAP_H_
+#ifndef _VIC_WIDGET_BITMAP_H_
+#define _VIC_WIDGET_BITMAP_H_
 
-#include <cstdint>
-#include <cstddef>
 #include <string.h>   // memcpy/memcmp
-
-#include "ctrl.h"
+#include "widget.h"
 
 
 // defines the maximum chars per XPM pixel
 // value of 4 is default, one CLUT entry takes 8 byte than
-#define VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL  4U
+#define VIC_WIDGET_BITMAP_XPM_MAX_CHAR_ON_PIXEL  4U
 
 // Entrys in the Color LookUp Table for XPM bitmaps
 // 16/32 is a good value, so the CLUT takes 128/256 byte
-#define VIC_CTRL_BITMAP_XPM_CLUT_SIZE         16U
+#define VIC_WIDGET_BITMAP_XPM_CLUT_SIZE         16U
 
 
 namespace vic {
-namespace ctrl {
+namespace widget {
 
 
 class bitmap : public base
@@ -56,8 +53,8 @@ class bitmap : public base
 private:
   // xpm color lookup table
   typedef struct tag_clut_type {
-    char              code[VIC_CTRL_BITMAP_XPM_MAX_CHAR_ON_PIXEL];  // color code
-    color::value_type color;                                        // assigned color
+    char              code[VIC_WIDGET_BITMAP_XPM_MAX_CHAR_ON_PIXEL];  // color code
+    color::value_type color;                                          // assigned color
   } clut_type;
 
   // xpm data
@@ -75,7 +72,7 @@ private:
   xpm_data_type xpm_data_;          // XPM data
  
   // XPM color lookup table
-  clut_type     clut_[VIC_CTRL_BITMAP_XPM_CLUT_SIZE] = { 0 };
+  clut_type     clut_[VIC_WIDGET_BITMAP_XPM_CLUT_SIZE] = { 0 };
   std::size_t   clut_idx_;
 
 public:
@@ -95,14 +92,10 @@ public:
 
 
   /**
-   * Check if the given point is inside the control
-   * \param point Point to check
-   * \return true if point is inside the control
+   * Init - unused
    */
-  virtual bool is_inside(vertex_type point)
-  { return (point.x >= bmp_origin_.x && point.x < bmp_origin_.x + bmp_width_) &&
-           (point.y >= bmp_origin_.y && point.y < bmp_origin_.y + bmp_height_);
-  }
+  virtual void init() final
+  { }
 
 
   /**
@@ -226,6 +219,19 @@ public:
   }
 
 
+protected:
+
+  /**
+   * Check if the given point is inside the control
+   * \param point Point to check
+   * \return true if point is inside the control
+   */
+  virtual bool is_inside(vertex_type vertex) const final
+  { return (vertex.x >= bmp_origin_.x && vertex.x < bmp_origin_.x + bmp_width_) &&
+           (vertex.y >= bmp_origin_.y && vertex.y < bmp_origin_.y + bmp_height_);
+  }
+
+
 private:
 
   // get the xpm color out of the image data
@@ -258,7 +264,7 @@ private:
   color::value_type xpm_get_clut_color(const char* pixel_code)
   {
     // try to find the color in clut
-    for (std::uint_fast16_t n = 0U; n < VIC_CTRL_BITMAP_XPM_CLUT_SIZE; n++) {
+    for (std::uint_fast16_t n = 0U; n < VIC_WIDGET_BITMAP_XPM_CLUT_SIZE; n++) {
       if (memcmp(clut_[n].code, pixel_code, xpm_data_.char_on_pixel) == 0) {
         // found
         return clut_[n].color;
@@ -269,7 +275,7 @@ private:
     color::value_type _color = xpm_get_image_color(pixel_code);
     memcpy(clut_[clut_idx_].code, pixel_code, xpm_data_.char_on_pixel);
     clut_[clut_idx_].color = _color;
-    clut_idx_ = ++clut_idx_ % VIC_CTRL_BITMAP_XPM_CLUT_SIZE;
+    clut_idx_ = ++clut_idx_ % VIC_WIDGET_BITMAP_XPM_CLUT_SIZE;
     return _color;
   }
 
@@ -311,7 +317,7 @@ private:
   }
 };
 
-} // namespace ctrl
+} // namespace widget
 } // namespace vic
 
-#endif  // _VIC_CTRL_BITMAP_H_
+#endif  // _VIC_WIDGET_BITMAP_H_
