@@ -25,11 +25,22 @@
 //
 // \brief Progress bar widget
 //
+// Usage:
+// vic::widget::progress::config_type _cfg = { { 10, 10 }, 100, 13, vic::widget::progress::left_to_right,
+//                                             0, 100,
+//                                             vic::color::red,
+//                                             vic::color::darkgray,
+//                                             vic::color::white
+//                                           };
+// vic::widget::progress prog(_head, _cfg);
+// prog.init();
+// prog.set_pos(50);
+//
+// Configuration:
 // - origin is always the left/top corner of the widget
 // - x_size is always the complete size in x-direction
 // - y_size is always the complete size in y-direction
 // - if border color is set, the border is x-size * y-size
-//
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -144,7 +155,7 @@ public:
   /**
    * Reset the progress bar to lower range position (no progress)
    */
-  void reset()
+  inline void reset()
   {
     render(config_.range_lower);
   }
@@ -154,7 +165,7 @@ public:
    * Returns the current position of the progress bar control
    * \return Current position
    */
-  std::int16_t get_pos() const
+  inline std::int16_t get_pos() const
   {
     return pos_;
   }
@@ -164,7 +175,7 @@ public:
    * Specifies the step increment for the step_it() function
    * \param step New step increment, can be negative, default is 1
    */
-  void set_step(std::int16_t step = 1)
+  inline void set_step(std::int16_t step = 1)
   {
     step_ = step;
   }
@@ -192,7 +203,7 @@ public:
   /**
    * Redraw the control
    */
-  inline void redraw()
+  void redraw()
   {
     // render the border
     if (config_.color_border != color::none) {
@@ -245,12 +256,6 @@ private:
 
     if (refresh) {
       // complete redraw
-
-//  left_to_right                                                100 = xsize
-//  |----------------|--------|       0  1  2  3  4  5  6  7  8  9  0
-// -200        0    -120     -100
-//      bar_color        bg
-//
       switch (config_.orientation) {
         case left_to_right :
           rect_bar = { origin.x,                     origin.y, origin.x + bar_size, origin.y + y_size };
@@ -293,17 +298,12 @@ private:
       // calculate the last bar size in screen units
       std::uint16_t bar_size_old = static_cast<std::uint16_t>(util::div_round_closest(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? x_size + 1U : y_size + 1U) * (pos_ - config_.range_lower),
                                                                                       (config_.range_upper - config_.range_lower)));
-//      std::uint16_t bkg_size = static_cast<std::uint16_t>(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? x_size + 1U : y_size + 1U) - bar_size);
       if (bar_size_old) {
         bar_size_old--;
       }
-      // make sure, that offset is smaller than offset_old
+      // make sure, that bar_size is smaller than bar_size_old
       util::min_max_swap(bar_size, bar_size_old);
 
-//  left_to_right
-//  |------------n---o--------|
-//      bar_color        bg
-//
       switch (config_.orientation) {
         case left_to_right :
           rect_bar = { origin.x + bar_size, origin.y, origin.x + bar_size_old, origin.y + y_size };
