@@ -121,10 +121,11 @@ public:
 
   /**
    * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
    */
-  inline void cls(color::value_type bk_color = color::none)
+  inline void cls(color::value_type bg_color = color::none)
   { 
-    head_.cls(bk_color);
+    head_.cls(bg_color);
   }
 
 
