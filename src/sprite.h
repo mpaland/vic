@@ -116,7 +116,7 @@ protected:
       *get_root() = next_;
     }
     else {
-      for (base* b = *get_root(); b != nullptr; b = b->next_) {
+      for (base* b = *get_root(); !!b; b = b->next_) {
         if (this == b->next_) {
           b->next_ = next_;
           return;

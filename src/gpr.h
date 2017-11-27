@@ -67,6 +67,7 @@ protected:
   public:
     anti_aliasing(gpr& _gpr)
       : gpr_(_gpr)
+      , pipe_{ }
       , pipe_idx_(0)
     { }
 
