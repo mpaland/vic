@@ -244,11 +244,11 @@ namespace color {
       return front_color;
     }
 
-    const std::uint16_t aF = get_alpha(front_color);
+    const std::uint8_t aF = get_alpha(front_color);
 
-    return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + (255U - aF) * get_red(opaque_background))   / 255U),
-                static_cast<std::uint8_t>((aF * get_green(front_color) + (255U - aF) * get_green(opaque_background)) / 255U),
-                static_cast<std::uint8_t>((aF * get_blue(front_color)  + (255U - aF) * get_blue(opaque_background))  / 255U),
+    return argb(static_cast<std::uint8_t>((static_cast<std::uint16_t>(aF * get_red(front_color))   + (255U - aF) * get_red(opaque_background))   / 255U),
+                static_cast<std::uint8_t>((static_cast<std::uint16_t>(aF * get_green(front_color)) + (255U - aF) * get_green(opaque_background)) / 255U),
+                static_cast<std::uint8_t>((static_cast<std::uint16_t>(aF * get_blue(front_color))  + (255U - aF) * get_blue(opaque_background))  / 255U),
                 255U
                );
   }
