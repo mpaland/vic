@@ -575,15 +575,16 @@ public:
 
     // Barycentric coordinates at minX/minY corner
     vertex_type p = { min_x, min_y };
-    std::int16_t w0_row = util::orient_2d(v1, v2, p);
-    std::int16_t w1_row = util::orient_2d(v2, v0, p);
-    std::int16_t w2_row = util::orient_2d(v0, v1, p);
+    std::int32_t w0_row = util::orient_2d(v1, v2, p);
+    std::int32_t w1_row = util::orient_2d(v2, v0, p);
+    std::int32_t w2_row = util::orient_2d(v0, v1, p);
 
     // rasterize
     anti_aliasing aa0(*this), aa1(*this);
     for (p.y = min_y; p.y <= max_y; ++p.y) {
       // Barycentric coordinates at start of row
-      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row, l_x = 0;
+      std::int32_t w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      std::int16_t l_x = 0;
       bool inside = false;
       for (p.x = min_x; p.x <= max_x; ++p.x) {
         // if p is on or inside all edges, render the pixel

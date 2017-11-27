@@ -248,7 +248,7 @@ inline std::uint32_t distance_squared(vertex_type a, vertex_type b)
  * \param c Vertex c
  * \return Orient 2D value
  */
-inline std::int16_t orient_2d(vertex_type a, vertex_type b, vertex_type c)
+inline std::int32_t orient_2d(vertex_type a, vertex_type b, vertex_type c)
 {
   return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
 }
