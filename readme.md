@@ -8,19 +8,19 @@ If you need a robust, universal and embedded library for rendering text and grap
 - Universal library for graphic and alpha numeric displays
 - HEADER ONLY implementation, no module compilation
 - Platform and CPU independent code, NO dependencies, NO STL, NO new/delete, NO `float` - just clean and pure C++11
-- Platform independent driver design, the very same low level display driver runs everywhere
+- Platform independent driver design with I/O abstraction, the very same low level display driver runs everywhere
 - High performance primitive rendering of lines, circles, triangles, boxes, text etc.
+- Vertex/pixel shader pipe with dynamic clipping, gradient, brush, zoom, rotate etc. shaders.
+- Antialiasing support for smooth edge rendering
+- Full transparency and alpha channel blending support out of the box
 - Support of advanced controls like gauges, bars, (radio) buttons, checkboxes etc.
-- Sprite support for moving objects
+- Sprite (sheet and dynamic canvas) support for moving objects
 - Multiple heads support, as many displays as you may like in one system
 - Multihead driver, combine any number of single displays to one big display
 - Support of various color formats from 1 to 32 bpp displays
 - Support for different font formats (proportional, monospace), ASCII/UTF-8 support
-- Pen shape support for line drawing
-- Antialiasing support for smooth primitive and text/font rendering
+and text/font rendering
 - Framebuffer and viewport support
-- Clipping region support
-- Gradient color rendering support
 - NO floating point math, only fast integer operations
 - VERY clean and stable C++ code, LINT and L4 warning free, automotive ready
 - Very easy to use and fast implemention of own/new display drivers
@@ -32,17 +32,16 @@ vic is not meant to be a full bloated window manager, widgets, dialogs, theme re
 If you need an advanced windowed GUI, there are many other cool libraries around, like µC/GUI, StWin etc.
 
 ## To be done (and implemented)
-- Improve anti aliasing support
-- Sprite support
+- Improve/refactor anti aliasing support
 - Add more standard and high quality fonts
 
 
 ## Design of VIC
 Basicly every display needs a driver. But unlike as in many other designs, the driver is the highest class of which the head
 (display) is instanciated.
-A graphic driver only needs to implement `drv_pixel_set_color` and `drv_pixel_get` functions. But most modern
+A graphic driver only needs to implement `pixel_set` and `pixel_get` functions. But most modern
 display controllers can provide more sophisticated functions for native line/box rendering, block moving etc.
-If a controller can provide such special functions, the according function is implemented in the driver by simply overriding the virtual function of the `gpr` base class.
+If a controller can provide such special functions, the according function is implemented in the driver by simply overriding the virtual function of the `drv` base class.
 All graphic functions which the controller/driver can't provide natively are handled by the `gpr`.
 Of cource, native rendering on a specialized LCD controller is always faster and should be prefered.
 
@@ -51,29 +50,28 @@ Of cource, native rendering on a specialized LCD controller is always faster and
 ![](https://cdn.rawgit.com/mpaland/vic/v.0.3.0/doc/viclib.svg)
 
 ### gpr
-The Graphic Primitive Renderer provides fast rendering functions for graphic primitives.
+The Graphic Primitive Renderer provides fast rendering functions for graphic primitives like lines, circles, discs, etc.  
 The `gpr` doesn't use any floating point math, only fast integer operations.
 Furthermore the `gpr` should be a collection of reference implementations of the most modern, fast and reliable primitive rendering algorithms.
 So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and
 contribure!
 
 ### txr
-The Text Renderer is responsible for rendering text fonts on graphic displays. It supports monospaced and proportional fonts.
+The Text Renderer is responsible for rendering text fonts on graphic displays. It supports antialiasing, monospaced and proportional fonts.
 
 ### dc
-Drawing context
+To draw on anything on the screen, at least one Drawing Context is necessary. The dc 
 
 ### tc
 Text context
 
 ### drv
-The base class of the head driver which adds some mandatory driver routines.
-All color calculations are done in ARGB 32 bit format. If a display has less colors, like 15 bit RGB, the specific driver
-class is responsible for color reduction. Conversion routines provides the `drv` class.
+The base class of the custom head driver which adds some mandatory driver routines.
+All vic color calculations are done in ARGB 32 bit format. If a display has less colors, like 15 bit RGB, the specific driver
+class is responsible for color reduction. Conversion routines provides the `color` class.
 
 ### head
 The specific display driver. A display together with its controller is referenced here as `head`. And `head` is the namespace of all specific drivers.
-All virtual functions of the `gpr` and `drv` are overridden here.
 
 ### sprite
 
