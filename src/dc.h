@@ -96,9 +96,10 @@ public:
       shader_pipe_ = shader_pipe_->next_;
     }
     else {
-      for (shader::base* s = shader_pipe_; !!s; s->next_) {
-        if (s == _shader) {
-          s = s->next_;
+      for (shader::base* s = shader_pipe_; !!s; s = s->next_) {
+        if (_shader == s->next_) {
+          s->next_ = _shader->next_;
+          return;
         }
       }
     }
