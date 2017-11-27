@@ -276,7 +276,7 @@ public:
    * ctor
    * Create a clipping region, default disabled
    */
-  offset(std::uint16_t x_offset, std::int16_t y_offset)
+  offset(std::int16_t x_offset, std::int16_t y_offset)
     : x_offset_(x_offset)
     , y_offset_(y_offset)
   { }
