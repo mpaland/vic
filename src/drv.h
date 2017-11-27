@@ -219,9 +219,7 @@ protected:
   virtual void box(rect_type rect, std::uint32_t color)
   {
     for (std::int16_t y = rect.top; y <= rect.bottom; ++y) {
-      for (std::int16_t x = rect.left; x <= rect.right; ++x) {
-        pixel_set({ x, y }, color);
-      }
+      line_horz({ rect.left, y }, { rect.right, y }, color);
     }
   }
 
