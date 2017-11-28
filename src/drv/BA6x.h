@@ -71,11 +71,8 @@ class BA6x : public drv
 
   const io::handle_type device_handle_;                     // logical device handle (uart or usb)
 
-
-/////////////////////////////////////////////////////////////////////////////
-// M A N D A T O R Y   F U N C T I O N S
-
 public:
+
   /**
    * ctor
    * \param iface Interface type, USB and UART are possible options
@@ -99,7 +96,9 @@ public:
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
 
   virtual void init() final
   {
@@ -108,6 +107,11 @@ protected:
 
     // BX6x needs about 750 ms time to get ready
     io::delay(750U);
+
+    // clear rx buffer
+    std::uint8_t dummy[16];
+    std::size_t  dummy_len = 16U;
+    while (io::read(device_handle_, 0U, dummy, dummy_len, 0U));
 
     // clear display
     cls();
@@ -330,16 +334,25 @@ public:
    * Perform a display self test
    * \return true if successful
    */
-  void self_test() const
+  bool self_test() const
   {
-    // wait that display is ready for command
-    for (std::uint8_t n = 0U; !device_ready() && (n < 10U); ++n);
+    // make sure, the display is idle
+    io::delay(200U);
 
     // command: 00H, 10H, 00H
     const std::uint8_t cmd[3] = { 0x00U, 0x10U, 0x00U };
 
     // send data to display
     io::write(device_handle_, 0U, cmd, 3U, nullptr, 0U);
+
+    // wait that display finishes the test (ca. 30 sec)
+    std::uint8_t response[4];
+    std::size_t  len = 4U;
+    if (!read_response(response, len, 30000U) || len != 4U || response[0] != 0x04U || (response[1] & 0x0A0U)) {
+      // invalid response, error or device not ready
+      return false;
+    }
+    return true;
   }
 
 
@@ -350,10 +363,10 @@ public:
   bool device_ready() const
   {
     // status request command: 00H, 20H, 00H, 00H
-    const std::uint8_t cmd[4] = { 0x00U, 0x20U, 0x00U, 0x00U };
+    const std::uint8_t cmd[3] = { 0x00U, 0x20U, 0x00U };
 
     // send command to display
-    io::write(device_handle_, 0U, cmd, 4U, nullptr, 0U);
+    io::write(device_handle_, 0U, cmd, 3U, nullptr, 0U);
 
     // read and check status response
     // expected response: 04H, Status Byte 0, Status Byte 1, Status Byte 2 (SB0 oer SB1 != 0 is error)
@@ -390,7 +403,7 @@ private:
       bool res = io::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
       std::uint8_t response[4];
       std::size_t  len = 4U;
-      if (!(res && read_response(response, len) && len == 4U && response[0] == 0x04U && !(response[1] & 0x0A0U))) {
+      if (!(res && (read_response(response, len)) && (len == 4U) && (response[0] == 0x04U) && (!(response[1] & 0xA0U)))) {
         // abort
         return;
       }
@@ -405,13 +418,13 @@ private:
    * \param data_count On input the minimum chars to read, on return the available chars
    * \return true if response is positive/successful
    */
-  bool read_response(std::uint8_t* data, std::size_t& data_count) const
+  bool read_response(std::uint8_t* data, std::size_t& data_count, std::uint32_t timeout = 100U) const
   {
     std::size_t offset   = 0U;
     std::size_t max_size = data_count;
     std::size_t count    = max_size;
 
-    while (io::read(device_handle_, 0U, &data[offset], count, 100U)) {   // wait max. 100 ms for answer
+    while (io::read(device_handle_, 0U, &data[offset], count, timeout)) {
       offset += (std::int16_t)count;
       count = max_size - offset;
       if (offset >= data_count) {
