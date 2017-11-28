@@ -52,8 +52,6 @@ template<std::uint16_t Screen_Size_X   = 8U, std::uint16_t Screen_Size_Y   = 8U,
 class digole : public drv
 {
 public:
-/////////////////////////////////////////////////////////////////////////////
-// M A N D A T O R Y   F U N C T I O N S
 
   // interface type
   typedef enum tag_interface_type {
@@ -70,7 +68,7 @@ public:
    * \param iface Interface type, SPI, I²C or UART are valid
    * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
-  digole(orientation_type orientation, io::dev::handle_type device_handle,
+  digole(orientation_type orientation, io::handle_type device_handle,
          interface_type iface, std::uint32_t uart_baudrate = 9600U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
@@ -93,7 +91,9 @@ public:
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
 
   virtual void init() final
   {
@@ -130,7 +130,7 @@ protected:
 
     // display and backlight on
     display_enable();
-    display_backlight();
+    display_brightness(255U);
 
     if (interface_ == uart) {
       // set UART baudrate
@@ -159,7 +159,7 @@ protected:
   {
     cls();
     diplay_enable(false);     // display off
-    diplay_backlight(false);  // backlight off
+    display_brightness(0U);   // backlight off
   }
 
 
@@ -176,12 +176,22 @@ protected:
   }
 
 
-  virtual void cls() final
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+protected:
+
+  virtual void cls(color::value_type) final
   {
     const std::uint8_t cmd[2] = { 'C', 'L' };
     write(cmd, 2U);
   }
 
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
 
   /**
    * Set pixel in given color, the color doesn't change the actual drawing color
@@ -189,12 +199,12 @@ protected:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual void pixel_set(vertex_type point, color::value_type color) final
+  virtual void pixel_set(vertex_type vertex, color::value_type color) final
   { 
     std::uint8_t cmd[10];
 
     // check limits and clipping
-    if (!screen_is_inside(point)) {
+    if (!screen_is_inside(vertex)) {
       // out of bounds
       return;
     }
@@ -211,16 +221,16 @@ protected:
       // set pixel
       cmd[6] = 'D';
       cmd[7] = 'P';
-      cmd[8] = static_cast<std::uint8_t>(point.x);
-      cmd[9] = static_cast<std::uint8_t>(point.y);
+      cmd[8] = static_cast<std::uint8_t>(vertex.x);
+      cmd[9] = static_cast<std::uint8_t>(vertex.y);
       write(cmd, 10U);
     }
     else {
-      // no color change, set pixel
+      // no color change, just set pixel
       cmd[0] = 'D';
       cmd[1] = 'P';
-      cmd[2] = static_cast<std::uint8_t>(point.x);
-      cmd[3] = static_cast<std::uint8_t>(point.y);
+      cmd[2] = static_cast<std::uint8_t>(vertex.x);
+      cmd[3] = static_cast<std::uint8_t>(vertex.y);
       write(cmd, 4U);
     }
   }
@@ -267,7 +277,7 @@ protected:
   }
 
 
-  void box(vertex_type v0, vertex_type v1, std::uint32_t color) final
+  virtual void box(rect_type rect, std::uint32_t color) final
   {
     std::uint8_t cmd[12];
 
@@ -286,20 +296,20 @@ protected:
       // draw filled rectangle
       cmd[ 6] = 'F';
       cmd[ 7] = 'R';
-      cmd[ 8] = static_cast<std::uint8_t>(v0.x);
-      cmd[ 9] = static_cast<std::uint8_t>(v0.y);
-      cmd[10] = static_cast<std::uint8_t>(v1.x);
-      cmd[11] = static_cast<std::uint8_t>(v1.y);
+      cmd[ 8] = static_cast<std::uint8_t>(rect.left);
+      cmd[ 9] = static_cast<std::uint8_t>(rect.top);
+      cmd[10] = static_cast<std::uint8_t>(rect.right);
+      cmd[11] = static_cast<std::uint8_t>(rect.bottom);
       write(cmd, 12U);
     }
     else {
       // no color change, draw filled rectangle
       cmd_[0] = 'F';
       cmd_[1] = 'R';
-      cmd_[2] = static_cast<std::uint8_t>(v0.x);
-      cmd_[3] = static_cast<std::uint8_t>(v0.y);
-      cmd_[4] = static_cast<std::uint8_t>(v1.x);
-      cmd_[5] = static_cast<std::uint8_t>(v1.y);
+      cmd_[2] = static_cast<std::uint8_t>(rect.left);
+      cmd_[3] = static_cast<std::uint8_t>(rect.top);
+      cmd_[4] = static_cast<std::uint8_t>(rect.right);
+      cmd_[5] = static_cast<std::uint8_t>(rect.bottom);
       write(cmd, 6U);
     }
   }
@@ -321,6 +331,10 @@ protected:
   }
 
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // D I S P L A Y   C O N T R O L
+  //
+
   virtual void display_enable(bool enable = true) final
   {
     std::uint8_t cmd[4];
@@ -333,13 +347,13 @@ protected:
   }
 
 
-  virtual void display_backlight(bool enable = true) final
+  virtual void display_brightness(std::uint8_t level) final
   {
     std::uint8_t cmd[3];
 
     cmd[0] = 'B';
     cmd[1] = 'L';
-    cmd[2] = enable ? 1U : 0U;
+    cmd[2] = level == 0U ? 0U : 1U;
     write(cmd, 3U);
   }
 
@@ -348,13 +362,13 @@ private:
 
   inline void write(const std::uint8_t* buffer, std::uint8_t length)
   {
-    io::dev::write(device_handle_, 0U, buffer, length, nullptr, 0U);
+    io::write(device_handle_, 0U, buffer, length, nullptr, 0U);
   }
 
-  io::dev::handle_type  device_handle_;   // device handle
-  interface_type        interface_;       // interface type
-  std::uint32_t         uart_baudrate_;   // baudrate for UART interface mode
-  color::value_type     color_;           // actual pixel color
+  io::handle_type     device_handle_;   // device handle
+  interface_type      interface_;       // interface type
+  std::uint32_t       uart_baudrate_;   // baudrate for UART interface mode
+  color::value_type   color_;           // actual pixel color
 };
 
 } // namespace head
