@@ -40,6 +40,7 @@
 #include <string.h>
 
 #include "../drv.h"
+#include "../tc.h"
 
 
 // defines the driver name and version
@@ -68,7 +69,7 @@ class BA6x : public drv
   static const std::uint8_t BA6X_MAX_CMD_LENGTH = 0x20U;    // maximum command length (device constant)
   static const std::uint8_t ESC                 = 0x1BU;    // escape char
 
-  const io::dev::handle_type device_handle_;                // logical device handle (uart or usb)
+  const io::handle_type device_handle_;                     // logical device handle (uart or usb)
 
 
 /////////////////////////////////////////////////////////////////////////////
@@ -80,7 +81,7 @@ public:
    * \param iface Interface type, USB and UART are possible options
    * \param device_id Logical device ID (COM port number or USB ID)
    */
-  BA6x(io::dev::handle_type device_handle)
+  BA6x(io::handle_type device_handle)
     : drv(Model == BA60 ? 16U : 20U, Model == BA60 ? 1U : Model == BA63 ? 2U : 4U,    // screen size
           Model == BA60 ? 16U : 20U, Model == BA60 ? 1U : Model == BA63 ? 2U : 4U,    // viewport size (same as screen)
           0, 0, orientation_0)
@@ -103,7 +104,7 @@ protected:
   virtual void init() final
   {
     // init the interface
-    io::dev::init(device_handle_);
+    io::init(device_handle_);
 
     // BX6x needs about 750 ms time to get ready
     io::delay(750U);
@@ -112,7 +113,7 @@ protected:
     cls();
 
     // explicit cursor home
-    text_pos({ 0, 0 });
+    text_set_pos({ 0, 0 });
   }
 
 
@@ -136,6 +137,12 @@ protected:
   }
 
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+protected:
+
   inline virtual void cls() final
   {
     // send 1B 5B 32 4A
@@ -146,13 +153,17 @@ protected:
   }
 
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // A L P H A   T E X T   F U N C T I O N S
+  //
+
   /**
-   * Set cursor
-   * \param pos New cursor position. 0,0 is left,top
+   * Set the new text position
+   * \param pos Position in chars on text displays (0/0 is left/top)
    */
-  virtual void text_pos(std::int16_t x, std::int16_t y) final
+  virtual void text_set_pos(vertex_type pos) final
   {
-    txr::text_pos(pos);   // store pos via base class
+    cur_pos_ = pos;       // store pos
 
     if (pos.x < 0) {      // position cursor to col 0 if outside screen to get partial string offset right
       pos.x = 0;
@@ -191,10 +202,24 @@ protected:
 
 
   /**
-   * Output one character at the actual position
-   * \param ch Output character in ASCII/UNICODE (NOT UTF-8) format
+   * Clear actual line from cursor pos (included) to end of line
    */
-  inline virtual void text_char(std::uint16_t ch) final
+  inline virtual void text_clear_eol() final
+  {
+    // send 1B 5B 32 4A
+    const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x30U, 0x4BU };
+
+    // send command
+    write_command(cmd, 4U);
+  }
+
+
+  /**
+   * Output one character at the actual position
+   * The cursor position is moved by the char width (distance)
+   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
+   */
+  inline virtual void text_out(std::uint16_t ch) final
   {
     if (ch < 0x20U) {
       // ignore non characters
@@ -202,14 +227,14 @@ protected:
     }
 
     // check limits
-    if (screen_is_inside({ text_x_act_, text_y_act_ })) {
+    if (screen_is_inside(cur_pos_)) {
       // send command
       write_command(reinterpret_cast<std::uint8_t*>(&ch), 1U);
     }
 
     // inc x and reposition cursor if an implicit CR occured at end of the line 
-    if (++text_x_act_ == static_cast<std::int16_t>(screen_width())) {
-      text_pos({ text_x_act_, text_y_act_ });
+    if (++cur_pos_.x == static_cast<std::int16_t>(screen_width())) {
+      text_set_pos(cur_pos_);
     }
   }
 
@@ -219,7 +244,7 @@ protected:
    * \param string Output string in UTF-8/ASCII format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  virtual std::uint16_t text_string(const std::uint8_t* string) final
+  virtual std::uint16_t text_out(const std::uint8_t* string) final
   {
     // the base class function might be used, but the char by char write command overhead is too big,
     // so assemble the data here and pass it directly
@@ -228,18 +253,18 @@ protected:
     std::uint16_t off = 0U;
 
     // check if string is (partly) in screen
-    if ((text_x_act_ + len >= 0) && (text_x_act_ < screen_width()) &&
-      (text_y_act_ >= 0) && (text_y_act_ < screen_height())) {
+    if ((cur_pos_.x + len >= 0) && (cur_pos_.x < screen_width()) &&
+        (cur_pos_.y >= 0) && (cur_pos_.y < screen_height())) {
       // calc offset
-      if (text_x_act_ < 0) {
-        off = 0 - text_x_act_;
+      if (cur_pos_.x < 0) {
+        off = 0 - cur_pos_.x;
       }
       // calc visible len
-      if (text_x_act_ < 0) {
-        len = text_x_act_ + len;
+      if (cur_pos_.x < 0) {
+        len = cur_pos_.x + len;
       }
-      else if (text_x_act_ + len > screen_width()) {
-        len = screen_width() - text_x_act_;  // limit string to screen size
+      else if (cur_pos_.x + len > screen_width()) {
+        len = screen_width() - cur_pos_.x;  // limit string to screen size
       }
       if (len > screen_width()) {
         len = screen_width();
@@ -257,6 +282,7 @@ protected:
 // D R I V E R   A P I   I N T E R F A C E
 
 public:
+
   // country-specific character set
   typedef enum tag_country_code_type {
     USA           = 0x00,
@@ -301,21 +327,6 @@ public:
 
 
   /**
-   * Deletes the characters from the cursor, cursor position
-   * included, to the end of the line. The cursor position remains unchanged.
-   * \return true if successful
-   */
-  inline void clear_eol()
-  {
-    // command: 1B 5B 30 4B
-    const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x30U, 0x4BU };
-
-    // send command
-    write_command(cmd, 4U);
-  }
-
-
-  /**
    * Perform a display self test
    * \return true if successful
    */
@@ -328,7 +339,7 @@ public:
     const std::uint8_t cmd[3] = { 0x00U, 0x10U, 0x00U };
 
     // send data to display
-    io::dev::write(device_handle_, 0U, cmd, 3U, nullptr, 0U);
+    io::write(device_handle_, 0U, cmd, 3U, nullptr, 0U);
   }
 
 
@@ -342,13 +353,13 @@ public:
     const std::uint8_t cmd[4] = { 0x00U, 0x20U, 0x00U, 0x00U };
 
     // send command to display
-    io::dev::write(device_handle_, 0U, cmd, 4U, nullptr, 0U);
+    io::write(device_handle_, 0U, cmd, 4U, nullptr, 0U);
 
     // read and check status response
     // expected response: 04H, Status Byte 0, Status Byte 1, Status Byte 2 (SB0 oer SB1 != 0 is error)
     std::uint8_t response[4];
     std::size_t  len = 4U;
-    if (!read_response(response, len) || len != 4 || response[0] != 0x04U || (response[1] & 0x0A0U)) {
+    if (!read_response(response, len) || len != 4U || response[0] != 0x04U || (response[1] & 0x0A0U)) {
       // invalid response, error or device not ready
       return false;
     }
@@ -376,7 +387,7 @@ private:
       memcpy(&msg[3], &data[offset], blk_size);
 
       // send data to display
-      bool res = io::dev::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
+      bool res = io::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
       std::uint8_t response[4];
       std::size_t  len = 4U;
       if (!(res && read_response(response, len) && len == 4U && response[0] == 0x04U && !(response[1] & 0x0A0U))) {
@@ -400,7 +411,7 @@ private:
     std::size_t max_size = data_count;
     std::size_t count    = max_size;
 
-    while (io::dev::read(device_handle_, 0U, &data[offset], count, 100U)) {   // wait max. 100 ms for answer
+    while (io::read(device_handle_, 0U, &data[offset], count, 100U)) {   // wait max. 100 ms for answer
       offset += (std::int16_t)count;
       count = max_size - offset;
       if (offset >= data_count) {
@@ -412,6 +423,9 @@ private:
     // timeout or error
     return false;
   }
+
+private:
+  vertex_type cur_pos_;   // actual cursor position
 };
 
 } // namespace head
