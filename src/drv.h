@@ -294,7 +294,7 @@ protected:
 
 
   /**
-   * Clear actual line from cursor pos to end of line
+   * Clear actual line from cursor pos (included) to end of line
    */
   virtual void text_clear_eol()
   { }
