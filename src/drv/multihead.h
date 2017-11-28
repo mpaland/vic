@@ -47,7 +47,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_MULTIHEAD_VERSION   "Multihead driver 2.0.0"
+#define VIC_DRV_MULTIHEAD_VERSION   "Multihead driver 2.0.1"
 
 
 namespace vic {
@@ -87,9 +87,6 @@ public:
   } head_type;
 
 
-  /////////////////////////////////////////////////////////////////////////////
-  // M A N D A T O R Y   F U N C T I O N S
-
   /**
    * ctor
    * \param il Initializer list of heads, like head::multihead<3U> _multihead = {{ _head0, 0U, 0U }, { _head1, 100U, 0U }, { _head2, 200U, 0U }};
@@ -121,7 +118,9 @@ public:
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
 
   // driver init
   virtual void init()
@@ -156,12 +155,21 @@ protected:
   }
 
 
-  // clear display, all pixels off (black)
-  inline virtual void cls()
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+protected:
+
+  /**
+   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
+   */
+  inline virtual void cls(color::value_type bg_color = color::none)
   {
     // clear all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->cls();
+      head_[i].head->cls(bg_color);
     }
   }
 
@@ -184,11 +192,11 @@ protected:
    * \param point Pixel coordinates
    * \param color Color of pixel in ARGB format
    */
-  inline virtual void pixel_set(vertex_type point, color::value_type color)
+  inline virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
     // select to right head and set the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->pixel_set({ static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) }, color);
+      head_[i].head->pixel_set(vertex - head_[i].viewport, color);
     }
   }
 
@@ -198,11 +206,11 @@ protected:
    * \param point Coordinates of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type pixel_get(vertex_type point)
+  inline virtual color::value_type pixel_get(vertex_type vertex)
   {
     // select to right head and read the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      const vertex_type p = { static_cast<std::int16_t>(point.x - head_[i].viewport.x), static_cast<std::int16_t>(point.y - head_[i].viewport.y) };
+      const vertex_type p = vertex - head_[i].viewport;
       if (head_[i].head->screen_is_inside(p)) {
         return head_[i].head->pixel_get(p);
       }
@@ -219,11 +227,11 @@ protected:
    * Set the new text position
    * \param pos Position in pixel on graphic displays, position in chars on text displays
    */
-  inline virtual void text_pos(std::int16_t x, std::int16_t y)
+  inline virtual void text_set_pos(vertex_type pos)
   {
     // set the individual position on every head
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->text_pos(static_cast<std::int16_t>(x - head_[i].viewport.x), static_cast<std::int16_t>(y - head_[i].viewport.y));
+      head_[i].head->text_set_pos(pos - head_[i].viewport);
     }
   }
 
@@ -241,14 +249,47 @@ protected:
 
 
   /**
-   * Output one character
-   * \param ch Output character in 16 bit UNICODE (NOT UTF-8) format
-   * \return The x size (distance) of the rendered char
+   * Clear actual line from cursor pos (included) to end of line
    */
-  inline virtual void text_char(std::uint16_t ch)
+  inline virtual void text_clear_eol()
   {
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
-      head_[i].head->text_char(ch);
+      head_[i].head->text_clear_eol();
+    }
+  }
+
+
+  /**
+   * Clear actual line from start to cursor pos
+   */
+  inline virtual void text_clear_sol()
+  {
+    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
+      head_[i].head->text_clear_sol();
+    }
+  }
+
+
+  /**
+   * Clear the actual line
+   */
+  inline virtual void text_clear_line()
+  {
+    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
+      head_[i].head->text_clear_line();
+    }
+  }
+
+
+  /**
+   * Output a single ASCII/UNICODE char at the actual cursor position
+   * The cursor position is moved by the char width (distance)
+   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
+   */
+  inline virtual void text_out(std::uint16_t ch)
+  {
+    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
+      head_[i].head->text_out(ch);
     }
   }
 
@@ -258,7 +299,7 @@ protected:
    * \param string Output string in ASCII/UTF-8 format, zero terminated
    * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
    */
-  virtual std::uint16_t text_out(const std::uint8_t* string)
+  inline virtual std::uint16_t text_out(const std::uint8_t* string)
   {
     // each graphic head renders its own string
     std::uint16_t cnt;
@@ -277,7 +318,7 @@ protected:
    * Enable / disable the display
    * \param enable True to switch the display on, false to switch it off
    */
-  virtual void display_enable(bool enable = true)
+  inline virtual void display_enable(bool enable = true)
   {
     // enable/disable all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
@@ -290,11 +331,24 @@ protected:
    * Set display or backlight brightness
    * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
    */
-  virtual void display_brightness(std::uint8_t level)
+  inline virtual void display_brightness(std::uint8_t level)
   {
     // set brightness of all heads
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
       head_[i].head->display_brightness(level);
+    }
+  }
+
+
+  /**
+   * Set display contrast brightness
+   * \param level 0: minimum; 255: maximum
+   */
+  inline virtual void display_contrast(std::uint8_t level)
+  {
+    // set brightness of all heads
+    for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
+      head_[i].head->display_contrast(level);
     }
   }
 };
