@@ -27,7 +27,8 @@
 // Define this class/file in your own project and implement the four hardware
 // dependent IO functions.
 // Best is to take this header file, copy it and define your access functions in it.
-// Alternative use a .cpp file but the compiler won't be able to inline functions very well.
+// Alternatively use a .cpp for function definition file but the compiler won't perhaps be able to
+// inline functions very well.
 // vic driver hardware access is done via these functions like io.mem_set<std::uint8_t>(0x000, 0x00);
 //
 ///////////////////////////////////////////////////////////////////////////////
@@ -53,49 +54,45 @@ void delay(std::uint32_t time_to_delay);
 /////////////////////////////////////////////////////////////////////////////
 // D E V I C E   A C C E S S
 
-namespace dev {
+// device handle
+typedef const void* handle_type;
 
-  // device handle
-  typedef const void* handle_type;
+/**
+ * Init the interface
+ * \param device_handle Logical device handle
+ */
+void init(handle_type device_handle);
 
-  /**
-   * Init the interface
-   * \param device_handle Logical device handle
-   */
-  void init(handle_type device_handle);
+/**
+ * IO write/read access to device
+ * \param device_handle Logical device handle
+ * \param option Optional data for the device like register selection
+ * \param data_out Data transmit buffer
+ * \param data_out_length Data length to send
+ * \param data_in Data receive buffer, may be used with bidirectional devices like SPI
+ * \param data_in_length Additional input length
+ * \param timeout Time in [ms] to wait for sending data, 0 = no waiting
+ * \return true if successful
+ */ 
+bool write(handle_type device_handle,
+           std::uint32_t option,
+           const std::uint8_t* data_out, std::size_t data_out_length,
+           std::uint8_t* data_in, std::size_t data_in_length,
+           std::uint32_t timeout = 0U);
 
-  /**
-   * IO write/read access to device
-   * \param device_handle Logical device handle
-   * \param option Optional data for the device like register selection
-   * \param data_out Data transmit buffer
-   * \param data_out_length Data length to send
-   * \param data_in Data receive buffer, may be used with bidirectional devices like SPI
-   * \param data_in_length Additional input length
-   * \param timeout Time in [ms] to wait for sending data, 0 = no waiting
-   * \return true if successful
-   */ 
-  bool write(handle_type device_handle,
-             std::uint32_t option,
-             const std::uint8_t* data_out, std::size_t data_out_length,
-             std::uint8_t* data_in, std::size_t data_in_length,
-             std::uint32_t timeout = 0U);
-
-  /**
-   * IO read access from device
-   * \param device_handle Logical device handle
-   * \param option Optional data for the device like register selection
-   * \param data_in Data receive buffer
-   * \param data_in_length Maximum buffer size on input, received chars on output
-   * \param timeout Time in [ms] to wait for receiving data, 0 = no waiting (fifo check)
-   * \return true if successful
-   */ 
-  bool read(handle_type device_handle,
-            std::uint32_t option,
-            std::uint8_t* data_in, std::size_t& data_in_length,
-            std::uint32_t timeout = 0U);
-
-} // namespace dev
+/**
+ * IO read access from device
+ * \param device_handle Logical device handle
+ * \param option Optional data for the device like register selection
+ * \param data_in Data receive buffer
+ * \param data_in_length Maximum buffer size on input, received chars on output
+ * \param timeout Time in [ms] to wait for receiving data, 0 = no waiting (fifo check)
+ * \return true if successful
+ */ 
+bool read(handle_type device_handle,
+          std::uint32_t option,
+          std::uint8_t* data_in, std::size_t& data_in_length,
+          std::uint32_t timeout = 0U);
 
 
 /////////////////////////////////////////////////////////////////////////////
