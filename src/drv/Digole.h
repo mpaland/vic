@@ -31,6 +31,8 @@
 #define _VIC_DRV_DIGOLE_H_
 
 #include "../drv.h"
+#include "../dc.h"
+#include "../tc.h"
 
 
 // defines the driver name and version
