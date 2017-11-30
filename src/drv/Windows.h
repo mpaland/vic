@@ -31,10 +31,13 @@
 #ifndef _VIC_DRV_WINDOWS_H_
 #define _VIC_DRV_WINDOWS_H_
 
+
 #include <Windows.h>
 #include <process.h>
 
 #include "../drv.h"
+#include "../dc.h"
+#include "../tc.h"
 
 
 // defines the driver name and version
@@ -57,6 +60,7 @@ template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
 class windows final : public drv
 {
 public:
+
   /**
    * ctor
    * \param viewport_x Viewport x position (left) on the screen, relative to top/left screen corner
@@ -79,7 +83,10 @@ public:
     , zoom_x_(zoom_x)
     , zoom_y_(zoom_y)
     , caption_(caption)
-  { }
+  {
+    // create the frame buffer
+    frame_buffer_ = static_cast<std::uint32_t*>(new std::uint32_t[Screen_Size_X * zoom_x * Screen_Size_Y * zoom_y]);
+  }
 
 
   /**
@@ -88,11 +95,17 @@ public:
    */
   ~windows()
   {
+    // driver shutdown
     shutdown();
+
+    // delete frame buffer
+    delete [] frame_buffer_;
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
 
   virtual void init() final
   {
@@ -111,13 +124,14 @@ protected:
 
     // wait until screen is created
     ::WaitForSingleObject(wnd_init_ev_, INFINITE);
+
+    cls();
   }
 
 
   virtual void shutdown() final
   {
     (void)::CloseWindow(hwnd_);
-    (void)::DeleteObject(hbmp_);
   }
 
 
@@ -138,14 +152,15 @@ protected:
   // C O M M O N  F U N C T I O N S
   //
 
-  virtual void cls(color::value_type bk_color) final
+protected:
+
+  virtual void cls(color::value_type bg_color = color::none) final
   {
-    HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
-    ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bk_color), color::get_green(bk_color), color::get_blue(bk_color)));
-    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bk_color), color::get_green(bk_color), color::get_blue(bk_color)));
-    ::Rectangle(hmemdc_, 0, 0, screen_width() * zoom_x_, screen_height() * zoom_y_);  // needs to be 1 pixel bigger for Windows API
-    ::SelectObject(hmemdc_, org);
+    for (std::int_fast16_t y = 0; y < Screen_Size_Y * zoom_y_; y++) {
+      for (std::int_fast16_t x = 0; x < Screen_Size_X * zoom_x_; x++) {
+        frame_buffer_[y * Screen_Size_X * zoom_x_ + x] = static_cast<std::uint32_t>(bg_color);
+      }
+    }
   }
 
 
@@ -156,9 +171,11 @@ protected:
   {
     // copy memory bitmap to viewport
     HDC hDC = ::GetDC(hwnd_);
+    HBITMAP hbmp = ::CreateBitmap(Screen_Size_X * zoom_x_, Screen_Size_Y * zoom_y_, 1U, 32U, (const void*)frame_buffer_);
+    ::SelectObject(hmemdc_, hbmp);
     ::BitBlt(hDC, viewport_get().x * zoom_x_, viewport_get().y * zoom_y_, viewport_width() * zoom_x_,viewport_height() * zoom_y_, hmemdc_, 0, 0, SRCCOPY);
     ::ReleaseDC(hwnd_, hDC);
-  }
+    ::DeleteObject(hbmp);  }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -169,19 +186,19 @@ protected:
    * Set pixel in given color, the color doesn't change the actual drawing color
    * \param x X value
    * \param y Y value
-   * \param color Color of pixel in ARGB format
+   * \param color Color of pixel in 0RGB format
    */
-  virtual inline void pixel_set(vertex_type point, color::value_type color) final
+  virtual inline void pixel_set(vertex_type vertex, std::uint32_t color) final
   {
     // check limits and clipping
-    if (!screen_is_inside(point)) {
+    if (!screen_is_inside(vertex)) {
       // out of bounds or outside clipping region
       return;
     }
 
-    for (int c = 0; c < zoom_x_; ++c) {
-      for (int r = 0; r < zoom_y_; ++r) {
-        (void)::SetPixel(hmemdc_, point.x * zoom_x_ + c, point.y * zoom_y_ + r, RGB(color::get_red(color), color::get_green(color), color::get_blue(color)));
+    for (std::int_fast16_t y = vertex.y * zoom_y_; y < (vertex.y + 1) * zoom_y_; y++) {
+      for (std::int_fast16_t x = vertex.x * zoom_x_; x < (vertex.x + 1) * zoom_x_; x++) {
+        frame_buffer_[y * Screen_Size_X * zoom_x_ + x] = color;
       }
     }
   }
@@ -189,24 +206,25 @@ protected:
 
   /**
    * Get pixel color
-   * \param x X value
-   * \param y Y value
+   * \param vertex Color of vertex to get
    * \return Color of pixel in ARGB format
    */
-  virtual inline color::value_type pixel_get(vertex_type point) final
+  virtual inline color::value_type pixel_get(vertex_type vertex) final
   {
     // check limits and clipping
-    if (!screen_is_inside(point)) {
+    if (!screen_is_inside(vertex)) {
       // out of bounds or outside clipping region
       return color::none;
     }
 
-    COLORREF clr = ::GetPixel(hmemdc_, point.x * zoom_x_, point.y * zoom_y_);
-    return color::argb(GetRValue(clr), GetGValue(clr), GetBValue(clr));
+    // return the color
+    return frame_buffer_[vertex.y * zoom_y_ * Screen_Size_X * zoom_x_ + vertex.x * zoom_x_];
   }
 
 
-protected:
+private:
+
+  // worker thread
   static unsigned worker_thread(void* arg)
   {
     windows* d = static_cast<windows*>(arg);
@@ -257,12 +275,12 @@ protected:
     }
     ::SetWindowPos(d->hwnd_, HWND_TOP, d->window_x_, d->window_y_, 0, 0, SWP_NOSIZE |SWP_NOZORDER | SWP_SHOWWINDOW);
 
-    // create a bitmap in zoomed screen size for all drawing
+    // create a compatible dc
     HDC hDC = ::GetDC(d->hwnd_);
     d->hmemdc_ = ::CreateCompatibleDC(hDC);
-    d->hbmp_   = ::CreateCompatibleBitmap(hDC, d->screen_width() * d->zoom_x_, d->screen_height() * d->zoom_y_);
-    ::SelectObject(d->hmemdc_, d->hbmp_);
     ::ReleaseDC(d->hwnd_, hDC);
+
+    // window is created
     ::SetEvent(d->wnd_init_ev_);
 
     // process upon WM_QUIT or error
@@ -278,17 +296,18 @@ protected:
 
 public:
   // must be public for thread accessibility
-  HANDLE        thread_handle_;           // worker thread handle
-  HANDLE        wnd_init_ev_;             // window init event
-  const LPCTSTR caption_;                 // window caption
+  HANDLE          thread_handle_;   // worker thread handle
+  HANDLE          wnd_init_ev_;     // window init event
+  const LPCTSTR   caption_;         // window caption
 
-  std::int16_t  window_x_;                // x coordinate of output window
-  std::int16_t  window_y_;                // y coordinate of output window
-  std::uint8_t  zoom_x_;                  // x zoom factor of output window
-  std::uint8_t  zoom_y_;                  // y zoom factor of output window
-  HWND          hwnd_;
-  HDC           hmemdc_;
-  HBITMAP       hbmp_;
+  HWND            hwnd_;            // window handle
+  HDC             hmemdc_;          // mem dc
+  std::int16_t    window_x_;        // x coordinate of output window
+  std::int16_t    window_y_;        // y coordinate of output window
+  std::uint8_t    zoom_x_;          // x zoom factor of output window
+  std::uint8_t    zoom_y_;          // y zoom factor of output window
+
+  std::uint32_t*  frame_buffer_;
 };
 
 
@@ -302,9 +321,10 @@ public:
  */
 template<std::uint16_t COLUMNS, std::uint16_t ROWS,
          std::uint16_t Viewport_Size_X = COLUMNS, std::uint16_t Viewport_Size_Y = ROWS>
-class windows_text final : public drv
+class windows_text : public drv
 {
 public:
+ 
   /**
    * ctor
    * \param viewport_x X offset of the viewport, relative to top/left corner
@@ -340,7 +360,9 @@ public:
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
 
   virtual void init() final
   {
@@ -389,10 +411,13 @@ protected:
   // C O M M O N  F U N C T I O N S
   //
 
-  virtual void cls() final
+protected:
+
+  virtual void cls(color::value_type bg_color = color::none) final
   {
-    for (std::int16_t y = 0; y < screen_height(); y++) {
-      for (std::int16_t x = 0; x < screen_width(); x++) {
+    (void)bg_color;
+    for (std::uint16_t y = 0U; y < screen_height(); y++) {
+      for (std::uint16_t x = 0U; x < screen_width(); x++) {
         frame_buffer_[x][y] = ' ';
       }
     }
@@ -456,17 +481,17 @@ protected:
    * Set the new text position
    * \param pos Position in chars on text displays (0/0 is left/top)
    */
-  inline virtual void text_set_pos(std::int16_t x, std::int16_t y)
+  inline virtual void text_set_pos(vertex_type pos)
   {
-    text_x_pos_ = x;
-    text_y_pos_ = y;
+    text_pos_ = pos;
   }
+
 
   /**
    * Output a single ASCII/UNICODE char at the actual cursor position
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
    */
-  inline virtual void text_char(std::uint16_t ch) final
+  inline virtual void text_out(std::uint16_t ch) final
   {
     if (ch < 0x20U) {
       // ignore non characters
@@ -474,17 +499,18 @@ protected:
     }
 
     // check limits
-    if (screen_is_inside({ text_x_pos_, text_y_pos_ })) {
-      frame_buffer_[text_x_pos_][text_y_pos_] = ch;
+    if (screen_is_inside(text_pos_)) {
+      frame_buffer_[text_pos_.x][text_pos_.y] = ch;
     }
 
     // always increment the text position
-    text_x_pos_++;
+    text_pos_.x++;
   }
 
 
-protected:
+private:
 
+  // worker thread
   static unsigned worker_thread(void* arg)
   {
     windows_text* d = static_cast<windows_text*>(arg);
@@ -593,8 +619,7 @@ public:
   std::uint16_t char_x_padding_;
   std::uint16_t char_y_padding_;
 
-  std::int16_t  text_x_pos_;
-  std::int16_t  text_y_pos_;
+  vertex_type   text_pos_;
 
   std::int16_t  window_x_;                // x coordinate of output window
   std::int16_t  window_y_;                // y coordinate of output window
