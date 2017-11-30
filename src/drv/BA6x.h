@@ -147,8 +147,10 @@ public:
 
 protected:
 
-  inline virtual void cls() final
+  inline virtual void cls(color::value_type bg_color = color::none) final
   {
+    (void)bg_color;
+
     // send 1B 5B 32 4A
     const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x32U, 0x4AU };
 
