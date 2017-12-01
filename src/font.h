@@ -81,21 +81,29 @@ typedef struct tag_prop_ext_type {
 } prop_ext_type;
 
 // font info
-typedef struct tag_font_type {
+typedef struct tag_info_type {
   std::uint8_t attr;              // font attributes
   std::uint8_t ysize;             // y-size to render in pixel
   std::uint8_t ydist;             // y-distance (cursor movement for \n)
   std::uint8_t baseline;          // reserved
-  union tag_font_type_type {
+  union tag_family {
     const mono_type*     mono;
     const prop_type*     prop;
     const prop_ext_type* prop_ext;
-    tag_font_type_type()                       : prop(nullptr) { }
-    tag_font_type_type(const mono_type* p)     : mono(p) { }
-    tag_font_type_type(const prop_type* p)     : prop(p) { }
-    tag_font_type_type(const prop_ext_type* p) : prop_ext(p) { }
-  } font_type_type;
-} font_type;
+    tag_family()                       : prop(nullptr) { }
+    tag_family(const mono_type* p)     : mono(p) { }
+    tag_family(const prop_type* p)     : prop(p) { }
+    tag_family(const prop_ext_type* p) : prop_ext(p) { }
+  } family;
+} info_type;
+
+
+// abstract font type base class
+class font_type
+{
+public:
+  virtual const info_type& get_info(void) const = 0;
+};
 
 
 // FONT ATTRIBUTES

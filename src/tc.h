@@ -45,6 +45,18 @@ class tc : public txr
   dc*         dc_;              // drawing context for graphic display
   std::size_t present_lock_;    // present lock counter, > 0 is locked
 
+  /**
+   * Set a pixel in the given color in the given dc
+   * \param vertex Vertex to set
+   * \param color Color of the pixel
+   */
+  inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
+  {
+    // only supported on graphic heads
+    if (!!dc_) { dc_->pixel_set(vertex, color); }
+  }
+
+
 public:
 
   /**
@@ -59,7 +71,7 @@ public:
 
 
   /**
-   * ctor - for dc context
+   * ctor - for dc context (graphic head)
    * \param head 
    */
   tc(dc& _dc)
@@ -69,21 +81,18 @@ public:
   { }
 
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
 
   /**
    * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
    */
-  inline void cls(color::value_type bk_color = color::none)
+  inline void cls(color::value_type bg_color = color::none)
   { 
-    !!dc_ ? dc_->cls(bk_color) : head_->cls(bk_color);
-  }
-
-
-
-  inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
-  {
-    // not supported on alpha heads
-    if (dc_) { dc_->pixel_set(vertex, color); }
+    !!dc_ ? dc_->cls(bg_color) : head_->cls(bg_color);
   }
 
 
@@ -125,6 +134,24 @@ public:
 
 
   /**
+   * Returns the screen (buffer) width
+   * \return Screen width in chars
+   */
+  inline std::uint16_t screen_width() const
+  { return head_->screen_width(); }
+
+
+  /**
+   * Returns the screen (buffer) height
+   * \return Screen height in chars
+   */
+  inline std::uint16_t screen_height() const
+  { return head_->screen_height(); }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+
+  /**
    * Set the new text position
    * \param pos Position in chars on text displays (0/0 is left/top)
    */
@@ -140,7 +167,7 @@ public:
    */
   inline void set_inverse(bool inverse = true)
   {
-    // not supported on graphic heads
+    // only supported on alpha heads
     if (!!head_) { head_->text_set_inverse(inverse); }
   }
 
@@ -150,7 +177,7 @@ public:
    */
   inline void clear_eol()
   {
-    // not supported on graphic heads
+    // only supported on alpha heads
     if (!!head_) { head_->text_clear_eol(); }
   }
 
@@ -160,7 +187,7 @@ public:
    */
   inline void clear_sol()
   {
-    // not supported on graphic heads
+    // only supported on alpha heads
     if (!!head_) { head_->text_clear_sol(); }
   }
 
@@ -170,7 +197,7 @@ public:
    */
   inline void clear_line()
   {
-    // not supported on graphic heads
+    // only supported on alpha heads
     if (!!head_) { head_->text_clear_line(); }
   }
 
@@ -193,7 +220,9 @@ public:
    */
   inline std::uint16_t out(const std::uint8_t* string)
   {
-    return !!dc_ ? txr::out(string) : head_->text_out(string);
+    const std::uint16_t cnt = !!dc_ ? txr::out(string) : head_->text_out(string);
+    present();
+    return cnt;
   }
 
 

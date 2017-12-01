@@ -45,19 +45,8 @@ namespace vic {
  */
 class txr
 {
-protected:
-
-  // virtual context/driver functions
-  //virtual shader::base*     shader_pipe(void) const = 0;
-
-  /**
-   * Set a pixel in the given color, no present is called
-   * \param vertex Vertex to set
-   * \param color Color of the pixel
-   */
-  virtual void      pixel_set(vertex_type vertex, color::value_type color) = 0;
-  virtual void      present(void) = 0;
-  virtual void      present_lock(bool lock = true) = 0;
+  // pixel set function, defined in upper class
+  virtual void pixel_set(vertex_type vertex, color::value_type color) = 0;
 
 public:
 
@@ -83,9 +72,9 @@ public:
    * Select the font
    * \param Reference to font to use
    */
-  inline void select_font(const font::font_type& font)
+  inline void set_font(const font::font_type& font)
   {
-    font_ = &font;
+    font_ = &font.get_info();
   }
 
 
@@ -103,7 +92,7 @@ public:
    * Set the new text position
    * \param pos Position (left/top) in pixel on graphic displays, position in chars on text displays
    */
-  virtual void set_pos(vertex_type pos)
+  inline void set_pos(vertex_type pos)
   {
     x_act_ = x_set_ = pos.x;
     y_act_ = pos.y;
@@ -114,7 +103,7 @@ public:
    * Set inverse text mode
    * \param inverse Set normal or inverse video
    */
-  virtual void set_inverse(bool inverse = true)
+  inline void set_inverse(bool inverse = true)
   {
     inverse_ = inverse;
   }
@@ -124,7 +113,7 @@ public:
    * Set the text color
    * \param color Set the text color
    */
-  virtual void set_color(color::value_type color)
+  inline void set_color(color::value_type color)
   {
     color_ = color;
   }
@@ -148,7 +137,7 @@ public:
 
     if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
       // extended (UNICODE) font
-      const font::prop_ext_type* font_prop_ext = font_->font_type_type.prop_ext;
+      const font::prop_ext_type* font_prop_ext = font_->family.prop_ext;
       do {
         if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
           // found char
@@ -176,7 +165,7 @@ public:
       // normal (ASCII) font
       if ((font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
         // prop font
-        const font::prop_type* font_prop = font_->font_type_type.prop;
+        const font::prop_type* font_prop = font_->family.prop;
         do {
           if (ch >= font_prop->first && ch <= font_prop->last) {
             // found char
@@ -202,7 +191,7 @@ public:
       }
       else {
         // mono font
-        const font::mono_type* font_mono = font_->font_type_type.mono;
+        const font::mono_type* font_mono = font_->family.mono;
         if (ch >= font_mono->first && ch <= font_mono->last) {
           for (std::uint_fast8_t y = 0U; y < font_->ysize; ++y) {
             std::uint16_t d = (ch - font_mono->first) * font_->ysize * font_mono->bytes_per_line + (std::int16_t)y * font_mono->bytes_per_line;
@@ -262,20 +251,18 @@ public:
         // CR: X = 0
         x_act_ = x_set_;
       }
-      else if ((char)ch == 0x0CU) {
-        // handling of color control: \x0CRRGGBB
-        const std::uint8_t r = hex2bin(string); string += 2U;
-        const std::uint8_t g = hex2bin(string); string += 2U;
-        const std::uint8_t b = hex2bin(string); string += 2U;
+      else if ((char)ch == '\a') {
+        // handling of color control: \aRRGGBB
+        const std::uint8_t r = hex2byte(string); string += 2U;
+        const std::uint8_t g = hex2byte(string); string += 2U;
+        const std::uint8_t b = hex2byte(string); string += 2U;
         set_color(color::argb(r, g, b));
-
       }
       else {
         out(ch);
       }
       cnt++;
     }
-    present();
     return cnt;
   }
 
@@ -347,7 +334,7 @@ public:
 
       if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
         // extended (UNICODE) font
-        const font::prop_ext_type* font_prop_ext = font_->font_type_type.prop_ext;
+        const font::prop_ext_type* font_prop_ext = font_->family.prop_ext;
         do {
           if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
             // found char
@@ -362,7 +349,7 @@ public:
         // normal (ASCII) font
         if ((font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
           // prop font
-          const font::prop_type* font_prop = font_->font_type_type.prop;
+          const font::prop_type* font_prop = font_->family.prop;
           do {
             if (ch >= font_prop->first && ch <= font_prop->last) {
               // found char
@@ -375,7 +362,7 @@ public:
         }
         else {
           // mono font
-          const font::mono_type* font_mono = font_->font_type_type.mono;
+          const font::mono_type* font_mono = font_->family.mono;
           if (ch >= font_mono->first && ch <= font_mono->last) {
             width += font_mono->xsize;   // x-distance is xsize
           }
@@ -392,7 +379,7 @@ public:
 
 private:
   color::value_type       color_;      // actual text color
-  const font::font_type*  font_;       // actual selected font
+  const font::info_type*  font_;       // actual selected font
   std::int16_t            x_set_;      // x cursor position for new line
   std::int16_t            x_act_;      // actual x cursor position
   std::int16_t            y_act_;      // actual y cursor position
@@ -405,11 +392,23 @@ private:
   { return rhs; }
 
 
-  // fast hex to bin
-  std::uint8_t hex2bin(const std::uint8_t* string) const
+  // fast hex to byte conversion helper
+  std::uint8_t hex2byte(const std::uint8_t* string) const
   {
     std::uint8_t bin = 0U;
-
+    for (std::uint_fast8_t n = 0U; n < 2U; n++) {
+      const char ch = *string;
+      if (ch >= '0' && ch <= '9') {
+        bin = (bin << 4U) + (ch - '0');
+      }
+      else if (ch >= 'A' && ch <= 'F') {
+        bin = (bin << 4U) + (ch - 'A' + 10U);
+      }
+      else if (ch >= 'a' && ch <= 'f') {
+        bin = (bin << 4U) + (ch - 'a' + 10U);
+      }
+      ++string;
+    }
     return bin;
   }
 
