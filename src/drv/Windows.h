@@ -175,7 +175,8 @@ protected:
     ::SelectObject(hmemdc_, hbmp);
     ::BitBlt(hDC, viewport_get().x * zoom_x_, viewport_get().y * zoom_y_, viewport_width() * zoom_x_,viewport_height() * zoom_y_, hmemdc_, 0, 0, SRCCOPY);
     ::ReleaseDC(hwnd_, hDC);
-    ::DeleteObject(hbmp);  }
+    ::DeleteObject(hbmp);
+  }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -301,7 +302,8 @@ public:
   const LPCTSTR   caption_;         // window caption
 
   HWND            hwnd_;            // window handle
-  HDC             hmemdc_;          // mem dc
+  HDC             hmemdc_;          // mem dc
+
   std::int16_t    window_x_;        // x coordinate of output window
   std::int16_t    window_y_;        // y coordinate of output window
   std::uint8_t    zoom_x_;          // x zoom factor of output window
@@ -346,7 +348,7 @@ public:
     char_x_margin_  = 2U;
     char_y_margin_  = 2U;
     char_x_padding_ = 2U;
-    char_y_padding_ = 1U;  
+    char_y_padding_ = 1U;
   }
 
 
@@ -413,9 +415,9 @@ public:
 
 protected:
 
-  virtual void cls(color::value_type bg_color = color::none) final
+  virtual void cls(color::value_type bg_color = color::gray) final
   {
-    (void)bg_color;
+    bg_color_ = bg_color;
     for (std::uint16_t y = 0U; y < screen_height(); y++) {
       for (std::uint16_t x = 0U; x < screen_width(); x++) {
         frame_buffer_[x][y] = ' ';
@@ -432,13 +434,13 @@ protected:
   {
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-//    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
-//    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_get_color()), color::get_green(bg_get_color()), color::get_blue(bg_get_color())));
+    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_color_), color::get_green(bg_color_), color::get_blue(bg_color_)));
+    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_color_), color::get_green(bg_color_), color::get_blue(bg_color_)));
     ::Rectangle(hmemdc_, 0, 0, window_size_x_, window_size_y_);
     ::SelectObject(hmemdc_, org);
 
     ::SetTextColor(hmemdc_, RGB(0, 210, 195));
-    ::SetBkColor(hmemdc_, RGB(0, 0, 0));
+    ::SetBkColor(hmemdc_, RGB(color::get_red(bg_color_), color::get_green(bg_color_), color::get_blue(bg_color_)));
 
     HPEN pen_box = ::CreatePen(PS_DOT, 0U, RGB(0x00, 0x30, 0x30));
     ::SelectObject(hmemdc_, pen_box);
@@ -628,6 +630,8 @@ public:
   HWND          hwnd_;
   HDC           hmemdc_;
   HBITMAP       hbmp_;
+
+  color::value_type bg_color_;            // background color
 };
 
 } // namespace head
