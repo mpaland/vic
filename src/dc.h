@@ -169,7 +169,7 @@ public:
 
   /**
    * Returns the screen (buffer) width
-   * \return Screen width in pixel or chars
+   * \return Screen width in pixel
    */
   inline virtual std::uint16_t screen_width() const final
   { return head_.screen_width(); }
@@ -177,7 +177,7 @@ public:
 
   /**
    * Returns the screen (buffer) height
-   * \return Screen height in pixel or chars
+   * \return Screen height in pixel
    */
   inline virtual std::uint16_t screen_height() const final
   { return head_.screen_height(); }
