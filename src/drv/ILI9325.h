@@ -54,6 +54,7 @@ template<std::uint16_t Screen_Size_X = 240U, std::uint16_t Screen_Size_Y = 320U,
 class ILI9325 : public drv
 {
 private:
+
   // register address map
   static const std::uint8_t REG_ID_CODE                = 0x00U;
   static const std::uint8_t REG_OSC_CTRL               = 0x00U;
@@ -109,23 +110,20 @@ private:
   static const std::uint8_t REG_OTP_VCM_STATUS         = 0xA2U;
   static const std::uint8_t REG_OTP_PRG_ID_KEY         = 0xA5U;
 
-  const io::dev::handle_type  device_handle_;
-  void*                       mem_reg_addr_;
-  void*                       mem_data_addr_;
-  const bool                  spi_id_bit_;           // level of IM0/ID hardware pin
-  vertex_type                 gram_pos_; 
+  const io::handle_type     device_handle_;
+  void*                     mem_reg_addr_;
+  void*                     mem_data_addr_;
+  const bool                spi_id_bit_;        // level of IM0/ID hardware pin
+  vertex_type               gram_pos_; 
 
 public:
-
-  /////////////////////////////////////////////////////////////////////////////
-  // M A N D A T O R Y   F U N C T I O N S
 
   /**
    * ctor
    * \param orientation Screen orientation
    * \param spi_device_id Logical SPI bus device ID
    */
-  ILI9325(io::dev::handle_type device_handle,   // device handle
+  ILI9325(io::handle_type device_handle,        // device handle
           void* mem_reg_addr,                   // memory register access address
           void* mem_data_addr,                  // memory data access address
           bool spi_id_bit)                      // level of IM0/ID hardware pin
@@ -147,13 +145,15 @@ public:
    */
   ~ILI9325()
   {
-    drv_shutdown();
+    shutdown();
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
 
-  virtual void drv_init() final
+  virtual void init() final
   {
     // undocumented timings in app note - seem not to be necessary
 //  write_reg(0xE3,                     0x3008);  // internal timing
@@ -242,130 +242,144 @@ protected:
     write_reg(REG_PANEL_IF_CTRL1,       0x0010);  // fosc / 1 with 16 clocks/line
     write_reg(REG_PANEL_IF_CTRL2,       0x0600);  // gate non-overlap period: 6 clocks
 
-    drv_cls();
+    cls();
   }
 
 
-  virtual void drv_shutdown() final
+  virtual void shutdown() final
   {
     // TBD: switch off display
 
     // clear buffer
-    drv_cls();
+    cls();
   }
 
 
-  inline virtual const char* drv_version() const final
+  inline virtual const char* version() const final
   {
     return (const char*)VIC_DRV_ILI9325_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const final
+  inline virtual bool is_graphic() const final
   {
     // ILI9325 is a true graphic display
     return true;
   }
 
 
-  virtual void drv_cls() final
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+protected:
+
+  virtual void cls(color::value_type bg_color = color::none) final
   { 
-    for (std::int_fast16_t y = 0; y < Screen_Size_Y; ++y) {
+    for (std::uint_fast16_t y = 0U; y < Screen_Size_Y; ++y) {
       // set y GRAM position
       write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(0));
       write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(y));
       write_idx(REG_GRAM_DATA);
 
       // set pixel to black
-      for (std::int_fast16_t x = 0; x < Screen_Size_X; ++x) {
-        if (!color_256k) {
-          // 64k color mode
-          write_data(0U, 2U);
+      if (!color_256k) {
+        // 64k color mode
+        const std::uint16_t col = color::color_to_RGB565(bg_color);
+        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; ++x) {
+          write_data(col, 2U);
         }
-        else {
-          // 256k color mode
-          write_data(0U, 3U);
+      }
+      else {
+        // 256k color mode
+        const std::uint32_t col = color::color_to_RGB666(bg_color);
+        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; ++x) {
+          write_data(col, 3U);
         }
       }
     }
   }
 
 
-  virtual void drv_pixel_set_color(vertex_type point, color::value_type color) final
+  // unused - data is written directly to the dislay
+  virtual void present() final
+  { }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
+
+  virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
     // check limits and clipping
-    if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
+    if (!screen_is_inside(vertex)) {
       // out of bounds or outside clipping region
       return;
     }
 
     // set GRAM position
-    if (gram_pos_ != point) {
-      write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(point.x));
-      write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(point.y));
+    if (gram_pos_ != vertex) {
+      write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(vertex.x));
+      write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(vertex.y));
     }
-    gram_pos_ = { ++point.x, point.y };
+    gram_pos_ = { ++vertex.x, vertex.y };
 
     if (!color_256k) {
       // 64k color mode
       write_idx(REG_GRAM_DATA);
-      write_data(color_to_head_RGB565(color), 2U);
+      write_data(color::color_to_RGB565(color), 2U);
     }
     else {
       // 256k color mode
       write_idx(REG_GRAM_DATA);
-      write_data(color_to_head_RGB666(color), 3U);
+      write_data(color::color_to_RGB666(color), 3U);
     }
   }
 
 
-  virtual color::value_type drv_pixel_get(vertex_type point) final
+  virtual color::value_type pixel_get(vertex_type vertex) final
   {
     // check limits
-    if (!screen_is_inside(point)) {
+    if (!screen_is_inside(vertex)) {
       // out of bounds
-      return color_from_head_L1(0U);
+      return color::L1_to_color(0U);
     }
 
     // set GRAM position
-    if (gram_pos_ != point) {
-      write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(point.x));
-      write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(point.y));
+    if (gram_pos_ != vertex) {
+      write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(vertex.x));
+      write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(vertex.y));
     }
-    gram_pos_ = { ++point.x, point.y };
+    gram_pos_ = { ++vertex.x, vertex.y };
 
     if (!color_256k) {
       std::uint8_t data[2];
       //read_data(data, 2U);
-      return color_from_head_RGB565(static_cast<std::uint16_t>(data[0] << 8U) |
+      return color::RGB565_to_color(static_cast<std::uint16_t>(data[0] << 8U) |
                                     static_cast<std::uint16_t>(data[1]));
     }
     else {
       std::uint8_t data[3];
       //read_data();
-      return color_from_head_RGB666(static_cast<std::uint32_t>(data[0] << 16U) |
+      return color::RGB666_to_color(static_cast<std::uint32_t>(data[0] << 16U) |
                                     static_cast<std::uint32_t>(data[1] <<  8U) |
                                     static_cast<std::uint32_t>(data[2]));
     }
   }
 
 
-  // unused - data is written directly to the dislay
-  virtual void drv_present() final
-  { }
-
-
   ///////////////////////////////////////////////////////////////////////////////
-  // overwritten gpr functions for faster rendering
+  // overwritten drv functions for faster rendering
   //
  
   /**
    * Draw a horizontal line, width is one pixel, no pen support
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
-   * \return true if successful
+   * \param color Line color - only RGB, no alpha channel
    */
-  virtual void line_horz(vertex_type v0, vertex_type v1) final
+  virtual void line_horz(vertex_type v0, vertex_type v1, std::uint32_t color) final
   {
     // set y GRAM position
     write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(0));
@@ -373,34 +387,20 @@ protected:
     write_idx(REG_GRAM_DATA);
 
     // swap x
-    vertex_min_x(v0, v1);
+    util::vertex_min_x(v0, v1);
 
     if (!color_256k) {
       // 64k color mode
-      if (pen_color_is_function()) {
-        for (; v0.x <= v1.x; ++v0.x) {
-          write_data(color_to_head_RGB565(pen_get_color(v0)), 2U);
-        }
-      }
-      else {
-        const std::uint16_t color = color_to_head_RGB565(pen_get_color());
-        for (; v0.x <= v1.x; ++v0.x) {
-          write_data(color, 2U);
-        }
+      const std::uint16_t c64 = color::color_to_RGB565(color);
+      for (; v0.x <= v1.x; ++v0.x) {
+        write_data(c64, 2U);
       }
     }
     else {
       // 256k color mode
-      if (pen_color_is_function()) {
-        for (; v0.x <= v1.x; ++v0.x) {
-          write_data(color_to_head_RGB666(pen_get_color(v0)), 3U);
-        }
-      }
-      else {
-        const std::uint32_t color = color_to_head_RGB666(pen_get_color());
-        for (; v0.x <= v1.x; ++v0.x) {
-          write_data(color, 3U);
-        }
+      const std::uint32_t c256 = color::color_to_RGB666(color);
+      for (; v0.x <= v1.x; ++v0.x) {
+        write_data(c256, 3U);
       }
     }
   }
@@ -425,7 +425,7 @@ private:
       {
         // write to index register with option = 0
         const std::uint8_t data_out[2] = { 0U, idx };
-        io::dev::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
+        io::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
         break;
       }
       case 8U :
@@ -468,20 +468,20 @@ private:
    * \param data data to write
    * \param length: 2: 16 bit, 3: 18 bit data
    */
-  inline void write_data(std::uint32_t data, std::size_t length) const
+  inline void write_data(std::uint32_t data, std::uint8_t length) const
   {
     switch (interface_mode) {
       case 0U : {
         // device interface
         const std::uint8_t data_out[3] = { static_cast<std::uint8_t>(data >> 16U), static_cast<std::uint8_t>(data >> 8U), static_cast<std::uint8_t>(data) };
         // write to GRAM with option = 1
-        io::dev::write(device_handle_, 1U, &data_out[3U - length], length, nullptr, 0U);
+        io::write(device_handle_, 1U, &data_out[3U - length], length, nullptr, 0U);
         break;
       }
       case 8U : {
         // 8 bit memory interface
         const std::uint8_t data_out[3] = { static_cast<std::uint8_t>(data >> 16U), static_cast<std::uint8_t>(data >> 8U), static_cast<std::uint8_t>(data) };
-        for (std::size_t i = 3U - length; i < length; ++i) {
+        for (std::uint_fast8_t i = 3U - length; i < length; ++i) {
           io::mem::write<std::uint8_t>(mem_data_addr_, data_out[i]);
         }
         break;
