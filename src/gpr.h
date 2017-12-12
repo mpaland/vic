@@ -547,21 +547,18 @@ public:
   {
     present_lock();
 
-    // check if triangle is a horizontal line
-    if ((v0.y == v1.y) && (v1.y == v2.y)) {
-      line_horz(v0, v1);
-      line_horz(v1, v2);
+    // check if the area of the triangle is 0 (straight line)
+    if (!util::orient_2d(v0, v1, v2)) {
+      line(v0, v1);
+      line(v1, v2);
       present_lock(false);
       return;
     }
 
-    // check if triangle is a vertical line
-    if ((v0.x == v1.x) && (v1.x == v2.x)) {
-      line_vert(v0, v1);
-      line_vert(v1, v2);
-      present_lock(false);
-      return;
-    }
+    // ensure clockwise vertex winding
+    util::vertex_min_x(v1, v2);
+    util::vertex_min_x(v0, v1);
+    util::vertex_min_y(v1, v2);
 
     // compute triangle bounding box
     const std::int16_t min_x = util::min3(v0.x, v1.x, v2.x);
@@ -570,9 +567,9 @@ public:
     const std::int16_t max_y = util::max3(v0.y, v1.y, v2.y);
 
     // triangle setup
-    const std::int16_t a01 = v0.y - v1.y, B01 = v1.x - v0.x;
-    const std::int16_t a12 = v1.y - v2.y, B12 = v2.x - v1.x;
-    const std::int16_t a20 = v2.y - v0.y, B20 = v0.x - v2.x;
+    const std::int16_t a01 = v0.y - v1.y, b01 = v1.x - v0.x;
+    const std::int16_t a12 = v1.y - v2.y, b12 = v2.x - v1.x;
+    const std::int16_t a20 = v2.y - v0.y, b20 = v0.x - v2.x;
 
     // Barycentric coordinates at minX/minY corner
     vertex_type p = { min_x, min_y };
@@ -589,23 +586,25 @@ public:
       bool inside = false;
       for (p.x = min_x; p.x <= max_x; ++p.x) {
         // if p is on or inside all edges, render the pixel
-        if (!inside && w0 <= 0 && w1 <= 0 && w2 <= 0) {
+        if (!inside && w0 >= 0 && w1 >= 0 && w2 >= 0) {
           inside = true;
           l_x = p.x;
         }
-        if (inside && (w0 + a12 > 0 || w1 + a20 > 0 || w2 + a01 > 0)) {
-          line_horz({ l_x, p.y }, { p.x, p.y });
+
+        // one step to the right
+        w0 += a12; w1 += a20; w2 += a01;
+
+        if (inside && (w0 < 0 || w1 < 0 || w2 < 0)) {
+          line_horz({ l_x, p.y }, p);
           if (anti_aliasing_) {
             aa0.render({ l_x, p.y });
-            aa1.render({ p.x, p.y });
+            aa1.render(p);
           }
           break;
         }
-        // one step to the right
-        w0 += a12; w1 += a20; w2 += a01;
       }
       // one row step
-      w0_row += B12; w1_row += B20; w2_row += B01;
+      w0_row += b12; w1_row += b20; w2_row += b01;
     }
     present_lock(false);
   }
