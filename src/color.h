@@ -84,8 +84,12 @@ namespace color {
     format_RGBA8888 = 0x41    // 24 bit ARGB, 8 bit alpha, A on least significant byte
   } format_type;
 
+
+  /////////////////////////////////////////////////////////////////////////////
+  // C O L O R   A S S E M B L Y
+
   /**
-   * Color assembly, returns ARGB format out of RGB and alpha components
+   * RGB color assembly, returns ARGB format out of RGB and alpha components
    * |   A   |   R   |   G   |   B   |
    *  31   24 23   16 15    8 7     0
    * \param red Red color
@@ -103,7 +107,24 @@ namespace color {
   }
 
   /**
-   * Color assembly, returns ARGB format out of HSV components
+   * Static RGB color assembly, assigns ARGB format out of RGB and alpha components
+   * |   A   |   R   |   G   |   B   |
+   *  31   24 23   16 15    8 7     0
+   * \param Red Red color
+   * \param Green Green color
+   * \param Blue Blue color
+   * \param Alpha Alpha level, 0 = transparent, 255 = opaque (default)
+   */
+  template <std::uint8_t Red, std::uint8_t Green, std::uint8_t Blue, std::uint8_t Alpha = 255U>
+  struct rgb_static {
+    static const value_type value = ((static_cast<value_type>(Alpha) << 24U) |
+                                     (static_cast<value_type>(Red)   << 16U) |
+                                     (static_cast<value_type>(Green) <<  8U) |
+                                     (static_cast<value_type>(Blue)  <<  0U));
+  };
+
+  /**
+   * HSV color assembly, returns ARGB format out of HSV components
    * \param hue Hue in degree
    * \param saturation Saturation from 0-100
    * \param value Value 
@@ -136,6 +157,10 @@ namespace color {
             (static_cast<value_type>(g)     <<  8U) |
             (static_cast<value_type>(b)     <<  0U));
   }
+
+
+  //////////////////////////////////////////////////////////////////////////
+  // C O L O R   A C C E S S  /  C O N V E R S I O N
 
   // get single color channel out of 32 bit ARGB color
   inline std::uint8_t get_alpha(value_type color) { return static_cast<std::uint8_t>((color & 0xFF000000UL) >> 24U); }
@@ -208,16 +233,19 @@ namespace color {
   inline value_type alpha_blend(value_type front_color, value_type back_color)
   {
     if (is_opaque(front_color)) {
+      // front color is opaque
       return front_color;
     }
 
     const std::uint16_t aB = get_alpha(back_color);
     if (aB == 0U) {
+      // back color is transparent
       return front_color;
     }
 
     const std::uint16_t aF = get_alpha(front_color);
     if (aF == 0U) {
+      // front color is transparent
       return back_color;
     }
 
@@ -241,6 +269,7 @@ namespace color {
   inline value_type argb_to_rgb(value_type front_color, value_type opaque_background)
   {
     if (is_opaque(front_color)) {
+      // front color is opaque
       return front_color;
     }
 
@@ -249,10 +278,9 @@ namespace color {
     return argb(static_cast<std::uint8_t>((static_cast<std::uint16_t>(aF * get_red(front_color))   + (255U - aF) * get_red(opaque_background))   / 255U),
                 static_cast<std::uint8_t>((static_cast<std::uint16_t>(aF * get_green(front_color)) + (255U - aF) * get_green(opaque_background)) / 255U),
                 static_cast<std::uint8_t>((static_cast<std::uint16_t>(aF * get_blue(front_color))  + (255U - aF) * get_blue(opaque_background))  / 255U),
-                255U
+                static_cast<std::uint8_t>(255U)
                );
   }
-
 
 
   //////////////////////////////////////////////////////////////////////////
@@ -334,85 +362,57 @@ namespace color {
   //////////////////////////////////////////////////////////////////////////
   // P R E D E F I N E D   S T O C K   C O L O R S
 
-  // static RGB color assembly
-  template <std::uint8_t Red, std::uint8_t Green, std::uint8_t Blue, std::uint8_t Alpha = 255U>
-  struct rgb_static {
-    static const value_type value = ((static_cast<value_type>(Alpha) << 24U) |
-                                     (static_cast<value_type>(Red)   << 16U) |
-                                     (static_cast<value_type>(Green) <<  8U) |
-                                     (static_cast<value_type>(Blue)  <<  0U));
+  enum : value_type {
+    // no/transparent color
+    none          = 0x00000000,
+    transparent   = none,
+
+    // black, white and gray tones
+    black         = 0xFF000000,
+    gray          = 0xFF808080,
+    gray01        = 0xFF101010,
+    gray02        = 0xFF202020,
+    gray03        = 0xFF303030,
+    gray04        = 0xFF404040,
+    gray05        = 0xFF505050,
+    gray06        = 0xFF606060,
+    gray07        = 0xFF707070,
+    gray08        = 0xFF808080,
+    gray09        = 0xFF909090,
+    gray10        = 0xFFA0A0A0,
+    gray11        = 0xFFB0B0B0,
+    gray12        = 0xFFC0C0C0,
+    gray13        = 0xFFD0D0D0,
+    gray14        = 0xFFE0E0E0,
+    gray15        = 0xFFF0F0F0,
+    white         = 0xFFFFFFFF,
+
+    // normal tones
+    red           = 0xFFFF0000,
+    green         = 0xFF00FF00,
+    blue          = 0xFF0000FF,
+    cyan          = 0xFF00FFFF,
+    magenta       = 0xFFFF00FF,
+    yellow        = 0xFFFFFF00,
+    orange        = 0xFFFFA500,
+    brown         = 0xFFA52A2A,
+    pink          = 0xFFFFC0CB,
+    salmon        = 0xFFFA8072,
+
+    // dark tones
+    darkred       = 0XFF800000,
+    darkgreen     = 0XFF008000,
+    darkblue      = 0XFF000080,
+    navy          = darkblue,
+    darkcyan      = 0XFF008080,
+    darkmagenta   = 0XFF800080,
+    darkyellow    = 0XFF808000,
+    darkorange    = 0xFFD2691E,
+    darkpink      = 0xFFFF1493,
+    darksalmon    = 0XFFE9967A,
+    darkviolet    = 0XFF9400D3,
+    darkgray      = 0XFFA9A9A9
   };
-
-
-  // no/transparent color
-  const value_type none          = rgb_static<  0,   0,   0,   0>::value;
-  const value_type transparent   = none;
-
-  // black, white and gray tones
-  const value_type black         = rgb_static<  0,   0,   0>::value;
-  const value_type gray01        = rgb_static< 16,  16,  16>::value;
-  const value_type gray02        = rgb_static< 32,  32,  32>::value;
-  const value_type gray03        = rgb_static< 48,  48,  48>::value;
-  const value_type gray04        = rgb_static< 64,  64,  64>::value;
-  const value_type gray05        = rgb_static< 80,  80,  80>::value;
-  const value_type gray06        = rgb_static< 96,  96,  96>::value;
-  const value_type gray07        = rgb_static<112, 112, 112>::value;
-  const value_type gray08        = rgb_static<128, 128, 128>::value;
-  const value_type gray09        = rgb_static<144, 144, 144>::value;
-  const value_type gray10        = rgb_static<160, 160, 160>::value;
-  const value_type gray11        = rgb_static<176, 176, 176>::value;
-  const value_type gray12        = rgb_static<192, 192, 192>::value;
-  const value_type gray13        = rgb_static<208, 208, 208>::value;
-  const value_type gray14        = rgb_static<224, 224, 224>::value;
-  const value_type gray15        = rgb_static<240, 240, 240>::value;
-  const value_type white         = rgb_static<255, 255, 255>::value;
-
-  // bright tones
-  const value_type brightblue    = rgb_static<  0,   0, 255>::value;
-  const value_type brightgreen   = rgb_static<  0, 255,   0>::value;
-  const value_type brightred     = rgb_static<255,   0,   0>::value;
-  const value_type brightcyan    = rgb_static<  0, 255, 255>::value;
-  const value_type brightmagenta = rgb_static<255,   0, 255>::value;
-  const value_type brightyellow  = rgb_static<255, 255,   0>::value;
-  const value_type brightgray    = rgb_static<224, 224, 224>::value;
-
-  // light tones
-  const value_type lightblue     = rgb_static<128, 128, 255>::value;
-  const value_type lightgreen    = rgb_static<128, 255, 128>::value;
-  const value_type lightred      = rgb_static<255, 128, 128>::value;
-  const value_type lightcyan     = rgb_static<128, 255, 255>::value;
-  const value_type lightmagenta  = rgb_static<255, 128, 255>::value;
-  const value_type lightyellow   = rgb_static<255, 255,  64>::value;
-  const value_type lightorange   = rgb_static<255, 200,   0>::value;
-  const value_type lightgray     = rgb_static<192, 192, 192>::value;
-
-  // normal tones
-  const value_type blue          = rgb_static<  0,   0, 192>::value;
-  const value_type green         = rgb_static<  0, 192,   0>::value;
-  const value_type red           = rgb_static<192,   0,   0>::value;
-  const value_type cyan          = rgb_static<  0, 192, 192>::value;
-  const value_type magenta       = rgb_static<192,   0, 192>::value;
-  const value_type yellow        = rgb_static<192, 192,  32>::value;
-  const value_type orange        = rgb_static<255, 187,  76>::value;
-  const value_type gray          = rgb_static<128, 128, 128>::value;
-  const value_type brown         = rgb_static<255, 128,   0>::value;
-
-  // dark tones
-  const value_type darkred       = rgb_static< 64,   0,   0>::value;
-  const value_type darkgreen     = rgb_static<  0,  64,   0>::value;
-  const value_type darkblue      = rgb_static<  0,   0,  64>::value;
-  const value_type darkyellow    = rgb_static< 64,  64,   0>::value;
-  const value_type darkorange    = rgb_static<255, 140,   0>::value;
-  const value_type darkgray      = rgb_static< 64,  64,  64>::value;
-
-  // special tones
-  const value_type gold          = rgb_static<255, 215,   0>::value;
-  const value_type saddlebrown   = rgb_static<139,  69,  19>::value;
-  const value_type sienna        = rgb_static<160,  82,  45>::value;
-  const value_type peru          = rgb_static<205, 133,  63>::value;
-  const value_type burlywood     = rgb_static<222, 184, 135>::value;
-  const value_type wheat         = rgb_static<245, 245, 220>::value;
-  const value_type tan           = rgb_static<210, 180, 140>::value;
 
 } // namespace color
 } // namespace vic

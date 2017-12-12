@@ -87,12 +87,12 @@ protected:
       // check conditions
       if (util::abs<std::int16_t>(dx) > 2 || util::abs<std::int16_t>(dy) > 2) {
         // antialising not possible, distance too far
-        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::brightred);
+        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::red);
         return;
       }
       if (dx == 0 || dy == 0) {
         // antialising not necessary, 90� or 180�
-        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::brightgreen);
+        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::green);
         return;
       }
 
