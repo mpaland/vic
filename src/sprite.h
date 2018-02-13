@@ -254,15 +254,17 @@ public:
 template <std::uint16_t Pixel>
 class canvas_output : public shader::base
 {
-  std::uint16_t& frame_;
-  avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false>* pattern_;
-  rect_type* pattern_bounding_;
+  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false> pattern_type;
+
+  std::uint16_t&  frame_;
+  pattern_type*   pattern_;
+  rect_type*      pattern_bounding_;
 
 public:
   /**
    * ctor
    */
-  canvas_output(std::uint16_t& frame, avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false>* pattern, rect_type* pattern_bounding)
+  canvas_output(std::uint16_t& frame, pattern_type* pattern, rect_type* pattern_bounding)
     : frame_(frame)
     , pattern_(pattern)
     , pattern_bounding_(pattern_bounding)
@@ -328,18 +330,18 @@ public:
 template <std::uint16_t Pixel, std::uint16_t Frames>
 class canvas : public base
 {
-  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false>::iterator pattern_iterator_type;
-  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, true>::iterator  restore_iterator_type;
+  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false> pattern_type;
+  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, true>  restore_type;
 
-  avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, false>pattern_[Frames];   // pattern (data) buffer
-  avl_array<vertex_type, color::value_type, std::uint16_t, Pixel, true> restore_;           // restore (background) buffer
+  pattern_type pattern_[Frames];                // pattern (data) buffer
+  restore_type restore_;                        // restore (background) buffer
 
-  pattern_iterator_type pattern_it_;    // pattern iterator
-  restore_iterator_type restore_it_;    // restore iterator
+  typename pattern_type::iterator pattern_it_;  // pattern iterator
+  typename restore_type::iterator restore_it_;  // restore iterator
 
-  rect_type pattern_bounding_[Frames];  // pattern bounding box
-  canvas_output<Pixel> output_shader_;  // shader output
-  std::uint16_t frame_edit_;            // actual edit frame
+  rect_type pattern_bounding_[Frames];          // pattern bounding box
+  canvas_output<Pixel> output_shader_;          // shader output
+  std::uint16_t frame_edit_;                    // actual edit frame
 
 public:
   /**
@@ -354,7 +356,7 @@ public:
     shader_pipe_ = &output_shader_;
 
     // init bounding boxes
-    for (std::size_t n = 0; n < Frames; ++n) {
+    for (std::uint_fast16_t n = 0; n < Frames; ++n) {
       pattern_bounding_[n].clear();
     }
   }
@@ -430,7 +432,7 @@ public:
 
   virtual inline void restore_it_delete() final
   {
-    restore_iterator_type it = restore_it_++;
+    restore_type::iterator it = restore_it_++;
     if (restore_it_ != restore_.end()) {
       const vertex_type key = restore_it_.key();
       restore_.erase(it);
@@ -459,32 +461,33 @@ public:
 //
 
 typedef struct tag_sheet_info_type {
-  std::uint16_t           width;              // width of sprite sheet
-  std::uint16_t           height;             // height of sprite sheet
-  std::uint16_t           sprite_width;       // width of sprite
-  std::uint16_t           sprite_height;      // height of sprite
-  color::value_type       bg_color;           // background color (transparent)
-  color::format_type      format;             // supported formats are RBG565, RGB888, ARGB8888 and RGBA8888
-  const std::uint8_t*     data;               // sprite sheet data
+  std::uint16_t         width;          // width of sprite sheet
+  std::uint16_t         height;         // height of sprite sheet
+  std::uint16_t         sprite_width;   // width of sprite
+  std::uint16_t         sprite_height;  // height of sprite
+  color::value_type     bg_color;       // background color (transparent)
+  color::format_type    format;         // supported formats are RBG565, RGB888, ARGB8888 and RGBA8888
+  const std::uint8_t*   data;           // sprite sheet data
 } sheet_info_type;
 
 
 template <std::uint16_t Frame_Width, std::uint16_t Frame_Height>
 class sheet : public base
 {
-  std::size_t pattern_it_;      // pattern iterator
-  std::size_t pattern_size_;    // pattern size (vertexes)
+  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Frame_Width * Frame_Height, true> restore_type;
 
-  typedef typename avl_array<vertex_type, color::value_type, std::uint16_t, Frame_Width * Frame_Height, true>::iterator  restore_iterator_type;
-  avl_array<vertex_type, color::value_type, std::uint16_t, Frame_Width * Frame_Height, true> restore_;           // restore (background) buffer
-  restore_iterator_type restore_it_;    // restore iterator
+  restore_type restore_;                        // restore (background) buffer
 
-  const sheet_info_type* sheet_info_;
+  typename restore_type::iterator restore_it_;  // restore iterator
+
+  std::uint32_t pattern_it_;                    // pattern iterator
+  std::uint32_t pattern_size_;                  // pattern size (vertexes)
+  rect_type     pattern_bounding_;              // pattern bounding box
 
   std::uint16_t frames_per_row;
   std::uint8_t  byte_per_pixel;
 
-  rect_type pattern_bounding_;        // pattern bounding box
+  const sheet_info_type* sheet_info_;           // sheet info
 
 public:
   /**
@@ -495,7 +498,7 @@ public:
     , sheet_info_(sheet_info)
   {
     // sheet constants
-    byte_per_pixel = 2;  // sheet_info_->format;
+    byte_per_pixel    = static_cast<std::uint8_t>(sheet_info_->format) >> 4U;     // upper nibble of format is 'bytes/pixel'
     frames_per_row    = sheet_info_->width / sheet_info_->sprite_width;
     pattern_bounding_ = { 0, 0, static_cast<std::int16_t>(sheet_info_->sprite_width - 1U), static_cast<std::int16_t>(sheet_info_->sprite_height - 1U) };
     pattern_size_     = sheet_info_->sprite_width * sheet_info_->sprite_height;
@@ -572,7 +575,7 @@ public:
 
   virtual inline void restore_it_delete() final
   {
-    restore_iterator_type it = restore_it_++;
+    restore_type::iterator it = restore_it_++;
     if (restore_it_ != restore_.end()) {
       const vertex_type key = restore_it_.key();
       restore_.erase(it);
