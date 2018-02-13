@@ -138,28 +138,32 @@ namespace util {
 
 
 // return the minimum of a and b
-inline std::int16_t min2(std::int16_t a, std::int16_t b)
+template <typename T>
+inline const T& min2(const T& a, const T& b)
 {
-  return b ^ ((a ^ b) & -(a < b));
+  return a < b ? a : b;
 }
 
 
 // return the maximum of a and b
-inline std::int16_t max2(std::int16_t a, std::int16_t b)
+template <typename T>
+inline T max2(T a, T b)
 {
-  return a ^ ((a ^ b) & -(a < b));
+  return a > b ? a : b;
 }
 
 
 // return the minimum of a, b and c
-inline std::int16_t min3(std::int16_t a, std::int16_t b, std::int16_t c)
+template <typename T>
+inline const T& min3(const T& a, const T& b, const T& c)
 {
   return min2(min2(a, b), c);
 }
 
 
 // return the maximum of a, b and c
-inline std::int16_t max3(std::int16_t a, std::int16_t b, std::int16_t c)
+template <typename T>
+inline const T& max3(const T& a, const T& b, const T& c)
 {
   return max2(max2(a, b), c);
 }
