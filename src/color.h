@@ -64,8 +64,8 @@ namespace color {
     32    24     A-8-8-8    16M RGB display with 8 bit alpha blending
                    R-G-B   bit meaning
   */
-  typedef enum tag_format_type
-  {
+  typedef enum tag_format_type : std::uint8_t 
+  {                           //  upper nibble defines 'bytes/pixel'
     format_L1       = 0x10,   //  1 bit luminance (monochrome), like XBM format
     format_L2       = 0x11,   //  2 bit grayscale
     format_L4       = 0x12,   //  4 bit grayscale
