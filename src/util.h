@@ -207,7 +207,7 @@ inline std::uint8_t byte_reverse(std::uint8_t data)
 
 /**
  * Helper function for fast division by 255
- * Normall a modern compiler should use this / 255 replacement under the hood.
+ * Normally a modern compiler should use this / 255 replacement under the hood.
  * \param data Input data
  * \return data / 255U
  */
@@ -243,14 +243,15 @@ inline std::uint32_t distance_squared(vertex_type a, vertex_type b)
 
 /**
  * Orient 2D function
- * \param a Vertex a
- * \param b Vertex b
- * \param c Vertex c
- * \return Orient 2D value
+ * v0 and v1 define a line, result gives the relation of p to this line
+ * \param p Vertex to test
+ * \param v0 Line start vertex
+ * \param v1 Line end vertex
+ * \return result > 0 if p is on the "right" side, result = 0 if p is exactly on the line, result < 0 if p is on the "left" side
  */
-inline std::int32_t orient_2d(vertex_type a, vertex_type b, vertex_type c)
+inline std::int32_t orient_2d(vertex_type p, vertex_type v0, vertex_type v1)
 {
-  return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+  return (p.x - v1.x) * (v0.y - v1.y) - (p.y - v1.y) * (v0.x - v1.x);
 }
 
 

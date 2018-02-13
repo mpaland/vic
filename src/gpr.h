@@ -547,23 +547,29 @@ public:
   {
     present_lock();
 
+    // ensure v0 is min_x
+    util::vertex_min_x(v1, v2);
+    util::vertex_min_x(v0, v1);
+
+    // ensure clockwise vertex winding
+    const std::int32_t r = util::orient_2d(v1, v0, v2);
     // check if the area of the triangle is 0 (straight line)
-    if (!util::orient_2d(v0, v1, v2)) {
+    if (r > 0) {
+      // v1 is on the right side, swap to get it on the left side (clockwise vertex winding)
+      util::vertex_swap(v1, v2);
+    }
+    else if (r == 0) {
+      // v1 is on a line with v0 and v2
       line(v0, v1);
       line(v1, v2);
       present_lock(false);
       return;
     }
 
-    // ensure clockwise vertex winding
-    util::vertex_min_x(v1, v2);
-    util::vertex_min_x(v0, v1);
-    util::vertex_min_y(v1, v2);
-
     // compute triangle bounding box
-    const std::int16_t min_x = util::min3(v0.x, v1.x, v2.x);
+    const std::int16_t min_x = v0.x;
+    const std::int16_t max_x = util::max2(v1.x, v2.x);
     const std::int16_t min_y = util::min3(v0.y, v1.y, v2.y);
-    const std::int16_t max_x = util::max3(v0.x, v1.x, v2.x);
     const std::int16_t max_y = util::max3(v0.y, v1.y, v2.y);
 
     // triangle setup
@@ -573,9 +579,9 @@ public:
 
     // Barycentric coordinates at minX/minY corner
     vertex_type p = { min_x, min_y };
-    std::int32_t w0_row = util::orient_2d(v1, v2, p);
-    std::int32_t w1_row = util::orient_2d(v2, v0, p);
-    std::int32_t w2_row = util::orient_2d(v0, v1, p);
+    std::int32_t w0_row = util::orient_2d(p, v1, v2);
+    std::int32_t w1_row = util::orient_2d(p, v2, v0);
+    std::int32_t w2_row = util::orient_2d(p, v0, v1);
 
     // rasterize
     anti_aliasing aa0(*this), aa1(*this);
