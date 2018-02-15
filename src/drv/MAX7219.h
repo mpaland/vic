@@ -71,9 +71,6 @@ class MAX7219 : public drv
 
 public:
 
-  /////////////////////////////////////////////////////////////////////////////
-  // M A N D A T O R Y   F U N C T I O N S
-
   /**
    * ctor
    * \param orientation Screen orientation
@@ -94,13 +91,17 @@ public:
    */
   ~MAX7219()
   {
-    drv_shutdown();
+    shutdown();
   }
 
 
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
+
 protected:
 
-  virtual void drv_init() final
+  virtual void init() final
   {
     // set scan limit according to width or height
     write(REG_SCANLIMIT, (orientation_ == orientation_0)  || (orientation_ == orientation_180) ||
@@ -117,77 +118,54 @@ protected:
     write(REG_TEST, 0x00U);
 
     // clear buffer
-    drv_cls();
+    cls();
 
     // full brightness
     brightness_set(255U);
   }
 
 
-  virtual void drv_shutdown() final
+  virtual void shutdown() final
   {
     // clear buffer
-    drv_cls();
+    cls();
 
     // shutdown operation
     write(REG_SHUTDOWN, 0x00U);
   }
 
 
-  inline virtual const char* drv_version() const final
+  inline virtual const char* version() const final
   {
     return (const char*)VIC_DRV_MAX7219_VERSION;
   }
 
 
-  inline virtual bool drv_is_graphic() const final
+  inline virtual bool is_graphic() const final
   {
     // MAX7219 is a graphic display
     return true;
   }
 
 
-  virtual void drv_cls() final
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+protected:
+
+  virtual void cls(color::value_type bk_color) final
   {
     // clear display
     for (std::uint_fast8_t i = 0U; i < screen_height(); ++i) {
       digit_[i] = 0U;
     }
     // data to MAX7219
-    drv_present();
+    present();
   }
 
 
-  virtual void drv_pixel_set_color(vertex_type point, color::value_type color) final
-  {
-    // check limits and clipping
-    if (!screen_is_inside(point) || (!clipping_.is_inside(point))) {
-      // out of bounds or outside clipping region
-      return;
-    }
-
-    // set pixel in display buffer
-    if (color_to_head_L1(color)) {
-      digit_[point.y] |= static_cast<std::uint8_t>(0x01U << (point.x & 0x07U));     // set pixel
-    }
-    else {
-      digit_[point.y] &= static_cast<std::uint8_t>(~(0x01U << (point.x & 0x07U)));  // clear pixel
-    }
-  }
-
-
-  virtual inline color::value_type drv_pixel_get(vertex_type point) final 
-  {
-    // check limits
-    if (!screen_is_inside(point)) {
-      // out of bounds
-      return color_from_head_L1(0U);
-    }
-    return color_from_head_L1(static_cast<std::uint8_t>(digit_[point.y] >> point.x) & 0x01U);
-  }
-
-
-  virtual void drv_present() final
+  virtual void present() final
   {
     // copy memory bitmap to screen
     switch (orientation_) {
@@ -257,7 +235,48 @@ protected:
   }
 
 
-  virtual inline void brightness_set(std::uint8_t level) final
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
+
+  virtual void pixel_set(vertex_type vertex, color::value_type color) final
+  {
+    // check limits and clipping
+    if (!screen_is_inside(vertex)) {
+      // out of bounds or outside clipping region
+      return;
+    }
+
+    // set pixel in display buffer
+    if (color::color_to_L1(color)) {
+      digit_[vertex.y] |= static_cast<std::uint8_t>(0x01U << (vertex.x & 0x07U));     // set pixel
+    }
+    else {
+      digit_[vertex.y] &= static_cast<std::uint8_t>(~(0x01U << (vertex.x & 0x07U)));  // clear pixel
+    }
+  }
+
+
+  virtual inline color::value_type pixel_get(vertex_type vertex) final
+  {
+    // check limits
+    if (!screen_is_inside(vertex)) {
+      // out of bounds
+      return color::color_from_L1(0U);
+    }
+    return color::color_from_L1(static_cast<std::uint8_t>(digit_[vertex.y] >> vertex.x) & 0x01U);
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // D I S P L A Y   C O N T R O L
+  //
+
+  /**
+   * Set display or backlight brightness
+   * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
+   */
+  virtual void display_brightness(std::uint8_t level)
   {
     // set brightness, use upper nibble of level
     write(REG_INTENSITY, static_cast<std::uint8_t>(level >> 4U));
@@ -265,6 +284,7 @@ protected:
 
 
 private:
+
   /**
    * Write data to SPI
    * \param addr Register address
@@ -273,13 +293,13 @@ private:
    */
   inline bool write(std::uint8_t addr, std::uint8_t data)
   {
-    std::uint8_t data_out[2] = { addr, data };
-    return io::dev::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
+    const std::uint8_t data_out[2] = { addr, data };
+    return io::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
   }
 
 private:
-  const io::dev::handle_type  device_handle_;           // (SPI) device handle
-  std::uint8_t                digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
+  const io::handle_type  device_handle_;           // (SPI) device handle
+  std::uint8_t           digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
 };
 
 } // namespace head
