@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -68,13 +68,18 @@ public:
    * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  virtual color::value_type pixel_get(vertex_type vertex)
+  inline virtual color::value_type pixel_get(vertex_type vertex)
   {
     return next_->pixel_get(vertex);
   }
 };
 
 
+
+/**
+ * Output shader
+ * This is the last shader in the pipe and sends the pixels to the head
+ */
 class output : public base
 {
   drv& head_;             // actual head instance
@@ -111,6 +116,11 @@ public:
 
 
 
+/**
+ * Alpha blending shader
+ * This shader alpha blends all pixels
+ * Use this for partial alpha blending when alpha blending is disabled in the output shader
+ */
 class alpha_blend : public base
 {
 public:
@@ -128,7 +138,10 @@ public:
 
 
 
-// clipping region shader
+/**
+ * Clipping region shader
+ * This shader clips all vertices in the defined clipping region
+ */
 class clipping : public base
 {
   rect_type region_;
@@ -172,12 +185,32 @@ public:
 
 
   /**
+   * Get the actual clipping region
+   * \return Clipping region
+   */
+  inline rect_type get() const
+  {
+    return region_;
+  }
+
+
+  /**
    * Enable the clipping function
    * \param enable True to enable
    */
   inline void enable(bool _enable = true)
   {
     active_ = _enable;
+  }
+
+
+  /**
+   * Return the clipping status
+   * \return True if clipping is enabled
+   */
+  inline bool is_enabled() const
+  {
+    return active_;
   }
 
 
@@ -189,16 +222,6 @@ public:
   inline bool is_inside(const vertex_type& v) const
   {
     return !active_ || (region_.contain(v) ? inside_ : !inside_);
-  }
-
-
-  /**
-   * Return the clipping status
-   * \return True if clipping is enabled
-   */
-  inline bool is_enabled() const
-  {
-    return active_;
   }
 
 
@@ -218,7 +241,10 @@ public:
 
 
 
-// zoom vertex shader
+/**
+ * Zoom vertex shader
+ * This shader zooms all processed vertices
+ */
 class zoom : public base
 {
   std::uint16_t x_level_;
@@ -228,7 +254,9 @@ public:
 
   /**
    * ctor
-   * Create a clipping region, default disabled
+   * Set the zoom level
+   * \param x_level Zoom factor for x-axis
+   * \param x_level Zoom factor for y-axis
    */
   zoom(std::uint16_t x_level, std::uint16_t y_level)
     : x_level_(x_level)
@@ -243,9 +271,9 @@ public:
    */
   inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
-    for (std::int16_t y = vertex.y * y_level_, ye = y + y_level_; y < ye; ++y) {
-      for (std::int16_t x = vertex.x * x_level_, xe = x + x_level_; x < xe; ++x) {
-        next_->pixel_set({ x, y }, color);
+    for (std::int_fast16_t y = vertex.y * y_level_, ye = y + y_level_; y < ye; y++) {
+      for (std::int_fast16_t x = vertex.x * x_level_, xe = x + x_level_; x < xe; x++) {
+        next_->pixel_set({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }, color);
       }
     }
   }
@@ -264,22 +292,43 @@ public:
 
 
 
-// offset vertex shader
+/**
+ * Offset vertex shader
+ * This shader adds an offset to all processed vertices
+ */
 class offset : public base
 {
-  std::int16_t x_offset_;
-  std::int16_t y_offset_;
+  vertex_type offset_;
 
 public:
 
   /**
    * ctor
-   * Create a clipping region, default disabled
+   * \param offset Offset to set
    */
-  offset(std::int16_t x_offset, std::int16_t y_offset)
-    : x_offset_(x_offset)
-    , y_offset_(y_offset)
+  offset(vertex_type offset)
+    : offset_(offset)
   { }
+
+
+  /**
+   * Set the offset
+   * \param offset Offset to set
+   */
+  inline void set(vertex_type offset)
+  {
+    offset_ = offset;
+  }
+
+
+  /**
+   * Get the actual offset
+   * \return Actual offset
+   */
+  inline vertex_type get() const
+  {
+    return offset_;
+  }
 
 
   /**
@@ -289,7 +338,7 @@ public:
    */
   inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
-    next_->pixel_set({ static_cast<std::int16_t>(vertex.x + x_offset_), static_cast<std::int16_t>(vertex.y + y_offset_) }, color);
+    next_->pixel_set(vertex + offset_, color);
   }
 
 
@@ -300,7 +349,7 @@ public:
    */
   inline virtual color::value_type pixel_get(vertex_type vertex) final
   {
-    return next_->pixel_get({ static_cast<std::int16_t>(vertex.x + x_offset_), static_cast<std::int16_t>(vertex.y + y_offset_) });
+    return next_->pixel_get(vertex + offset_);
   }
 };
 
