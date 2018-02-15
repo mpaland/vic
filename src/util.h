@@ -152,7 +152,7 @@ inline const T& min2(const T& a, const T& b)
 
 // return the maximum of a and b
 template <typename T>
-inline T max2(T a, T b)
+inline T& max2(T& a, T& b)
 {
   return a > b ? a : b;
 }
