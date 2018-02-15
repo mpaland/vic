@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2017-2017, PALANDesign Hannover, Germany
+//             2017-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -204,7 +204,7 @@ inline T abs(T val)
 
 
 /**
- * Helper function for fast byte reverse (e.g. 0x80 to 0x01)
+ * Helper function for fast byte reverse (e.g. 0x80 to 0x01, 0x40 to 0x02)
  * \param data Input byte
  * \return Reversed byte
  */
@@ -311,7 +311,7 @@ inline std::int16_t cos(std::int16_t angle)
 
 
 /**
- * Helper function to swap two vertexes (as coordinates)
+ * Helper function to swap two vertices (as coordinates)
  * \param v0 First vertex
  * \param v1 Second vertex
  */
@@ -324,9 +324,9 @@ inline void vertex_swap(vertex_type& v0, vertex_type& v1)
 
 
 /**
- * Helper function to swap two vertexes so that first vertex contains min x
- * \param min_x vertex
- * \param max_x vertex
+ * Helper function to swap two vertices so that first vertex contains min x
+ * \param min_x Vertex with the smaller x coord on return
+ * \param max_x Vertex with the bigger x coord on return
  */
 inline void vertex_min_x(vertex_type& min_x, vertex_type& max_x)
 {
@@ -337,9 +337,9 @@ inline void vertex_min_x(vertex_type& min_x, vertex_type& max_x)
 
 
 /**
- * Helper function to swap two vertexes that first vertex contains min y
- * \param min_y vertex
- * \param max_y vertex
+ * Helper function to swap two vertices that first vertex contains min y
+ * \param min_y Vertex with the smaller y coord on return
+ * \param max_y Vertex with the bigger y coord on return
  */
 inline void vertex_min_y(vertex_type& min_y, vertex_type& max_y)
 {
@@ -350,9 +350,9 @@ inline void vertex_min_y(vertex_type& min_y, vertex_type& max_y)
 
 
 /**
- * Helper function to change two vertexes so that the first vertex contains top/left
- * \param top_left vertex
- * \param bottom_right vertex
+ * Helper function for rectangles to change two vertices so that the first vertex contains top/left
+ * \param top_left Top/left vertex on return
+ * \param bottom_right Bottom/right vertex on return
  */
 inline void vertex_top_left(vertex_type& top_left, vertex_type& bottom_right)
 {
