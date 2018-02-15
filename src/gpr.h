@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2017, PALANDesign Hannover, Germany
+//             2001-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -505,17 +505,17 @@ public:
 
   /**
    * Draw multiple connected lines
-   * \param vertexes Pointer to array of vertexes, at least 2
-   * \param vertex_count Number of vertexes in the array, at least 2
+   * \param vertices Pointer to array of vertices, at least 2
+   * \param vertex_count Number of vertices in the array, at least 2
    */
-  void polyline(const vertex_type* vertexes, std::size_t vertex_count)
+  void polyline(const vertex_type* vertices, std::size_t vertex_count)
   {
     if (vertex_count-- < 2U) {
       return;
     }
     present_lock();
     for (std::size_t n = 0U; n < vertex_count; ++n) {
-      line(vertexes[n], vertexes[vertex_count + 1U]);
+      line(vertices[n], vertices[vertex_count + 1U]);
     }
     present_lock(false);    // present
   }
