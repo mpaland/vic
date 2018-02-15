@@ -65,6 +65,11 @@ typedef struct tag_vertex_type {
     y = static_cast<std::int16_t>(y + rhs.y);
     return *this;
   }
+  inline tag_vertex_type& operator-=(const tag_vertex_type& rhs) {
+    x -= rhs.x;
+    y -= rhs.y;
+    return *this;
+  }
 } vertex_type;
 
 
