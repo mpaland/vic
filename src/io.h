@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2017-2017, PALANDesign Hannover, Germany
+//             2017-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -105,7 +105,7 @@ namespace mem {
    * \param address The address to write to
    * \param value The value (of type VALUE_TYPE) written to the address
    */
-  template<typename VALUE_TYPE>
+  template <typename VALUE_TYPE>
   inline void write(volatile void* const address, VALUE_TYPE value)
   { *static_cast<volatile VALUE_TYPE*>(address) = value; }
 
@@ -114,7 +114,7 @@ namespace mem {
    * \param address The address to read from
    * \return The value (of type VALUE_TYPE) read from address
    */
-  template<typename VALUE_TYPE>
+  template <typename VALUE_TYPE>
   inline VALUE_TYPE read(volatile void* const address)
   { return *static_cast<volatile VALUE_TYPE*>(address); }
 
