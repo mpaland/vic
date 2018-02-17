@@ -206,14 +206,15 @@ public:
     // calculate the sum of all inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
     std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
+    for (std::size_t n = 0U; n < size_; n++) {
       // ignore y
-      dist_[n] = factor / (1U + (gradient_color_[n].vertex.x - pos.x) * (gradient_color_[n].vertex.x - pos.x));
+      const std::int16_t dx = gradient_color_[n].vertex.x - pos.x;
+      dist_[n] = factor / (1U + dx * dx);
       sd_sum += dist_[n];
     }
     // assemble the mixed color at given pos
     color::value_type c = color::none;
-    for (std::size_t n = 0U; n < size_; ++n) {
+    for (std::size_t n = 0U; n < size_; n++) {
       c += (color::dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * dist_[n] / sd_sum)) & 0x00FFFFFF) |            // RGB
                        ((static_cast<color::value_type>(color::get_alpha(gradient_color_[n].color)) * dist_[n] / sd_sum) << 24U);   // alpha
     }
@@ -263,14 +264,15 @@ public:
     // calculate the sum of all inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
     std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
+    for (std::size_t n = 0U; n < size_; n++) {
       // ignore x
-      dist_[n] = factor / (1U + (gradient_color_[n].vertex.y - pos.y) * (gradient_color_[n].vertex.y - pos.y));
+      const std::int16_t dy = gradient_color_[n].vertex.y - pos.y;
+      dist_[n] = factor / (1U + dy * dy);
       sd_sum += dist_[n];
     }
     // assemble the mixed color at given pos
     color::value_type c = color::none;
-    for (std::size_t n = 0U; n < size_; ++n) {
+    for (std::size_t n = 0U; n < size_; n++) {
       c += (color::dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * dist_[n] / sd_sum)) & 0x00FFFFFF) |            // RGB
                        ((static_cast<color::value_type>(color::get_alpha(gradient_color_[n].color)) * dist_[n] / sd_sum) << 24U);   // alpha
     }
