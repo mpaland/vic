@@ -304,20 +304,20 @@ public:
 
   /**
    * ctor
-   * \param offset Offset to set
+   * \param _offset Offset to set
    */
-  offset(vertex_type offset)
-    : offset_(offset)
+  offset(vertex_type _offset)
+    : offset_(_offset)
   { }
 
 
   /**
    * Set the offset
-   * \param offset Offset to set
+   * \param _offset Offset to set
    */
-  inline void set(vertex_type offset)
+  inline void set(vertex_type _offset)
   {
-    offset_ = offset;
+    offset_ = _offset;
   }
 
 
