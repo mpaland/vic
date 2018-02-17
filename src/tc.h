@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //

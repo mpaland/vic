@@ -481,7 +481,7 @@ class sheet : public base
   typename restore_type::iterator restore_it_;  // restore iterator
 
   std::uint32_t pattern_it_;                    // pattern iterator
-  std::uint32_t pattern_size_;                  // pattern size (vertexes)
+  std::uint32_t pattern_size_;                  // pattern size
   rect_type     pattern_bounding_;              // pattern bounding box
 
   std::uint16_t frames_per_row;

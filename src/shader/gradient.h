@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -110,12 +110,12 @@ public:
 
 
 /**
-  * Color gradient shader
-  * The gradient shader sets the pixel color to an interpolated color for a given vertex
-  * Construct a gradient with 3 pixels like
-  * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{500, 0}, vic::color::yellow}, {{750,100}, vic::color::red} };
-  * color = gr.mix({300,0});   // get the color at position 300,0
-  */
+ * Color gradient shader
+ * The gradient shader sets the pixel color to an interpolated color for a given vertex
+ * Construct a gradient with 4 pixels like:
+ * vic::shader::gradient_horizontal<4> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown }, { 300, 80, vic::color::green } };
+ * dc_.shader_register(&gr);
+ */
 template<std::size_t Max_Pixel>
 class gradient : public gradient_base<Max_Pixel>
 {
@@ -168,8 +168,9 @@ public:
 
 /**
  * The gradient_horizontal shader sets the pixel color to an interpolated color for a given vertex, y is ignored
- * Construct a gradient with 3 pixels like
- * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{500, 0}, vic::color::yellow}, {{750, 0}, vic::color::red} };
+ * Construct a gradient with 3 pixels like:
+ * vic::shader::gradient_horizontal<3> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown } };
+ * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
 class gradient_horizontal : public gradient_base<Max_Pixel>
@@ -223,9 +224,10 @@ public:
 
 
 /**
- * The gradient_horizontal shader sets the pixel color to an interpolated color for a given vertex, x is ignored
- * Construct a gradient with 3 pixels like
- * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{0, 500}, vic::color::yellow}, {{0, 750}, vic::color::red} };
+ * The gradient_vertical shader sets the pixel color to an interpolated color for a given vertex, x is ignored
+ * Construct a gradient with 3 pixels like:
+ * vic::shader::gradient_horizontal<3> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown } };
+ * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
 class gradient_vertical : public gradient_base<Max_Pixel>
@@ -279,12 +281,11 @@ public:
 
 
 /**
-  * Color gradient shader
-  * The gradient shader sets the pixel color to an interpolated color for a given vertex
-  * Construct a gradient with 3 pixels like
-  * vic::color::gradient<3U> gr = { {{0, 0} vic::color::green}, {{500, 0}, vic::color::yellow}, {{750,100}, vic::color::red} };
-  * color = gr.mix({300,0});   // get the color at position 300,0
-  */
+ * The gradient_solid shader sets the pixel color to the color of the nearest vertex
+ * Construct a gradient with 3 pixels like
+ * vic::shader::gradient_solid<3> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown } };
+ * dc_.shader_register(&gr);
+ */
 template<std::size_t Max_Pixel>
 class gradient_solid : public gradient_base<Max_Pixel>
 {

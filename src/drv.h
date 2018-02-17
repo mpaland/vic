@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -461,9 +461,9 @@ public:
 
 
  /**
-   * Use the given framebuffer plane as read/write buffer
-   * \param plane The index of the framebuffer/plane to access, 0 for 1st
-   */
+  * Use the given framebuffer plane as read/write buffer
+  * \param plane The index of the framebuffer/plane to access, 0 for 1st
+  */
   virtual bool framebuffer_set_access(std::size_t plane)
   { (void)plane; return false; }
 
