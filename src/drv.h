@@ -218,8 +218,8 @@ protected:
    */
   virtual void box(rect_type rect, std::uint32_t color)
   {
-    for (std::int16_t y = rect.top; y <= rect.bottom; ++y) {
-      line_horz({ rect.left, y }, { rect.right, y }, color);
+    for (std::int_fast16_t y = rect.top; y <= rect.bottom; y++) {
+      line_horz({ rect.left, static_cast<std::int16_t>(y) }, { rect.right, static_cast<std::int16_t>(y) }, color);
     }
   }
 
@@ -236,32 +236,32 @@ protected:
   {
     if (source.x < destination.x) {
       if (source.y < destination.y) {
-        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
-            pixel_set({ dx, dy }, pixel_get({ sx, sy }));
+        for (std::int_fast16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int_fast16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
       else {
-        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
-            pixel_set({ dx, dy }, pixel_get({ sx, sy }));
+        for (std::int_fast16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
+          for (std::int_fast16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
     }
     else {
       if (source.y < destination.y) {
-        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
-            pixel_set({ dx, dy }, pixel_get({ sx, sy }));
+        for (std::int_fast16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int_fast16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
       else {
-        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
-            pixel_set({ dx, dy }, pixel_get({ sx, sy }));
+        for (std::int_fast16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
+          for (std::int_fast16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
