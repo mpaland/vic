@@ -185,7 +185,7 @@ public:
         // if no sprite is rendered at the pixel position, just restore the background
         p = bg_pixel - sprite->position_;
         if (sprite->pattern_find(sprite->frame_, p)) {
-          // collision
+          // TBD: collision detection here
 
           // sprite needs to be rendered
           mixed_color = color::alpha_blend(mixed_color, p.color);
@@ -508,12 +508,12 @@ public:
   virtual inline void pattern_it_next(std::uint16_t frame, bool next) final
   {
     if (next) {
+      const std::uint16_t row = frame / frames_per_row * sheet_info_->sprite_height;
+      const std::uint16_t col = frame % frames_per_row * sheet_info_->sprite_width;
       for (++pattern_it_; pattern_it_ != pattern_size_; ++pattern_it_) {
         const std::uint16_t x   = static_cast<std::uint16_t>(pattern_it_ % sheet_info_->sprite_width);
         const std::uint16_t y   = static_cast<std::uint16_t>(pattern_it_ / sheet_info_->sprite_width);
-        const std::uint16_t row = frame / frames_per_row * sheet_info_->sprite_height + y;
-        const std::uint16_t col = frame % frames_per_row * sheet_info_->sprite_width  + x;
-        const std::uint8_t* pos = sheet_info_->data + (row * sheet_info_->width + col) * byte_per_pixel;
+        const std::uint8_t* pos = sheet_info_->data + ((row + y) * sheet_info_->width + (col + x)) * byte_per_pixel;
         if (format_to_color(pos) != sheet_info_->bg_color) {
           return;
         }
@@ -615,7 +615,86 @@ private:
       default                     : return *reinterpret_cast<const color::value_type*>(format_color);
     }
   }
+};
 
+
+
+///////////////////////////////////////////////////////////////////////////////
+// C A N V A S   S H E E T   S P R I T E
+//
+
+/**
+ * Canvas sheet class that combines a canvas sprite with support for sheet rendering
+ * \param Pixel At least "sheet_info_->sprite_width * sheet_info_->sprite_height" to hold the sprite. Increase value for zoom, rotation etc.
+ */
+template <std::uint16_t Pixel>
+class canvas_sheet : public canvas<Pixel, 1U>
+{
+  std::uint16_t frames_per_row;
+  std::uint8_t  byte_per_pixel;
+
+  const sheet_info_type* sheet_info_;   // sheet info
+
+public:
+  /**
+   * ctor
+   */
+  canvas_sheet(drv& head, const sheet_info_type* sheet_info, std::int16_t z_index = 0)
+    : canvas(head, z_index)
+    , sheet_info_(sheet_info)
+  {
+    // sheet constants
+    byte_per_pixel = static_cast<std::uint8_t>(sheet_info_->format) >> 4U;     // upper nibble of format is 'bytes/pixel'
+    frames_per_row = sheet_info_->width / sheet_info_->sprite_width;
+  }
+
+
+  /**
+   * Render the sprite on the head
+   * \param position Screen vertex where the origin of the sprite is rendered
+   * \param frame Frame of the sheet to render
+   */
+  void render(vertex_type position, std::uint16_t frame = 0U)
+  {
+    // clear buffer
+    cls();
+
+    // load the sheet in the sprite
+    const std::uint16_t row = frame / frames_per_row * sheet_info_->sprite_height;
+    const std::uint16_t col = frame % frames_per_row * sheet_info_->sprite_width;
+    for (std::int_fast16_t y = 0; y < sheet_info_->sprite_height; y++) {
+      for (std::int_fast16_t x = 0; x < sheet_info_->sprite_width; x++) {
+        const std::uint8_t* pos = sheet_info_->data + ((row + y) * sheet_info_->width + (col + x)) * byte_per_pixel;
+        const color::value_type col = format_to_color(pos);
+        if (col != sheet_info_->bg_color) {
+          pixel_set(vertex_type({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }), col);
+        }
+      }
+    }
+
+    // call the base class
+    canvas::render(position, 0U);
+  }
+
+private:
+  // format conversion
+  // the format color is expected to have the LSB (least significant byte) FIRST
+  color::value_type format_to_color(const std::uint8_t* format_color)
+  {
+    switch (sheet_info_->format)
+    {
+      case color::format_RGB332   :
+        return color::RGB332_to_color(*format_color);
+      case color::format_RGB565   : {
+        const std::uint16_t clr = (static_cast<std::uint16_t>(*format_color)) |
+                                  (static_cast<std::uint16_t>(*(format_color + 1U)) << 8U);
+        return color::RGB565_to_color(clr);
+      }
+      case color::format_RGB888   : return color::set_alpha(*reinterpret_cast<const color::value_type*>(format_color), 255);
+      case color::format_RGBA8888 : return *reinterpret_cast<const color::value_type*>(format_color) >> 8U | ((*reinterpret_cast<const color::value_type*>(format_color) & 0xFFU) << 24U);
+      default                     : return *reinterpret_cast<const color::value_type*>(format_color);
+    }
+  }
 };
 
 
