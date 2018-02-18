@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -46,9 +46,9 @@ namespace head {
  * accordingly, like: Screen_Size_X = 320U, std::uint16_t Screen_Size_Y = 240U, orientation = drv::orientation_90
  */
 template<std::uint16_t Screen_Size_X = 240U, std::uint16_t Screen_Size_Y = 320U,  // X, Y size, must match the orientation
-         drv::orientation_type orientation = drv::orientation_0,  // hardware orientation of the display
-         std::uint8_t interface_mode = 0U,              // 0: device, 8: mem 8bit, 9: mem 9bit, 16: mem 16 bit, 18: mem 18bit
-         bool color_256k = false,                       // false: 64k, true: 256k color mode. Used in 'device', '8 or 16 bit' mode. Use false for SPI device interface!
+         drv::orientation_type Orientation = drv::orientation_0,  // hardware orientation of the display
+         std::uint8_t Interface_Mode = 0U,              // 0: device, 8: mem 8bit, 9: mem 9bit, 16: mem 16 bit, 18: mem 18bit
+         bool Color_256k = false,                       // false: 64k, true: 256k color mode. Used in 'device', '8 or 16 bit' mode. Use false for SPI device interface!
          bool RGB_to_BGR = false                        // swap R and B color components, so displays need that
 >
 class ILI9325 : public drv
@@ -130,7 +130,7 @@ public:
     : drv(Screen_Size_X, Screen_Size_Y,
           Screen_Size_X, Screen_Size_Y,         // no viewport support (screen = viewport)
           0, 0,                                 // no viewport support
-          orientation)
+          Orientation)
     , device_handle_(device_handle)
     , mem_reg_addr_(mem_reg_addr)
     , mem_data_addr_(mem_data_addr)
@@ -160,8 +160,8 @@ public:
 //  write_reg(0xE7,                     0x0012);  // internal timing
 //  write_reg(0xEF,                     0x1231);  // internal timing
 
-    const bool TRI = (interface_mode !=  9U) && (interface_mode != 18U) && (color_256k);   // set if 256k colors
-    const bool DFM = (interface_mode == 16U) && (color_256k); // set if 16 bit and 256k colors
+    const bool TRI = (Interface_Mode !=  9U) && (Interface_Mode != 18U) && (Color_256k);  // set if 256k colors
+    const bool DFM = (Interface_Mode == 16U) && (Color_256k);                             // set if 16 bit and 256k colors
     const bool BGR = RGB_to_BGR;
 
     io::delay(200);    // wait 200 ms for display power stabalization
@@ -286,14 +286,14 @@ protected:
       if (!color_256k) {
         // 64k color mode
         const std::uint16_t col = color::color_to_RGB565(bg_color);
-        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; ++x) {
+        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; x++) {
           write_data(col, 2U);
         }
       }
       else {
         // 256k color mode
         const std::uint32_t col = color::color_to_RGB666(bg_color);
-        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; ++x) {
+        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; x++) {
           write_data(col, 3U);
         }
       }
@@ -325,7 +325,8 @@ protected:
     }
     gram_pos_ = { ++vertex.x, vertex.y };
 
-    if (!color_256k) {
+    // Color_256k is a constant template parameter, so the if case is optimized away
+    if (!Color_256k) {
       // 64k color mode
       write_idx(REG_GRAM_DATA);
       write_data(color::color_to_RGB565(color), 2U);
@@ -353,7 +354,8 @@ protected:
     }
     gram_pos_ = { ++vertex.x, vertex.y };
 
-    if (!color_256k) {
+    // Color_256k is a constant template parameter, so the if case is optimized away
+    if (!Color_256k) {
       std::uint8_t data[2];
       //read_data(data, 2U);
       return color::RGB565_to_color(static_cast<std::uint16_t>(data[0] << 8U) |
@@ -389,7 +391,8 @@ protected:
     // swap x
     util::vertex_min_x(v0, v1);
 
-    if (!color_256k) {
+    // Color_256k is a constant template parameter, so the if case is optimized away
+    if (!Color_256k) {
       // 64k color mode
       const std::uint16_t c64 = color::color_to_RGB565(color);
       for (; v0.x <= v1.x; ++v0.x) {
@@ -420,7 +423,8 @@ private:
    */
   inline void write_idx(std::uint8_t idx) const
   {
-    switch (interface_mode) {
+    // Interface_Mode is a constant template parameter, so the switch case is optimized away
+    switch (Interface_Mode) {
       case 0U :
       {
         // write to index register with option = 0
@@ -470,7 +474,8 @@ private:
    */
   inline void write_data(std::uint32_t data, std::uint8_t length) const
   {
-    switch (interface_mode) {
+    // Interface_Mode is a constant template parameter, so the switch case is optimized away
+    switch (Interface_Mode) {
       case 0U : {
         // device interface
         const std::uint8_t data_out[3] = { static_cast<std::uint8_t>(data >> 16U), static_cast<std::uint8_t>(data >> 8U), static_cast<std::uint8_t>(data) };
@@ -520,7 +525,7 @@ private:
 
   inline std::uint32_t read_data() const
   {
-    switch (interface_mode) {
+    switch (Interface_Mode) {
       case 0U :
         // read data from GRAM with option = 1U
 //        io::dev::read(device_handle_, 1U, data, length);
