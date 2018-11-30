@@ -70,6 +70,13 @@ public:
   ///////////////////////////////////////////////////////////////////////////////
 
 protected:
+  const std::uint16_t     screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
+  const std::uint16_t     screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
+  const std::uint16_t     viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
+  const std::uint16_t     viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
+  const orientation_type  orientation_;       // hardware orientation/rotation  of the display
+  vertex_type             viewport_;          // viewport top/left corner (x offset to screen)
+
 
   /**
    * ctor
@@ -158,9 +165,9 @@ protected:
   /**
    * Set pixel in given color
    * \param vertex Pixel coordinates
-   * \param color Color of pixel in 0RGB format, alpha channel is not evaluated
+   * \param color Color of pixel in ARGB format, alpha channel is/maybe ignored
    */
-  virtual void pixel_set(vertex_type vertex, std::uint32_t color)
+  virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
     (void)vertex; (void)color;
   }
@@ -169,7 +176,7 @@ protected:
   /**
    * Return the color of the pixel
    * \param point Vertex of the pixel
-   * \return Color of pixel in 0RGB format, alpha channel not set/undefined
+   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
    */
   virtual color::value_type pixel_get(vertex_type vertex)
   {
@@ -183,9 +190,9 @@ protected:
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
-   * \param color Line color - only RGB, no alpha channel
+   * \param color Line color
    */
-  virtual void line_horz(vertex_type v0, vertex_type v1, std::uint32_t color)
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
     util::vertex_min_x(v0, v1);   // set v0 to min x
     for (; v0.x <= v1.x; ++v0.x) {
@@ -199,9 +206,9 @@ protected:
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
-   * \param color Line color - only RGB, no alpha channel
+   * \param color Line color
    */
-  virtual void line_vert(vertex_type v0, vertex_type v1, std::uint32_t color)
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
   {
     util::vertex_min_y(v0, v1);   // set v0 to min y
     for (; v0.y <= v1.y; ++v0.y) {
@@ -214,11 +221,11 @@ protected:
    * Draw a box (filled rectangle) in given color
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param rect Box bounding, included in box
-   * \param color Box color - only RGB, no alpha channel
+   * \param color Box color
    */
-  virtual void box(rect_type rect, std::uint32_t color)
+  virtual void box(rect_type rect, color::value_type color)
   {
-    for (std::int_fast16_t y = rect.top; y <= rect.bottom; y++) {
+    for (std::int_fast16_t y = rect.top; y <= rect.bottom; ++y) {
       line_horz({ rect.left, static_cast<std::int16_t>(y) }, { rect.right, static_cast<std::int16_t>(y) }, color);
     }
   }
@@ -503,14 +510,6 @@ public:
   virtual void display_contrast(std::uint8_t level)
   { (void)level; }
 
-
-protected:
-  const std::uint16_t     screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
-  const std::uint16_t     screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
-  const std::uint16_t     viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
-  const std::uint16_t     viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
-  const orientation_type  orientation_;       // hardware orientation/rotation  of the display
-  vertex_type             viewport_;          // viewport top/left corner (x offset to screen)
 };
 
 } // namespace vic
