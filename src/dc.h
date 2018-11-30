@@ -40,7 +40,7 @@ namespace vic {
 // drawing context
 class dc : public gpr
 {
-  drv&            head_;              // display driver 
+  drv&            head_;              // display driver
   shader::output  shader_output_;     // output shader (is always the end of the shader pipeline)
   std::size_t     present_lock_;      // present lock counter, > 0 is locked
 
@@ -53,7 +53,7 @@ public:
 
   /**
    * ctor
-   * \param head 
+   * \param head
    */
   dc(drv& head)
     : head_(head)
