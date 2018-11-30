@@ -154,7 +154,8 @@ public:
    * Create a clipping region, default disabled
    */
   clipping()
-    : inside_(false)
+    : region_({ 0, 0, 0, 0 })
+    , inside_(false)
     , active_(false)
   { }
 
