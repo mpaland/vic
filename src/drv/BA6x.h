@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2011-2017, PALANDesign Hannover, Germany
+//             2011-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -40,11 +40,11 @@
 #include <string.h>
 
 #include "../drv.h"
-#include "../tc.h"
+#include "../tc.h"    // include text context for alpha numeric driver
 
 
 // defines the driver name and version
-#define VIC_DRV_BA6X_VERSION  "Wincor BA6x driver 2.0.0"
+#define VIC_DRV_BA6X_VERSION  "Wincor BA6x driver 2.0.1"
 
 
 namespace vic {
@@ -61,22 +61,24 @@ typedef enum tag_BA6x_model_type {
 
 /**
  * BA6x head is the famous Wincor alpha numeric display
- * \param model Display model, BA60, BA63 and BA66 are possible options
+ * \param Model Display model, BA60, BA63 and BA66 are possible options
  */
 template<BA6x_model_type Model>
-class BA6x : public drv
+class BA6x final : public drv
 { 
+  // constants
   static const std::uint8_t BA6X_MAX_CMD_LENGTH = 0x20U;    // maximum command length (device constant)
   static const std::uint8_t ESC                 = 0x1BU;    // escape char
 
+  // vars
   const io::handle_type device_handle_;                     // logical device handle (uart or usb)
+  vertex_type           cur_pos_;                           // actual cursor position
 
 public:
 
   /**
    * ctor
-   * \param iface Interface type, USB and UART are possible options
-   * \param device_id Logical device ID (COM port number or USB ID)
+   * \param device_handle Logical device ID (COM port number or USB ID)
    */
   BA6x(io::handle_type device_handle)
     : drv(Model == BA60 ? 16U : 20U, Model == BA60 ? 1U : Model == BA63 ? 2U : 4U,    // screen size
@@ -100,7 +102,7 @@ public:
   // M A N D A T O R Y   D R I V E R   F U N C T I O N S
   //
 
-  virtual void init() final
+  virtual void init()
   {
     // init the interface
     io::init(device_handle_);
@@ -121,20 +123,20 @@ public:
   }
 
 
-  virtual void shutdown() final
+  virtual void shutdown()
   {
     // clear buffer
     cls();
   }
 
 
-  inline virtual const char* version() const final
+  inline virtual const char* version() const
   {
     return (const char*)VIC_DRV_BA6X_VERSION;
   }
 
 
-  inline virtual bool is_graphic() const final
+  inline virtual bool is_graphic() const
   {
     // BA6x is an alpha numeric display
     return false;
@@ -142,17 +144,15 @@ public:
 
 
   ///////////////////////////////////////////////////////////////////////////////
-  // C O M M O N  F U N C T I O N S
+  // C O M M O N   F U N C T I O N S
   //
 
 protected:
 
-  inline virtual void cls(color::value_type bg_color = color::none) final
+  inline virtual void cls(color::value_type)
   {
-    (void)bg_color;
-
     // send 1B 5B 32 4A
-    const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x32U, 0x4AU };
+    static const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x32U, 0x4AU };
 
     // send command
     write_command(cmd, 4U);
@@ -164,10 +164,74 @@ protected:
   //
 
   /**
+   * Output a single ASCII/UNICODE char at the actual cursor position
+   * The cursor position is moved by the char width (distance)
+   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
+   */
+  virtual void text_out(std::uint16_t ch)
+  {
+    if (ch < 0x20U) {
+      // ignore non characters
+      return;
+    }
+
+    // check limits
+    if (screen_is_inside(cur_pos_)) {
+      // send command
+      write_command(reinterpret_cast<std::uint8_t*>(&ch), 1U);
+    }
+
+    // inc x and reposition cursor if an implicit CR occured at end of the line 
+    if (++cur_pos_.x == static_cast<std::int16_t>(screen_width())) {
+      text_set_pos(cur_pos_);
+    }
+  }
+
+
+  /**
+   * Render an UTF-8 / ASCII coded string at the actual cursor position
+   * \param string Output string in UTF-8/ASCII format, zero terminated
+   * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
+   */
+  virtual std::uint16_t text_out(const std::uint8_t* string)
+  {
+    // the base class function might be used, but the char by char write command overhead is too big,
+    // so assemble the data here and pass it directly
+    // CAUTION: No Unicode conversion is done, data must be in display format!
+    std::uint16_t len = (std::uint16_t)strlen(reinterpret_cast<const char*>(string));
+    std::uint16_t off = 0U;
+
+    // check if string is (partly) in screen
+    if ((cur_pos_.x + len >= 0) && (cur_pos_.x < screen_width()) &&
+        (cur_pos_.y >= 0) && (cur_pos_.y < screen_height())) {
+      // calc offset
+      if (cur_pos_.x < 0) {
+        off = 0 - cur_pos_.x;
+      }
+      // calc visible len
+      if (cur_pos_.x < 0) {
+        len = cur_pos_.x + len;
+      }
+      else if (cur_pos_.x + len > screen_width()) {
+        len = screen_width() - cur_pos_.x;  // limit string to screen size
+      }
+      if (len > screen_width()) {
+        len = screen_width();
+      }
+
+      // send command
+      write_command(string + off, len);
+      return len;
+    }
+    return 0U;
+  }
+
+
+  /**
    * Set the new text position
    * \param pos Position in chars on text displays (0/0 is left/top)
    */
-  virtual void text_set_pos(vertex_type pos) final
+  virtual void text_set_pos(vertex_type pos)
   {
     cur_pos_ = pos;       // store pos
 
@@ -210,77 +274,13 @@ protected:
   /**
    * Clear actual line from cursor pos (included) to end of line
    */
-  inline virtual void text_clear_eol() final
+  inline virtual void text_clear_eol()
   {
     // send 1B 5B 32 4A
-    const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x30U, 0x4BU };
+    static const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x30U, 0x4BU };
 
     // send command
     write_command(cmd, 4U);
-  }
-
-
-  /**
-   * Output one character at the actual position
-   * The cursor position is moved by the char width (distance)
-   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
-   */
-  inline virtual void text_out(std::uint16_t ch) final
-  {
-    if (ch < 0x20U) {
-      // ignore non characters
-      return;
-    }
-
-    // check limits
-    if (screen_is_inside(cur_pos_)) {
-      // send command
-      write_command(reinterpret_cast<std::uint8_t*>(&ch), 1U);
-    }
-
-    // inc x and reposition cursor if an implicit CR occured at end of the line 
-    if (++cur_pos_.x == static_cast<std::int16_t>(screen_width())) {
-      text_set_pos(cur_pos_);
-    }
-  }
-
-
-  /**
-   * Render an UTF-8 / ASCII coded string
-   * \param string Output string in UTF-8/ASCII format, zero terminated
-   * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
-   */
-  virtual std::uint16_t text_out(const std::uint8_t* string) final
-  {
-    // the base class function might be used, but the char by char write command overhead is too big,
-    // so assemble the data here and pass it directly
-    // CAUTION: No Unicode conversion is done, data must be in display format!
-    std::uint16_t len = (std::uint16_t)strlen(reinterpret_cast<const char*>(string));
-    std::uint16_t off = 0U;
-
-    // check if string is (partly) in screen
-    if ((cur_pos_.x + len >= 0) && (cur_pos_.x < screen_width()) &&
-        (cur_pos_.y >= 0) && (cur_pos_.y < screen_height())) {
-      // calc offset
-      if (cur_pos_.x < 0) {
-        off = 0 - cur_pos_.x;
-      }
-      // calc visible len
-      if (cur_pos_.x < 0) {
-        len = cur_pos_.x + len;
-      }
-      else if (cur_pos_.x + len > screen_width()) {
-        len = screen_width() - cur_pos_.x;  // limit string to screen size
-      }
-      if (len > screen_width()) {
-        len = screen_width();
-      }
-
-      // send command
-      write_command(string + off, len);
-      return len;
-    }
-    return 0U;
   }
 
 
@@ -308,7 +308,7 @@ public:
     CP850         = 0x31,   // Latin 1, International, Scandinavia, Latin-America
     CP852         = 0x32,   // Latin 2, Hungary, Poland, Czechia, Slowakia
     CP857         = 0x33,   // Latin 5, Turkey
-    CP858         = 0x34,   // Latin 1 + � char, International, Scandinavia, Latin-America
+    CP858         = 0x34,   // Latin 1 + € char, International, Scandinavia, Latin-America
     CP866         = 0x35,   // Latin/Cyrillic, Russia
     CP737         = 0x36,   // Latin/Greek 2, Greece
     CP862         = 0x37,   // Latin/Hebrew, Israel
@@ -439,8 +439,6 @@ private:
     return false;
   }
 
-private:
-  vertex_type cur_pos_;   // actual cursor position
 };
 
 } // namespace head
