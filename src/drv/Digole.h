@@ -31,15 +31,22 @@
 #define _VIC_DRV_DIGOLE_H_
 
 #include "../drv.h"
-#include "../dc.h"
-#include "../tc.h"
+#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
 // defines the driver name and version
-#define VIC_DRV_DIGOLE_VERSION   "Digole driver 2.0.0"
+#define VIC_DRV_DIGOLE_VERSION   "Digole driver 2.1.0"
 
 namespace vic {
 namespace head {
+
+
+// interface type
+typedef enum tag_digole_interface_type {
+  digole_spi,
+  digole_i2c,
+  digole_uart
+} digole_interface_type;
 
 
 /**
@@ -50,18 +57,18 @@ namespace head {
  * \param Viewport_Size_Y Viewport (window) height
  */
 template<std::uint16_t Screen_Size_X   = 8U, std::uint16_t Screen_Size_Y   = 8U,
-         std::uint16_t Viewport_Size_X = 8U, std::uint16_t Viewport_Size_Y = 8U>
-class digole : public drv
+         std::uint16_t Viewport_Size_X = 8U, std::uint16_t Viewport_Size_Y = 8U,
+         drv::orientation_type Orientation = drv::orientation_0,
+         digole_interface_type Interface_Mode = digole_uart
+>
+class digole final : public drv
 {
+  io::handle_type     device_handle_;   // device handle
+  interface_type      interface_;       // interface type
+  std::uint32_t       uart_baudrate_;   // baudrate for UART interface mode
+  color::value_type   color_;           // actual pixel color
+
 public:
-
-  // interface type
-  typedef enum tag_interface_type {
-    spi,
-    i2c,
-    uart
-  } interface_type;
-
 
   /**
    * ctor
@@ -70,12 +77,12 @@ public:
    * \param iface Interface type, SPI, I²C or UART are valid
    * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
-  digole(orientation_type orientation, io::handle_type device_handle,
-         interface_type iface, std::uint32_t uart_baudrate = 9600U)
+  digole(io::handle_type device_handle,
+         std::uint32_t uart_baudrate = 9600U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
           0U, 0U)
-    , orientation_(orientation)
+    , orientation_(Orientation)
     , device_handle_(device_handle)
     , interface_(iface)
     , uart_baudrate_(uart_baudrate)
@@ -97,7 +104,7 @@ public:
   // M A N D A T O R Y   D R I V E R   F U N C T I O N S
   //
 
-  virtual void init() final
+  virtual void init()
   {
     std::uint8_t cmd[8];
 
@@ -157,7 +164,7 @@ public:
   }
 
 
-  virtual void shutdown() final
+  virtual void shutdown()
   {
     cls();
     diplay_enable(false);     // display off
@@ -165,13 +172,13 @@ public:
   }
 
 
-  inline const char* version() const final
+  inline const char* version() const
   {
     return (const char*)VIC_DRV_DIGOLE_VERSION;
   }
 
 
-  inline virtual bool is_graphic() const final
+  inline virtual bool is_graphic() const
   {
     // Digole LCD is a graphic display
     return true;
@@ -184,7 +191,7 @@ public:
 
 protected:
 
-  virtual void cls(color::value_type) final
+  virtual void cls(color::value_type)
   {
     const std::uint8_t cmd[2] = { 'C', 'L' };
     write(cmd, 2U);
@@ -201,7 +208,7 @@ protected:
    * \param y Y value
    * \param color Color of pixel in ARGB format
    */
-  virtual void pixel_set(vertex_type vertex, color::value_type color) final
+  virtual void pixel_set(vertex_type vertex, color::value_type color)
   { 
     std::uint8_t cmd[10];
 
@@ -238,7 +245,7 @@ protected:
   }
 
 
-  virtual void line_horz(vertex_type v0, vertex_type v1, std::uint32_t color) final
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
     std::uint8_t cmd[12];
 
@@ -273,13 +280,14 @@ protected:
   }
 
 
-  inline virtual void line_vert(vertex_type v0, vertex_type v1, std::uint32_t color) final
+  inline virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
   {
+    // vertical and horizontal line are same commands on Digole
     line_horz(v0, v1, color);
   }
 
 
-  virtual void box(rect_type rect, std::uint32_t color) final
+  virtual void box(rect_type rect, color::value_type color)
   {
     std::uint8_t cmd[12];
 
@@ -317,7 +325,7 @@ protected:
   }
 
 
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height) final
+  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
   {
     std::uint8_t cmd[8];
 
@@ -337,7 +345,13 @@ protected:
   // D I S P L A Y   C O N T R O L
   //
 
-  virtual void display_enable(bool enable = true) final
+public:
+
+  /**
+   * Enable/disable the display
+   * \param enable True to switch the display on, false to switch it off (standby, powersave)
+   */
+  virtual void display_enable(bool enable = true)
   {
     std::uint8_t cmd[4];
 
@@ -349,7 +363,11 @@ protected:
   }
 
 
-  virtual void display_brightness(std::uint8_t level) final
+  /**
+   * Set display or backlight brightness
+   * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
+   */
+  virtual void display_brightness(std::uint8_t level)
   {
     std::uint8_t cmd[3];
 
@@ -367,10 +385,6 @@ private:
     io::write(device_handle_, 0U, buffer, length, nullptr, 0U);
   }
 
-  io::handle_type     device_handle_;   // device handle
-  interface_type      interface_;       // interface type
-  std::uint32_t       uart_baudrate_;   // baudrate for UART interface mode
-  color::value_type   color_;           // actual pixel color
 };
 
 } // namespace head
