@@ -80,17 +80,21 @@ public:
   /////////////////////////////////////////////////////////////////////////////
   // M A N D A T O R Y   C O M M O N   D R I V E R   F U N C T I O N S
 
-  virtual void drv_init()
+  virtual void init()
   { }
-  
-  virtual void drv_shutdown()
+
+
+  virtual void shutdown()
   { }
+
 
   virtual const char* drv_version() const
   { return (const char*)VIC_DRV_DUMMY_VERSION; }
 
+
   virtual bool drv_is_graphic() const
   { return is_graphic_; }
+
 
   virtual void drv_cls()
   { }
@@ -99,10 +103,11 @@ public:
   /////////////////////////////////////////////////////////////////////////////
   // M A N D A T O R Y   F U N C T I O N S   F O R   G R A P H I C   H E A D S
 
-  virtual void drv_pixel_set_color(vertex_type, color::value_type)
+  virtual void pixel_set(vertex_type, color::value_type)
   { }
 
-  virtual color::value_type drv_pixel_get(vertex_type) const
+
+  virtual color::value_type pixel_get(vertex_type) const
   { }
 
 
