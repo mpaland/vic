@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -31,9 +31,10 @@
 #ifndef _VIC_DRV_WINDOWS_H_
 #define _VIC_DRV_WINDOWS_H_
 
-
 #include <Windows.h>
-#include <process.h>
+#include <atlbase.h>
+#include <thread>
+#include <string>
 
 #include "../drv.h"
 #include "../dc.h"
@@ -41,7 +42,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_WINDOWS_VERSION   "Windows driver 4.00"
+#define VIC_DRV_WINDOWS_VERSION   "Windows driver 4.10"
 
 
 namespace vic {
@@ -71,9 +72,9 @@ public:
    * \param zoom_y Y zoom factor
    */
   windows(std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U,
-          std::uint16_t window_x = 0U, std::uint16_t window_y = 0U,
-          std::uint8_t zoom_x = 1U, std::uint8_t zoom_y = 1U,
-          const LPCTSTR caption = L"vic screen")
+          std::uint16_t window_x   = 0U, std::uint16_t window_y   = 0U,
+          std::uint8_t zoom_x      = 1U, std::uint8_t zoom_y      = 1U,
+          std::string caption = "VIC screen")
     : drv(Screen_Size_X, Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
           viewport_x, viewport_y,
@@ -107,41 +108,37 @@ public:
   // M A N D A T O R Y   D R I V E R   F U N C T I O N S
   //
 
-  virtual void init() final
+  virtual void init()
   {
-    // create init event
+    // create init event to wait until the windows is created
     wnd_init_ev_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 
     // create window thread
-    thread_handle_ = reinterpret_cast<HANDLE>(::_beginthreadex(
-      NULL,
-      0U,
-      reinterpret_cast<unsigned(__stdcall *)(void*)>(&windows::worker_thread),
-      reinterpret_cast<void*>(this),
-      0U,
-      NULL
-    ));
+    thread_handle_ = new std::thread(worker_thread, (void*)this);
 
-    // wait until screen is created
+    // wait until the screen is created
     ::WaitForSingleObject(wnd_init_ev_, INFINITE);
+
+    // close handle
+    ::CloseHandle(wnd_init_ev_);
 
     cls();
   }
 
 
-  virtual void shutdown() final
+  virtual void shutdown()
   {
     (void)::CloseWindow(hwnd_);
   }
 
 
-  inline virtual const char* version() const final
+  inline virtual const char* version() const
   {
     return (const char*)VIC_DRV_WINDOWS_VERSION;
   }
 
 
-  inline virtual bool is_graphic() const final
+  inline virtual bool is_graphic() const
   {
     // This Windows driver is a graphic display
     return true;
@@ -154,20 +151,20 @@ public:
 
 protected:
 
-  virtual void cls(color::value_type bg_color = color::none) final
+  virtual void cls( color::value_type bg_color = color::none)
   {
     for (std::int_fast16_t y = 0; y < Screen_Size_Y * zoom_y_; y++) {
       for (std::int_fast16_t x = 0; x < Screen_Size_X * zoom_x_; x++) {
-        frame_buffer_[y * Screen_Size_X * zoom_x_ + x] = static_cast<std::uint32_t>(bg_color);
+        frame_buffer_[y * Screen_Size_X * zoom_x_ + x] = color::color_to_RGB888(bg_color);
       }
     }
   }
 
 
   /**
-   * Rendering is done (copy RAM / frame buffer to screen)
+   * Rendering is done (copy RAM / framebuffer to screen)
    */
-  virtual void present() final
+  virtual void present()
   {
     // copy memory bitmap to viewport
     HDC hDC = ::GetDC(hwnd_);
@@ -189,17 +186,17 @@ protected:
    * \param y Y value
    * \param color Color of pixel in 0RGB format
    */
-  virtual inline void pixel_set(vertex_type vertex, std::uint32_t color) final
+  virtual inline void pixel_set(vertex_type vertex, color::value_type color)
   {
-    // check limits and clipping
+    // check limits
     if (!screen_is_inside(vertex)) {
-      // out of bounds or outside clipping region
+      // out of bounds
       return;
     }
 
-    for (std::int_fast16_t y = vertex.y * zoom_y_; y < (vertex.y + 1) * zoom_y_; y++) {
-      for (std::int_fast16_t x = vertex.x * zoom_x_; x < (vertex.x + 1) * zoom_x_; x++) {
-        frame_buffer_[y * Screen_Size_X * zoom_x_ + x] = color;
+    for (std::int_fast16_t y = vertex.y * zoom_y_; y < (vertex.y + 1) * zoom_y_; ++y) {
+      for (std::int_fast16_t x = vertex.x * zoom_x_; x < (vertex.x + 1) * zoom_x_; ++x) {
+        frame_buffer_[y * Screen_Size_X * zoom_x_ + x] = color::color_to_RGB888(color);
       }
     }
   }
@@ -210,23 +207,23 @@ protected:
    * \param vertex Color of vertex to get
    * \return Color of pixel in ARGB format
    */
-  virtual inline color::value_type pixel_get(vertex_type vertex) final
+  virtual inline color::value_type pixel_get(vertex_type vertex)
   {
-    // check limits and clipping
+    // check limits
     if (!screen_is_inside(vertex)) {
-      // out of bounds or outside clipping region
+      // out of bounds
       return color::none;
     }
 
     // return the color
-    return frame_buffer_[vertex.y * zoom_y_ * Screen_Size_X * zoom_x_ + vertex.x * zoom_x_];
+    return color::RGB888_to_color(frame_buffer_[vertex.y * zoom_y_ * Screen_Size_X * zoom_x_ + vertex.x * zoom_x_]);
   }
 
 
 private:
 
-  // worker thread
-  static unsigned worker_thread(void* arg)
+   // worker thread
+  static void worker_thread(void* arg)
   {
     windows* d = static_cast<windows*>(arg);
 
@@ -245,7 +242,7 @@ private:
     wc.lpszClassName = className;
     wc.hIcon = ::LoadIcon(NULL, IDI_APPLICATION);
     wc.hIconSm = ::LoadIcon(NULL, IDI_APPLICATION);
-    (void)::RegisterClassEx(&wc);
+   ::RegisterClassEx(&wc);
 
     // adjust windows size to viewport width and height
     RECT rect;
@@ -259,7 +256,7 @@ private:
     d->hwnd_ = CreateWindowEx(
       0,
       className,
-      d->caption_,
+      CA2CT(d->caption_.c_str(), CP_UTF8),
       WS_POPUP | WS_CAPTION,
       CW_USEDEFAULT, CW_USEDEFAULT,
       ::abs(rect.left) + ::abs(rect.right),
@@ -272,7 +269,7 @@ private:
     if (!d->hwnd_) {
       ::MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
       ::SetEvent(d->wnd_init_ev_);
-      return 0U;
+      return;
     }
     ::SetWindowPos(d->hwnd_, HWND_TOP, d->window_x_, d->window_y_, 0, 0, SWP_NOSIZE |SWP_NOZORDER | SWP_SHOWWINDOW);
 
@@ -286,30 +283,29 @@ private:
 
     // process upon WM_QUIT or error
     MSG Msg;
-    while (::GetMessage(&Msg, NULL, 0, 0) > 0)
+    while (::GetMessage(&Msg, nullptr, 0, 0) > 0)
     {
       ::TranslateMessage(&Msg);
       ::DispatchMessage(&Msg); 
     }
-    return 0U;
   }
 
 
 public:
   // must be public for thread accessibility
-  HANDLE          thread_handle_;   // worker thread handle
-  HANDLE          wnd_init_ev_;     // window init event
-  const LPCTSTR   caption_;         // window caption
+  HANDLE        thread_handle_;     // worker thread handle
+  HANDLE        wnd_init_ev_;       // window init event
+  std::string   caption_;           // window caption
 
-  HWND            hwnd_;            // window handle
-  HDC             hmemdc_;          // mem dc
+  HWND          hwnd_;              // window handle
+  HDC           hmemdc_;            // mem dc
 
-  std::int16_t    window_x_;        // x coordinate of output window
-  std::int16_t    window_y_;        // y coordinate of output window
-  std::uint8_t    zoom_x_;          // x zoom factor of output window
-  std::uint8_t    zoom_y_;          // y zoom factor of output window
+  std::int16_t  window_x_;          // x coordinate of output window
+  std::int16_t  window_y_;          // y coordinate of output window
+  std::uint8_t  zoom_x_;            // x zoom factor of output window
+  std::uint8_t  zoom_y_;            // y zoom factor of output window
 
-  std::uint32_t*  frame_buffer_;
+  std::uint32_t*  frame_buffer_;    // frame buffer for fast drawing
 };
 
 
@@ -321,12 +317,12 @@ public:
  * \param Columns Screen X size in chars
  * \param Rows Screen Y size in chars
  */
-template<std::uint16_t COLUMNS, std::uint16_t ROWS,
-         std::uint16_t Viewport_Size_X = COLUMNS, std::uint16_t Viewport_Size_Y = ROWS>
-class windows_text : public drv
+template<std::uint16_t Columns, std::uint16_t Rows,
+         std::uint16_t Viewport_Size_X = Columns, std::uint16_t Viewport_Size_Y = Rows>
+class windows_text final : public drv
 {
 public:
- 
+
   /**
    * ctor
    * \param viewport_x X offset of the viewport, relative to top/left corner
@@ -334,8 +330,8 @@ public:
    */
   windows_text(std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U,
                std::uint16_t window_x   = 0U, std::uint16_t window_y   = 0U,
-               const LPCTSTR caption = L"vic text screen")
-    : drv(COLUMNS, ROWS,
+               std::string caption = "vic text screen")
+    : drv(Columns, Rows,
           Viewport_Size_X, Viewport_Size_Y,
           viewport_x, viewport_y,
           orientation_0)
@@ -348,7 +344,7 @@ public:
     char_x_margin_  = 2U;
     char_y_margin_  = 2U;
     char_x_padding_ = 2U;
-    char_y_padding_ = 1U;
+    char_y_padding_ = 1U;  
   }
 
 
@@ -366,43 +362,39 @@ public:
   // M A N D A T O R Y   D R I V E R   F U N C T I O N S
   //
 
-  virtual void init() final
+  virtual void init()
   {
-    // create init event
+    // create init event to wait until the windows is created
     wnd_init_ev_ = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 
     // create window thread
-    thread_handle_ = reinterpret_cast<HANDLE>(::_beginthreadex(
-      NULL,
-      0U,
-      reinterpret_cast<unsigned(__stdcall *)(void*)>(&windows_text::worker_thread),
-      reinterpret_cast<void*>(this),
-      0U,
-      NULL
-    ));
+    thread_handle_ = new std::thread(worker_thread, (void*)this);
 
-    // wait until screen is created
+    // wait until the screen is created
     ::WaitForSingleObject(wnd_init_ev_, INFINITE);
+
+    // close handle
+    ::CloseHandle(wnd_init_ev_);
 
     // clear screen
     cls();
   }
 
 
-  virtual void shutdown() final
+  virtual void shutdown()
   {
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
   }
 
 
-  virtual inline const char* version() const final
+  virtual inline const char* version() const
   {
     return (const char*)VIC_DRV_WINDOWS_VERSION;
   }
 
 
-  virtual inline bool is_graphic() const final
+  virtual inline bool is_graphic() const
   {
     // This Windows text driver is an alpha numeric (text only) display
     return false;
@@ -415,7 +407,7 @@ public:
 
 protected:
 
-  virtual void cls(color::value_type bg_color = color::gray) final
+  virtual void cls(color::value_type bg_color = color::gray)
   {
     bg_color_ = bg_color;
     for (std::uint16_t y = 0U; y < screen_height(); y++) {
@@ -430,12 +422,10 @@ protected:
   /**
    * Rendering is done (copy RAM / frame buffer to screen)
    */
-  virtual void present() final
+  virtual void present()
   {
     HGDIOBJ org = ::SelectObject(hmemdc_, ::GetStockObject(DC_PEN));
     ::SelectObject(hmemdc_, ::GetStockObject(DC_BRUSH));
-    ::SetDCPenColor(hmemdc_,   RGB(color::get_red(bg_color_), color::get_green(bg_color_), color::get_blue(bg_color_)));
-    ::SetDCBrushColor(hmemdc_, RGB(color::get_red(bg_color_), color::get_green(bg_color_), color::get_blue(bg_color_)));
     ::Rectangle(hmemdc_, 0, 0, window_size_x_, window_size_y_);
     ::SelectObject(hmemdc_, org);
 
@@ -493,7 +483,7 @@ protected:
    * Output a single ASCII/UNICODE char at the actual cursor position
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
    */
-  inline virtual void text_out(std::uint16_t ch) final
+  inline virtual void text_out(std::uint16_t ch)
   {
     if (ch < 0x20U) {
       // ignore non characters
@@ -513,7 +503,7 @@ protected:
 private:
 
   // worker thread
-  static unsigned worker_thread(void* arg)
+  static void worker_thread(void* arg)
   {
     windows_text* d = static_cast<windows_text*>(arg);
 
@@ -538,7 +528,7 @@ private:
     d->hwnd_ = CreateWindowEx(
       0,
       className,
-      d->caption_,
+      CA2CT(d->caption_.c_str(), CP_UTF8),
       WS_POPUP | WS_CAPTION,
       CW_USEDEFAULT, CW_USEDEFAULT,
       1,
@@ -551,7 +541,7 @@ private:
     if (!d->hwnd_) {
       ::MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
       ::SetEvent(d->wnd_init_ev_);
-      return 0U;
+      return;
     }
 
     d->window_size_x_ = (d->font_width_  + 2U * d->char_x_margin_ + 2 * d->char_x_padding_) * d->viewport_width()  + 4U * d->char_x_margin_;
@@ -597,12 +587,11 @@ private:
 
     // process upon WM_QUIT or error
     MSG Msg;
-    while (::GetMessage(&Msg, NULL, 0, 0) > 0)
+    while (::GetMessage(&Msg, nullptr, 0, 0) > 0)
     {
       ::TranslateMessage(&Msg);
       ::DispatchMessage(&Msg); 
     }
-    return 0U;
   }
 
 
@@ -610,9 +599,9 @@ public:
   // must be public for thread accessibility
   HANDLE        thread_handle_;           // worker thread handle
   HANDLE        wnd_init_ev_;             // window init event
-  const LPCTSTR caption_;                 // window caption
+  std::string   caption_;                 // window caption
 
-  std::uint16_t frame_buffer_[COLUMNS][ROWS];
+  std::uint16_t frame_buffer_[Columns][Rows];
 
   std::uint16_t font_height_;             // font height in pixel
   std::uint16_t font_width_;

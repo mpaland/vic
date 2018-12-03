@@ -31,6 +31,7 @@
 #define _VIC_DRV_ILI9325_H_
 
 #include "../drv.h"
+#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
 // defines the driver name and version
@@ -46,15 +47,13 @@ namespace head {
  * accordingly, like: Screen_Size_X = 320U, std::uint16_t Screen_Size_Y = 240U, orientation = drv::orientation_90
  */
 template<std::uint16_t Screen_Size_X = 240U, std::uint16_t Screen_Size_Y = 320U,  // X, Y size, must match the orientation
-         drv::orientation_type Orientation = drv::orientation_0,  // hardware orientation of the display
-         std::uint8_t Interface_Mode = 0U,              // 0: device, 8: mem 8bit, 9: mem 9bit, 16: mem 16 bit, 18: mem 18bit
-         bool Color_256k = false,                       // false: 64k, true: 256k color mode. Used in 'device', '8 or 16 bit' mode. Use false for SPI device interface!
-         bool RGB_to_BGR = false                        // swap R and B color components, so displays need that
+         drv::orientation_type Orientation = drv::orientation_0,                  // hardware orientation of the display
+         std::uint8_t Interface_Mode = 0U,                                        // 0: device, 8: mem 8bit, 9: mem 9bit, 16: mem 16 bit, 18: mem 18bit
+         bool Color_256k = false,                                                 // false: 64k, true: 256k color mode. Used in 'device', '8 or 16 bit' mode. Use false for SPI device interface!
+         bool RGB_to_BGR = false                                                  // swap R and B color components, so displays need that
 >
-class ILI9325 : public drv
+class ILI9325 final : public drv
 {
-private:
-
   // register address map
   static const std::uint8_t REG_ID_CODE                = 0x00U;
   static const std::uint8_t REG_OSC_CTRL               = 0x00U;
@@ -110,6 +109,7 @@ private:
   static const std::uint8_t REG_OTP_VCM_STATUS         = 0xA2U;
   static const std::uint8_t REG_OTP_PRG_ID_KEY         = 0xA5U;
 
+  // vars
   const io::handle_type     device_handle_;
   void*                     mem_reg_addr_;
   void*                     mem_data_addr_;
@@ -153,7 +153,7 @@ public:
   // M A N D A T O R Y   D R I V E R   F U N C T I O N S
   //
 
-  virtual void init() final
+  virtual void init()
   {
     // undocumented timings in app note - seem not to be necessary
 //  write_reg(0xE3,                     0x3008);  // internal timing
@@ -246,7 +246,7 @@ public:
   }
 
 
-  virtual void shutdown() final
+  virtual void shutdown()
   {
     // TBD: switch off display
 
@@ -255,13 +255,13 @@ public:
   }
 
 
-  inline virtual const char* version() const final
+  inline virtual const char* version() const
   {
     return (const char*)VIC_DRV_ILI9325_VERSION;
   }
 
 
-  inline virtual bool is_graphic() const final
+  inline virtual bool is_graphic() const
   {
     // ILI9325 is a true graphic display
     return true;
@@ -274,8 +274,8 @@ public:
 
 protected:
 
-  virtual void cls(color::value_type bg_color = color::none) final
-  { 
+  virtual void cls(color::value_type bg_color = color::none)
+  {
     for (std::uint_fast16_t y = 0U; y < Screen_Size_Y; ++y) {
       // set y GRAM position
       write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(0));
@@ -283,17 +283,17 @@ protected:
       write_idx(REG_GRAM_DATA);
 
       // set pixel to black
-      if (!color_256k) {
+      if (!Color_256k) {
         // 64k color mode
         const std::uint16_t col = color::color_to_RGB565(bg_color);
-        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; x++) {
+        for (std::uint_fast16_t x = 0U; x < static_cast<std::uint_fast16_t>(Screen_Size_X); ++x) {
           write_data(col, 2U);
         }
       }
       else {
         // 256k color mode
         const std::uint32_t col = color::color_to_RGB666(bg_color);
-        for (std::uint_fast16_t x = 0U; x < Screen_Size_X; x++) {
+        for (std::uint_fast16_t x = 0U; x < static_cast<std::uint_fast16_t>(Screen_Size_X); ++x) {
           write_data(col, 3U);
         }
       }
@@ -301,8 +301,8 @@ protected:
   }
 
 
-  // unused - data is written directly to the dislay
-  virtual void present() final
+  // unused - data is written directly to the display
+  virtual void present()
   { }
 
 
@@ -310,11 +310,11 @@ protected:
   // G R A P H I C   F U N C T I O N S
   //
 
-  virtual void pixel_set(vertex_type vertex, color::value_type color) final
+  virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
-    // check limits and clipping
+    // check limits
     if (!screen_is_inside(vertex)) {
-      // out of bounds or outside clipping region
+      // out of bounds
       return;
     }
 
@@ -339,7 +339,7 @@ protected:
   }
 
 
-  virtual color::value_type pixel_get(vertex_type vertex) final
+  virtual color::value_type pixel_get(vertex_type vertex)
   {
     // check limits
     if (!screen_is_inside(vertex)) {
@@ -381,35 +381,35 @@ protected:
    * \param v1 End vertex, included in line, y component is ignored
    * \param color Line color - only RGB, no alpha channel
    */
-  virtual void line_horz(vertex_type v0, vertex_type v1, std::uint32_t color) final
+  virtual void line_horz(vertex_type v0, vertex_type v1, std::uint32_t color)
   {
-    // set y GRAM position
-    write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(0));
-    write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(v0.y));
-    write_idx(REG_GRAM_DATA);
-
     // swap x
     util::vertex_min_x(v0, v1);
+
+    // set y GRAM position
+    write_reg(REG_GRAM_HOR_ADDR, static_cast<std::uint16_t>(v0.x));
+    write_reg(REG_GRAM_VER_ADDR, static_cast<std::uint16_t>(v0.y));
+    write_idx(REG_GRAM_DATA);
 
     // Color_256k is a constant template parameter, so the if case is optimized away
     if (!Color_256k) {
       // 64k color mode
       const std::uint16_t c64 = color::color_to_RGB565(color);
-      for (; v0.x <= v1.x; ++v0.x) {
+      for (std::int16_fast_t x = v0.x; x <= static_cast<std::uint_fast16_t>(v1.x); ++x) {
         write_data(c64, 2U);
       }
     }
     else {
       // 256k color mode
       const std::uint32_t c256 = color::color_to_RGB666(color);
-      for (; v0.x <= v1.x; ++v0.x) {
+      for (std::int16_fast_t x = v0.x; x <= static_cast<std::uint_fast16_t>(v1.x); ++x) {
         write_data(c256, 3U);
       }
     }
   }
 
 
-  virtual void display_enable(bool enable = true) final
+  virtual void display_enable(bool enable = true)
   { 
     write_reg(REG_DISP_CTRL1, enable ? 0x0133U : 0x0000U);  // DTE = 1, GON = 1, D[1:0] = 11, BASEE = 1
   }

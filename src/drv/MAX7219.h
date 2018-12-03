@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -36,10 +36,11 @@
 #define _VIC_DRV_MAX7219_H_
 
 #include "../drv.h"
+#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
 // defines the driver name and version
-#define VIC_DRV_MAX7219_VERSION   "MAX7219/21 driver 1.40"
+#define VIC_DRV_MAX7219_VERSION   "MAX7219/21 driver 2.00"
 
 namespace vic {
 namespace head {
@@ -50,8 +51,10 @@ namespace head {
  * \param Screen_Size_X Screen (buffer) width, should be normally 8
  * \param Screen_Size_Y Screen (buffer) height, should be normally 8
  */
-template<std::uint16_t Screen_Size_X = 8U, std::uint16_t Screen_Size_Y = 8U>
-class MAX7219 : public drv
+template<std::uint16_t Screen_Size_X = 8U, std::uint16_t Screen_Size_Y = 8U,    // X, Y size, must match the orientation
+         drv::orientation_type Orientation = drv::orientation_0                 // hardware orientation of the display
+>
+class MAX7219 final : public drv
 {
   // register address map
   static const std::uint8_t REG_NOOP       = 0x00U;
@@ -69,6 +72,11 @@ class MAX7219 : public drv
   static const std::uint8_t REG_SHUTDOWN   = 0x0CU;
   static const std::uint8_t REG_TEST       = 0x0FU;
 
+  // vars
+  const io::handle_type  device_handle_;           // (SPI) device handle
+  std::uint8_t           digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
+
+
 public:
 
   /**
@@ -76,11 +84,11 @@ public:
    * \param orientation Screen orientation
    * \param spi_device_id Logical SPI bus device ID
    */
-  MAX7219(orientation_type orientation, io::dev::handle_type device_handle)
+  MAX7219(io::dev::handle_type device_handle)
     : drv(Screen_Size_X, Screen_Size_Y,
           Screen_Size_X, Screen_Size_Y,     // no viewport support (screen = viewport)
           0, 0,                             // no viewport support
-          orientation)
+          Orientation)
     , device_handle_(device_handle)
   { }
 
@@ -101,7 +109,7 @@ public:
 
 protected:
 
-  virtual void init() final
+  virtual void init()
   {
     // set scan limit according to width or height
     write(REG_SCANLIMIT, (orientation_ == orientation_0)  || (orientation_ == orientation_180) ||
@@ -125,7 +133,7 @@ protected:
   }
 
 
-  virtual void shutdown() final
+  virtual void shutdown()
   {
     // clear buffer
     cls();
@@ -135,13 +143,13 @@ protected:
   }
 
 
-  inline virtual const char* version() const final
+  inline virtual const char* version() const
   {
     return (const char*)VIC_DRV_MAX7219_VERSION;
   }
 
 
-  inline virtual bool is_graphic() const final
+  inline virtual bool is_graphic() const
   {
     // MAX7219 is a graphic display
     return true;
@@ -154,7 +162,7 @@ protected:
 
 protected:
 
-  virtual void cls(color::value_type bk_color) final
+  virtual void cls(color::value_type bk_color)
   {
     // clear display
     for (std::uint_fast8_t i = 0U; i < screen_height(); ++i) {
@@ -165,10 +173,10 @@ protected:
   }
 
 
-  virtual void present() final
+  virtual void present()
   {
     // copy memory bitmap to screen
-    switch (orientation_) {
+    switch (Orientation) {
       case orientation_0 :
         for (std::int16_t y = 0; y < viewport_height(); ++y) {
           write(REG_DIGIT0 + y, digit_[viewport_get().y + y]);
@@ -239,11 +247,11 @@ protected:
   // G R A P H I C   F U N C T I O N S
   //
 
-  virtual void pixel_set(vertex_type vertex, color::value_type color) final
+  virtual inline void pixel_set(vertex_type vertex, color::value_type color)
   {
-    // check limits and clipping
+    // check limits
     if (!screen_is_inside(vertex)) {
-      // out of bounds or outside clipping region
+      // out of bounds
       return;
     }
 
@@ -257,7 +265,7 @@ protected:
   }
 
 
-  virtual inline color::value_type pixel_get(vertex_type vertex) final
+  virtual inline color::value_type pixel_get(vertex_type vertex)
   {
     // check limits
     if (!screen_is_inside(vertex)) {
@@ -297,9 +305,6 @@ private:
     return io::write(device_handle_, 0U, data_out, 2U, nullptr, 0U);
   }
 
-private:
-  const io::handle_type  device_handle_;           // (SPI) device handle
-  std::uint8_t           digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
 };
 
 } // namespace head
