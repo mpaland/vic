@@ -41,6 +41,7 @@
 #define _VIC_DRV_STPXXP05_H_
 
 #include "../drv.h"
+#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
 // defines the driver name and version
@@ -58,29 +59,34 @@ namespace head {
  * \param Viewport_Size_Y Viewport (window) height
  * \param Byte_Count Available channels (in byte) of the chip (1 for STP08xP05, 2 for STP16xP05, 3 for STP24DP05)
 */
-template<std::uint16_t Screen_Size_X = 8U,   std::uint16_t Screen_Size_Y = 8U,
+template<std::uint16_t Screen_Size_X   = 8U, std::uint16_t Screen_Size_Y   = 8U,
          std::uint16_t Viewport_Size_X = 8U, std::uint16_t Viewport_Size_Y = 8U,
-         std::uint_fast8_t Byte_Count = 1>
+         drv::orientation_type Orientation = drv::orientation_0,                  // hardware orientation of the display
+         std::uint_fast8_t Byte_Count = 1U
+>
 class STPxxP05 : public drv
 {
+  // vars
+  const io::dev::handle_type  device_handle_;       // Logical SPI device ID
+  std::uint8_t                buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
+
 public:
-/////////////////////////////////////////////////////////////////////////////
-// M A N D A T O R Y   F U N C T I O N S
+
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   F U N C T I O N S
 
   /**
    * ctor
-   * \param xsize Screen width
-   * \param ysize Screen height
+   * \param device_handle Logical SPI device ID
    * \param xoffset X offset of the screen, relative to top/left corner
    * \param yoffset Y offset of the screen, relative to top/left corner
-   * \param spi_device_id Logical SPI bus device ID
    */
-  STPxxP05(orientation_type orientation, device_handle_type device_handle,
+  STPxxP05(io::dev::handle_type device_handle,   // device handle
            std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_Y, Viewport_Size_Y,
           viewport_x,      viewport_y,
-          orientation)
+          Orientation)
     , device_handle_(device_handle)
   {
     // clear buffer
@@ -90,7 +96,6 @@ public:
 
   /**
    * dtor
-   * Shutdown the driver
    */
   ~STPxxP05()
   {
@@ -124,8 +129,14 @@ public:
   }
 
 
-  // clear display, all pixels off (black)
-  virtual void cls()
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+  /**
+   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   */
+  virtual void cls(color::value_type)
   {
     // clear display
     for (std::uint_fast8_t i = 0; i < BYTE_COUNT; ++i) {
@@ -134,24 +145,36 @@ public:
   }
 
 
-  // rendering done (copy RAM / frame buffer to screen)
-  virtual void primitive_done()
+  /**
+   * Primitive rendering is done. May be overridden by driver to update display,
+   * frame buffer or something else (like copy RAM / rendering buffer to screen)
+   */
+  virtual void present()
   {
     // write buffer to SPI
     write();
   }
 
 
-  virtual void drv_pixel_set_color(std::int16_t x, std::int16_t y, color::value_type color)
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
+
+  /**
+   * Set pixel in given color
+   * \param vertex Pixel coordinates
+   * \param color Color of pixel in ARGB format, alpha channel is/maybe ignored
+   */
+  virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
-    // check limits and clipping
-    if (x >= screen_width() || y >= screen_height() || (clipping_ && !clipping_->is_clipping(x, y))) {
-      // out of bounds or outside clipping region
+    // check limits
+    if (!screen_is_inside(vertex)) {
+      // out of bounds
       return;
     }
 
     // set pixel in display buffer
-    if (color_to_head_L1(color)) {
+    if (color::color_to_L1(color)) {
       buffer_[y] |= static_cast<std::uint8_t>(0x01U << (x & 0x07U));    // set pixel
     }
     else {
@@ -160,17 +183,24 @@ public:
   }
 
 
-  virtual color::value_type pixel_get(std::int16_t x, std::int16_t y) const
+  /**
+   * Return the color of the pixel
+   * \param vertex Vertex of the pixel
+   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
+   */
+  virtual color::value_type pixel_get(vertex_type vertex)
   {
     // check limits
-    if (x >= screen_width() || y >= screen_height()) {
+    if (!screen_is_inside(vertex)) {
       // out of bounds
-      return color_from_head_L1(0U);
+      return color::L1_to_color(0U);
     }
 
-    return color_from_head_L1((buffer_[y] >> (x & 0x07U)) & 0x01U);
+    return color::L1_to_color((buffer_[y] >> (x & 0x07U)) & 0x01U);
   }
 
+
+  ///////////////////////////////////////////////////////////////////////////////
 
 private:
   /**
@@ -179,10 +209,6 @@ private:
    */
   bool write()
   {
-    if (primitive_lock_) {
-      return;
-    }
-
     // copy memory bitmap to screen
     switch (orientation_) {
       case orientation_0 :
@@ -193,9 +219,6 @@ private:
     }
   }
 
-private:
-  device_handle_type  device_handle_;       // Logical SPI device ID
-  std::uint8_t        buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
 };
 
 } // namespace head

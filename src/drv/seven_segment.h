@@ -44,9 +44,10 @@ namespace head {
 
 
 /**
- * 7-segment driver, using 1 bit color depth
+ * 7-segment driver
+ * \param Columns Number of columns (digits)
  */
-template<std::uint16_t COLUMNS>
+template<std::uint16_t Columns>
 class seven_segment : public drv
 {
 public:
@@ -75,9 +76,10 @@ public:
    * \param orientation Screen orientation
    * \param spi_device_id Logical SPI bus device ID
    */
-  seven_segment(const segment_type& seg_id, std::uint16_t* device_select)
-    : drv(COLUMNS, 1,
-          0, 0)
+  seven_segment(io::handle_type device_handle,        // device handle
+                std::uint16_t* device_select)
+    : drv(Columns, 1U,
+          Columns, 1U)
     , seg_id_(seg_id)
   { }
 
@@ -87,72 +89,50 @@ public:
    * Shutdown the driver
    */
   ~seven_segment()
-  { drv_shutdown(); }
+  {
+    shutdown();
+  }
 
 
 protected:
 
-  virtual void drv_init()
+  virtual void init()
   { }
 
 
-  virtual void drv_shutdown()
+  virtual void shutdown()
   { }
 
 
-  virtual inline const char* drv_version() const
+  virtual inline const char* version() const
   {
     // return the driver version, like
     return (const char*)VIC_DRV_SEVEN_SEGMENT_VERSION;
   }
 
 
-  virtual inline bool drv_is_graphic() const
+  virtual inline bool is_graphic() const
   {
     // alpha numeric display
     return false;
   }
 
 
-  virtual void drv_cls()
+  virtual void cls()
   {
-    // clear the entire screen / buffer
+    // display no chars
   }
 
- 
-  /**
-   * Set pixel in given color, the color doesn't change the actual drawing color
-   * \param x X value
-   * \param y Y value
-   * \param color Color of pixel in ARGB format
-   */
-  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color)
-  { }
 
+  ///////////////////////////////////////////////////////////////////////////////
+  // A L P H A   T E X T   F U N C T I O N S
+  //
 
-  /**
-   * Get pixel color
-   * \param x X value
-   * \param y Y value
-   * \return Color of pixel in ARGB format
-   */
-  virtual inline color::value_type drv_pixel_get(vertex_type point) const
-  { return vic::color::black; }
-
-
-  /**
-   * Rendering is done (copy RAM / frame buffer to screen)
-   */
-  virtual void drv_present()
-  { }
-
- 
   /**
    * Output a single ASCII/UNICODE char at the actual cursor position
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
-   * \return 1 if the char is rendered, 0 if error/not rendered
    */
-  virtual std::uint16_t text_char(std::uint16_t ch)
+  virtual void text_out(std::uint16_t ch)
   {
     if (ch < 0x20U) {
       // ignore non characters

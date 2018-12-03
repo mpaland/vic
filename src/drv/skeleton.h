@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -24,6 +24,7 @@
 // THE SOFTWARE.
 //
 // \brief Skeleton driver, use this as an easy start for own drivers
+//        Change 'Skeleton' to the new drivers name
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -47,14 +48,14 @@ namespace head {
  * \param Viewport_Size_X Viewport (window / physical display) width
  * \param Viewport_Size_Y Viewport (window / physical display) height
  */
-template<std::uint16_t Screen_Size_X,   std::uint16_t Screen_Size_Y,
-         std::uint16_t Viewport_Size_X, std::uint16_t Viewport_Size_Y>
+template<std::uint16_t Screen_Size_X,   std::uint16_t Screen_Size_Y,    // Screen (buffer) size in pixel on graphic displays or chars on text displays, must match the orientation
+         std::uint16_t Viewport_Size_X, std::uint16_t Viewport_Size_Y,  // Viewport (physical) size in pixel on graphic displays or chars on text displays
+         drv::orientation_type Orientation = drv::orientation_0         // Orientation of the display
+>
 class skeleton : public drv
 {
+// ctor(), dtor(), init(), shutdown(), version() and is_graphic() are the only public functions
 public:
-
-  /////////////////////////////////////////////////////////////////////////////
-  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
 
   /**
    * ctor
@@ -63,12 +64,12 @@ public:
    * \param xoffset X offset of the screen, relative to top/left corner
    * \param yoffset Y offset of the screen, relative to top/left corner
    */
-  skeleton(orientation_type orientation, device_handle_type device_handle,
+  skeleton(device_handle_type device_handle,
            std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_Y, Viewport_Size_Y,
           viewport_x,      viewport_y,
-          orientation)
+          Orientation)
   {
     // init of memory structures, normally empty
   }
@@ -76,25 +77,34 @@ public:
 
   /**
    * dtor
-   * Shutdown the driver
+   * Basically shut the driver down
    */
   ~skeleton()
   {
     // normally a head is not deconstructed. But if so, shutdown the driver
-    drv_shutdown();
+    shutdown();
   }
 
 
-protected:
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
 
-  virtual void drv_init()
+  // Implement all functions in this section, they are mandatory for any display
+
+   /**
+   * Driver init
+   */
+  virtual void init()
   {
     // init the driver and hardware here
     // this is called from public init()
   }
 
 
-  virtual void drv_shutdown()
+  /**
+   * Driver shutdown
+   */
+  virtual void shutdown()
   {
     // shutdown the driver and hardware here
     // or enter speep / powersave mode
@@ -102,37 +112,75 @@ protected:
   }
 
 
-  virtual inline const char* drv_version() const
+  /**
+   * Returns the driver version and name
+   * \return Driver version and name
+   */
+  virtual inline const char* version() const
   {
     // return the driver version, like
     return (const char*)VIC_DRV_SKELETON_VERSION;
   }
 
 
-  virtual inline bool drv_is_graphic() const
+  /**
+   * Returns the display capability: graphic or alpha numeric
+   * \return True if graphic display type
+   */
+  virtual inline bool is_graphic() const
   {
     // return if the display is a graphic display (true) or alpha numeric (false)
     return true;
   }
 
 
-  virtual void drv_cls()
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+// ALL following functions must not be accessed directly, therefore they are 'protected'
+protected:
+
+  /**
+   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
+   */
+  virtual void cls()
   {
     // clear the entire screen / buffer
+    // implement if available
   }
 
 
   /**
-   * Set pixel in given color, the color doesn't change the actual drawing color
-   * \param x X value
-   * \param y Y value
-   * \param color Color of pixel in ARGB format
+   * Primitive rendering is done, copy RAM / frame buffer to screen
    */
-  virtual inline void drv_pixel_set_color(vertex_type point, color::value_type color)
+  virtual void present()
   {
-    // check limits and clipping
-    if (!screen_is_inside(point) || !clipping_.is_inside(point)) {
-      // out of bounds or outside clipping region
+    // implement if available
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
+
+  // Implement the functions in this section, if it's a graphic display. Delete this
+  // section completely, if it's an alphanumeric display.
+  // Mandatory are only pixel_set() and pixel_get(), implement all other functions (line_horz etc.)
+  // if the the display has native or fast support for it. If the according function is not implemented
+  // here, the 'drv' base class will provide a fallback function.
+
+  /**
+   * Set pixel in given color
+   * \param vertex Pixel coordinates
+   * \param color Color of pixel in ARGB format, alpha channel is/maybe ignored
+   */
+  virtual void pixel_set(vertex_type vertex, color::value_type color)
+  {
+    // check limits
+    if (!screen_is_inside(vertex)) {
+      // out of bounds
       return;
     }
 
@@ -141,42 +189,171 @@ protected:
 
 
   /**
-   * Get pixel color
-   * \param x X value
-   * \param y Y value
-   * \return Color of pixel in ARGB format
+   * Return the color of the pixel
+   * \param vertex Vertex of the pixel
+   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
    */
-  virtual inline color::value_type drv_pixel_get(vertex_type point) const
+  virtual color::value_type pixel_get(vertex_type vertex)
   {
-    // check limits and clipping
-    if (!screen_is_inside(point)) {
-      // out of bounds or outside clipping region
-      return vic::color::black;
+    // check limits
+    if (!screen_is_inside(vertex)) {
+      // out of bounds
+      return color::none;
     }
 
     // return the pixel color at the given position
-    return vic::color::black;
+    return color::black;
   }
 
 
   /**
-   * Rendering is done (copy RAM / frame buffer to screen)
+   * Draw a horizontal line in the given color, width is one pixel
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, y component is ignored
+   * \param color Line color
    */
-  virtual void drv_present()
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    // rendering is done
-    // copy memory / buffer to real display
-    // leave this function empty if the display has just one buffer
+    // implement native horizontal line drawing
+  }
+
+
+  /**
+   * Draw a vertical line in the given color, width is one pixel
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, x component is ignored
+   * \param color Line color
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    // implement native vertical line drawing
+  }
+
+
+  /**
+   * Draw a box (filled rectangle) in given color
+   * \param rect Box bounding, included in box
+   * \param color Box color
+   */
+  virtual void box(rect_type rect, color::value_type color)
+  {
+    // implement a native filled rectangle drawing function
+  }
+
+
+  /**
+   * Move display area
+   * \param source Source top/left vertex
+   * \param destination Destination top/left vertex
+   * \param width Width of the area
+   * \param height Height of the area
+   */
+  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  {
+    // implement a native move area function
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // A L P H A   T E X T   F U N C T I O N S
+  //
+
+  // Implement the functions in this section, if it's an alpha numeric display. Delete this
+  // section completely, if it's a graphic display.
+  // Mandatory is text_out(), implement all other functions (text_set_pos etc.) that the display supports
+
+  /**
+   * Output a single ASCII/UNICODE char at the actual cursor position
+   * The cursor position is moved by the char width (distance)
+   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
+   */
+  virtual void text_out(std::uint16_t ch)
+  {
+    // implement the text output function which writes the character to the display
+  }
+
+
+  /**
+   * Set the new text position
+   * \param pos Position in chars on text displays (0/0 is left/top)
+   */
+  virtual void text_set_pos(vertex_type pos)
+  {
+    // implement a cursor set position function
+  }
+
+
+  /**
+   * Set inverse text mode
+   * \param inverse Set normal or inverse video
+   */
+  virtual void text_set_inverse(bool inverse)
+  {
+    // implement a set inverse text function
+  }
+
+
+  /**
+   * Clear actual line from cursor pos (included) to end of line
+   */
+  virtual void text_clear_eol()
+  {
+    // implement a clear the actual line from cursor pos (included) to the end of line function
+  }
+
+
+  /**
+   * Clear actual line from start to cursor pos (TBD)
+   */
+  virtual void text_clear_sol()
+  {
+    // implement a clear the actual line from start to cursor pos (TBD) function
+  }
+
+
+  /**
+   * Clear the actual line
+   */
+  virtual void text_clear_line()
+  {
+    // implement a function to clear the actual line
   }
 
 
   /////////////////////////////////////////////////////////////////////////////
-  // O P T I O N A L   D R I V E R   F U N C T I O N S
+  // O P T I O N A L   D I S P L A Y   C O N T R O L
+  //
+
+  // Implement the functions that the display supports, delete what is unsupported
+public:
+
+  /**
+   * Enable/disable the display
+   * \param enable True to switch the display on, false to switch it off (standby, powersave)
+   */
+  virtual void display_enable(bool enable = true)
+  { 
+    // implement a display enable/disable function
+  }
 
 
-  virtual void brightness_set(std::uint8_t level)
+  /**
+   * Set display or backlight brightness
+   * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
+   */
+  virtual void display_brightness(std::uint8_t level)
   {
-    // set the brightness level if your display has support
+    // implement a function to set the display brightness
+  }
+
+
+  /**
+   * Set display contrast brightness
+   * \param level 0: minimum; 255: maximum
+   */
+  virtual void display_contrast(std::uint8_t level)
+  {
+    // implement a function to set the display contrast
   }
 
 };
