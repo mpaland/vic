@@ -40,7 +40,7 @@ namespace shader {
 /**
  * Rotation vertex shader class
  */
-class rotate : public base
+class rotate final : public base
 {
   vertex_type  center_;
   std::int16_t angle_;
@@ -75,7 +75,7 @@ public:
    * \param vertex Pixel coordinates
    * \param color Color of pixel in ARGB format
    */
-  inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
+  inline virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
     // get the destination pixel
     const vertex_type d = util::vertex_rotate(vertex, center_, angle_);
@@ -96,7 +96,7 @@ public:
    * \param point Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type pixel_get(vertex_type vertex) final
+  inline virtual color::value_type pixel_get(vertex_type vertex)
   {
     return next_->pixel_get(util::vertex_rotate(vertex, center_, angle_));
   }

@@ -151,7 +151,7 @@ protected:
 
 
   /**
-   * Primitive rendering is done. May be overridden by driver to update display,
+   * Primitive rendering is done. May be overridden by driver to update the display,
    * frame buffer or something else (like copy RAM / rendering buffer to screen)
    */
   virtual void present()
@@ -175,7 +175,7 @@ protected:
 
   /**
    * Return the color of the pixel
-   * \param point Vertex of the pixel
+   * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
    */
   virtual color::value_type pixel_get(vertex_type vertex)
@@ -281,47 +281,6 @@ protected:
   //
 
   /**
-   * Set the new text position
-   * \param pos Position in chars on text displays (0/0 is left/top)
-   */
-  virtual void text_set_pos(vertex_type pos)
-  {
-    (void)pos;
-  }
-
-
-  /**
-   * Set inverse text mode
-   * \param inverse Set normal or inverse video
-   */
-  virtual void text_set_inverse(bool inverse)
-  {
-    (void)inverse;
-  }
-
-
-  /**
-   * Clear actual line from cursor pos (included) to end of line
-   */
-  virtual void text_clear_eol()
-  { }
-
-
-  /**
-   * Clear actual line from start to cursor pos
-   */
-  virtual void text_clear_sol()
-  { }
-
-
-  /**
-   * Clear the actual line
-   */
-  virtual void text_clear_line()
-  { }
-
-
-  /**
    * Output a single ASCII/UNICODE char at the actual cursor position
    * The cursor position is moved by the char width (distance)
    * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
@@ -376,6 +335,47 @@ protected:
     present();
     return cnt;
   }
+
+
+  /**
+   * Set the new text position
+   * \param pos Position in chars on text displays (0/0 is left/top)
+   */
+  virtual void text_set_pos(vertex_type pos)
+  {
+    (void)pos;
+  }
+
+
+  /**
+   * Set inverse text mode
+   * \param inverse Set normal or inverse video
+   */
+  virtual void text_set_inverse(bool inverse)
+  {
+    (void)inverse;
+  }
+
+
+  /**
+   * Clear the actual line from cursor pos (included) to end of line
+   */
+  virtual void text_clear_eol()
+  { }
+
+
+  /**
+   * Clear the actual line from start to cursor pos (included)
+   */
+  virtual void text_clear_sol()
+  { }
+
+
+  /**
+   * Clear the actual line
+   */
+  virtual void text_clear_line()
+  { }
 
 
   ///////////////////////////////////////////////////////////////////////////////

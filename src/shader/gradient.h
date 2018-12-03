@@ -117,7 +117,7 @@ public:
  * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
-class gradient : public gradient_base<Max_Pixel>
+class gradient final : public gradient_base<Max_Pixel>
 {
 public:
   /**
@@ -143,7 +143,7 @@ public:
    * \param pos The position of the vertex
    * \return The mixed color at the given vertex position
    */
-  virtual color::value_type mix(vertex_type pos) final
+  virtual color::value_type mix(vertex_type pos)
   {
     std::uint32_t dist_[Max_Pixel];           // distance calculation
 
@@ -173,7 +173,7 @@ public:
  * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
-class gradient_horizontal : public gradient_base<Max_Pixel>
+class gradient_horizontal final : public gradient_base<Max_Pixel>
 {
 public:
   /**
@@ -199,7 +199,7 @@ public:
    * \param pos The position of the vertex
    * \return The mixed color at the given vertex position
    */
-  virtual color::value_type mix(vertex_type pos) final
+  virtual color::value_type mix(vertex_type pos)
   {
     std::uint32_t dist_[Max_Pixel];           // distance calculation
 
@@ -231,7 +231,7 @@ public:
  * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
-class gradient_vertical : public gradient_base<Max_Pixel>
+class gradient_vertical final : public gradient_base<Max_Pixel>
 {
 public:
   /**
@@ -257,7 +257,7 @@ public:
    * \param pos The position of the vertex
    * \return The mixed color at the given vertex position
    */
-  virtual color::value_type mix(vertex_type pos) final
+  virtual color::value_type mix(vertex_type pos)
   {
     std::uint32_t dist_[Max_Pixel];           // distance calculation
 
@@ -289,7 +289,7 @@ public:
  * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
-class gradient_solid : public gradient_base<Max_Pixel>
+class gradient_solid final : public gradient_base<Max_Pixel>
 {
 public:
   /**
@@ -315,7 +315,7 @@ public:
    * \param pos The position of the vertex
    * \return The solid base color at the given position
    */
-  virtual color::value_type mix(vertex_type pos) final
+  virtual color::value_type mix(vertex_type pos)
   {
     std::uint32_t dist_[Max_Pixel];           // distance calculation
 

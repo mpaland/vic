@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -61,8 +61,9 @@ namespace head {
  * \param HEAD_COUNT Number of used heads, all heads MUST be initialized in ctor!
  */
 template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
-         std::size_t HEAD_COUNT>
-  class multihead : public drv
+         std::size_t HEAD_COUNT
+>
+class multihead final : public drv
 {
   typedef struct tag_multihead_head_type {
     multihead*    head;
@@ -148,7 +149,10 @@ public:
     return (const char*)VIC_DRV_MULTIHEAD_VERSION;
   }
 
-
+  /**
+   * Returns the display capability: graphic or alpha numeric
+   * \return True if AT LEAST ONE head is graphic
+   */
   inline virtual bool is_graphic() const
   {
     return is_graphic_;
@@ -208,7 +212,7 @@ protected:
    */
   inline virtual color::value_type pixel_get(vertex_type vertex)
   {
-    // select to right head and read the pixel
+    // find the right head and read the pixel
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
       const vertex_type p = vertex - head_[i].viewport;
       if (head_[i].head->screen_is_inside(p)) {
@@ -236,10 +240,10 @@ protected:
   }
 
 
- /**
-  * Set inverse text mode
-  * \param mode Set normal or inverse video
-  */
+  /**
+   * Set inverse text mode
+   * \param mode Set normal or inverse video
+   */
   inline virtual void text_set_inverse(bool inverse)
   {
     for (std::size_t i = 0U; i < HEAD_COUNT; ++i) {
@@ -249,7 +253,7 @@ protected:
 
 
   /**
-   * Clear actual line from cursor pos (included) to end of line
+   * Clear the actual line from cursor pos (included) to end of line
    */
   inline virtual void text_clear_eol()
   {
@@ -260,7 +264,7 @@ protected:
 
 
   /**
-   * Clear actual line from start to cursor pos
+   * Clear the actual line from start to cursor pos
    */
   inline virtual void text_clear_sol()
   {

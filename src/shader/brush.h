@@ -68,6 +68,7 @@ public:
     : style_ctl_(0U)
   { }
 
+
   /**
    * Render the shape at the given position
    * \param center Pen center position

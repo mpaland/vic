@@ -226,15 +226,16 @@ public:
 
 
   /**
-   * Set drawing color
-   * \param color Drawing color
+   * Set the drawing color
+   * \param color Drawing color in ARGB format
    */
   void set_color(color::value_type color)
   { color_ = color; }
 
 
   /**
-   * Get drawing color
+   * Get the drawing color
+   * \return Actual drawing color in ARGB format
    */
   color::value_type get_color() const
   { return color_; }
@@ -267,7 +268,7 @@ public:
   /**
    * Set a pixel in the given color, no present is called
    * \param vertex Vertex to set
-   * \param color Color of the pixel
+   * \param color Color of the pixel in ARGB format
    */
   inline void pixel_set(vertex_type vertex, color::value_type color)
   {
@@ -277,12 +278,12 @@ public:
 
   /**
    * Return the color of the pixel (is a slim wrapper for drv_pixel_get)
-   * \param point Vertex of the pixel
+   * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline color::value_type pixel_get(vertex_type point)
+  inline color::value_type pixel_get(vertex_type vertex)
   {
-    return shader_pipe()->pixel_get(point);
+    return shader_pipe()->pixel_get(vertex);
   }
 
 
@@ -298,6 +299,7 @@ public:
 
   /**
    * Plot a point (one pixel) in the given color
+   * Basically this is pixel_set with immediate present()
    * \param point Vertex to plot
    * \param color Color of the pixel
    */
@@ -400,7 +402,7 @@ public:
    * This is should be done by a high speed driver implementation if no shader is used
    * \param rect Box bounding
    */
-  void box(rect_type rect)
+  void box(const rect_type& rect)
   {
     for (std::int16_t y = rect.top; y <= rect.bottom; ++y) {
       for (std::int16_t x = rect.left; x <= rect.right; ++x) {
@@ -416,7 +418,7 @@ public:
    * \param rect Box bounding
    * \param border_radius Radius of the corner, 0 for angular
    */
-  void box(rect_type rect, std::uint16_t border_radius)
+  void box(const rect_type& rect, std::uint16_t border_radius)
   {
     present_lock();
     box({ static_cast<std::int16_t>(rect.left + border_radius), rect.top, static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top + border_radius) });
@@ -447,7 +449,7 @@ public:
    * Draw a rectangle (frame) with the current pen
    * \param rect Rectangle
    */
-  void rectangle(rect_type rect)
+  void rectangle(const rect_type& rect)
   {
     present_lock();
     line(rect.top_left(), { rect.right, rect.top });
@@ -475,7 +477,7 @@ public:
    * \param rect Rectangle
    * \param border_radius Radius of the corner, 0 for angular
    */
-  void rectangle(rect_type rect, std::uint16_t border_radius)
+  void rectangle(const rect_type& rect, std::uint16_t border_radius)
   {
     present_lock();
     line({ static_cast<std::int16_t>(rect.right - border_radius), rect.top }, { static_cast<std::int16_t>(rect.left + border_radius), rect.top });
@@ -819,9 +821,9 @@ public:
       const std::int16_t xse = util::cos(static_cast<std::int16_t>(end_angle));
       const std::int16_t yse = util::sin(static_cast<std::int16_t>(end_angle));
 
-      for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; yp++) {
+      for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; ++yp) {
         std::int16_t inside = 0, lxp = 0;
-        for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; xp++) {
+        for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; ++xp) {
           // check if xp/yp is within the sector
           std::int16_t xr = xp - center.x;
           std::int16_t yr = center.y - yp;   // * -1 for coords to screen conversion

@@ -92,6 +92,7 @@ public:
     , alpha_blending_(true)
   { }
 
+
   /**
    * Set pixel in given color
    * \param vertex Pixel coordinates
@@ -149,6 +150,7 @@ class clipping : public base
   bool      active_;
 
 public:
+
   /**
    * ctor
    * Create a clipping region, default disabled

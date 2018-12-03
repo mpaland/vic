@@ -76,12 +76,20 @@ public:
   }
 
 
+  /**
+   * Returns true if the shader pipe contains one or more shaders
+   */
   inline bool shader_is_active() const
   {
     return shader_pipe_ != &shader_output_;
   }
 
 
+  /**
+   * Register/add a shader in the shader pipe
+   * The new shader is inserted at the FRONT of the pipe, so that it's rendered as FIRST of the pipe
+   * \param _shader The new shader to insert
+   */
   void shader_register(shader::base* _shader)
   {
     _shader->next_ = shader_pipe_;
@@ -89,25 +97,33 @@ public:
   }
 
 
-  void shader_remove(const shader::base* _shader)
+  /**
+   * Remove a shader out of the shader pipe
+   * \param _shader The shader to remove out of the pipe
+   * \return True if the shader is removed, false if error (shader not found)
+   */
+  bool shader_remove(const shader::base* _shader)
   {
     if (_shader == shader_pipe_) {
-      // remove the first shader in pipe
+      // remove the first shader in the pipe
       shader_pipe_ = shader_pipe_->next_;
+      return true;
     }
     else {
       for (shader::base* s = shader_pipe_; !!s; s = s->next_) {
         if (_shader == s->next_) {
           s->next_ = _shader->next_;
-          return;
+          return true;
         }
       }
     }
+    // error, shader not found
+    return false;
   }
 
 
   /**
-   * Init / clear the shader pipeline
+   * Init / clear the shader pipe
    */
   inline void shader_init()
   {
@@ -228,7 +244,7 @@ public:
    * Draw a box (filled rectangle)
    * \param rect Box bounding
    */
-  void box(rect_type rect)
+  void box(const rect_type& rect)
   {
     if ((!shader_is_active()) && (color::is_opaque(get_color()))) {
       // no active shaders, opaque color: let the driver draw the box
