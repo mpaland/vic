@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -37,9 +37,9 @@ namespace vic {
 namespace font {
 
 
-class Arial_std_12_aa2 : public font_type
+class Arial_std_12_aa2 final : public font_type
 {
-  virtual const info_type& get_info() const final
+  virtual const info_type& get_info() const
   {
     static const std::uint8_t Arial_std_12_aa2_0020[  1] = { /* code 0020, SPACE */
       0x00
