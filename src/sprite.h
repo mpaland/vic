@@ -665,9 +665,9 @@ public:
     for (std::int_fast16_t y = 0; y < sheet_info_->sprite_height; y++) {
       for (std::int_fast16_t x = 0; x < sheet_info_->sprite_width; x++) {
         const std::uint8_t* pos = sheet_info_->data + ((row + y) * sheet_info_->width + (col + x)) * byte_per_pixel;
-        const color::value_type col = format_to_color(pos);
-        if (col != sheet_info_->bg_color) {
-          pixel_set(vertex_type({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }), col);
+        const color::value_type c = format_to_color(pos);
+        if (c != sheet_info_->bg_color) {
+          pixel_set(vertex_type({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }), c);
         }
       }
     }
