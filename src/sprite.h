@@ -201,6 +201,7 @@ public:
         }
       }
       // restore pixel and mix it with background color
+      // the shader pipe here can't be used here cause the background is handled here 
       head_.pixel_set(bg_pixel.vertex, color::alpha_blend(mixed_color, bg_pixel.color));
 
       // and delete pixel from the restore buffer, the iterator is invalidated by erase, so set it to next pixel
@@ -240,6 +241,7 @@ public:
       restore_set(bg_pixel);
 
       // finally render the pixel on the head
+      // the shader pipe here can't be used here cause the background is handled here 
       head_.pixel_set(pt_pixel.vertex, color::alpha_blend(mixed_color, bg_pixel.color));
     }
   }
