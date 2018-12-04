@@ -77,9 +77,10 @@ public:
   {
     switch (shape_.style) {
       case style_solid :
+        // ***********
         break;
       case style_dot :
-        // * * * *
+        // * * * * * *
         if (style_ctl_ >= shape_.width * 2U) {
           style_ctl_ = 0U;
         }
@@ -109,6 +110,7 @@ public:
         style_ctl_++;
         break;
       default:
+        // default is style_solid
         break;
     }
     std::size_t i = 0U;
