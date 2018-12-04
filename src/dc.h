@@ -199,6 +199,16 @@ public:
   { return head_.screen_height(); }
 
 
+  /**
+   * Enable/disable alpha blending support
+   * \param enable True to enable alpha blending
+   */
+  inline void alpha_blending_enable(bool enable = true)
+  {
+    shader_output_.alpha_blending_enable(enable);
+  }
+
+
   ///////////////////////////////////////////////////////////////////////////////
 
 

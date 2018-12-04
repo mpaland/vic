@@ -78,7 +78,7 @@ public:
 
 /**
  * Output shader
- * This is the last shader in the pipe and sends the pixels to the head
+ * This is always the last shader in the pipe and it sends the pixels to the head
  */
 class output : public base
 {
@@ -91,6 +91,16 @@ public:
     : head_(head)
     , alpha_blending_(true)
   { }
+
+
+  /**
+   * Enable/disable alpha blending support
+   * \param enable True to enable alpha blending
+   */
+  inline void alpha_blending_enable(bool enable = true)
+  {
+    alpha_blending_ = enable;
+  }
 
 
   /**
@@ -141,13 +151,12 @@ public:
 
 /**
  * Clipping region shader
- * This shader clips all vertices in the defined clipping region
+ * This shader draws all vertices which are inside (true) or outside (false) of the defined clipping region
  */
 class clipping : public base
 {
   rect_type region_;
-  bool      inside_;
-  bool      active_;
+  bool      inside_;    // true for drawing, false to suppress all vertices inside the region
 
 public:
 
@@ -158,7 +167,6 @@ public:
   clipping()
     : region_({ 0, 0, 0, 0 })
     , inside_(false)
-    , active_(false)
   { }
 
 
@@ -166,7 +174,7 @@ public:
    * ctor
    * Create an enabled clipping region
    * \param region Clipping region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
+   * \param inside True if the clipping region is INSIDE the given box, so all pixels INSIDE the clipping region are drawn. This is the default.
    */
   clipping(const rect_type& region, bool inside = true)
   {
@@ -177,13 +185,12 @@ public:
   /**
    * Set the clipping region
    * \param region Clipping region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
+   * \param inside True if the clipping region is INSIDE the given box, so all pixels INSIDE the clipping region are drawn. This is the default.
    */
   void set(const rect_type& region, bool inside = true)
   {
     region_ = region;
     inside_ = inside;
-    active_ = true;
   }
 
 
@@ -198,33 +205,18 @@ public:
 
 
   /**
-   * Enable the clipping function
-   * \param enable True to enable
-   */
-  inline void enable(bool _enable = true)
-  {
-    active_ = _enable;
-  }
-
-
-  /**
-   * Return the clipping status
-   * \return True if clipping is enabled
-   */
-  inline bool is_enabled() const
-  {
-    return active_;
-  }
-
-
-  /**
-   * Test if clipping is active and if the given vertex is inside the clipping region
+   * Test if the given vertex is inside the clipping region - and should be drawn
    * \param v Vertex to test
    * \return True if given vertex is within the active clipping region and should be drawn
    */
   inline bool is_inside(const vertex_type& v) const
   {
-    return !active_ || (region_.contain(v) ? inside_ : !inside_);
+    // region_contain  inside_  is_inside
+    //       1            1         1
+    //       1            0         0
+    //       0            1         0
+    //       0            0         1
+    return !(region_.contain(v) ^ inside_);
   }
 
 
