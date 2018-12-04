@@ -111,7 +111,7 @@ typedef struct tag_rect_type {
   std::int16_t bottom;
 
   // clear rect
-  void clear()
+  inline void clear()
   { *this = { 0, 0, 0, 0 }; }
 
   inline vertex_type top_left() const

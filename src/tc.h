@@ -242,19 +242,19 @@ public:
   /**
    * Returns the width and height the rendered string would take.
    * The string is not rendered on screen
-   * \param width Width the rendered string would take
-   * \param height Height the rendered string would take
+   * \param rect Width and height that the rendered string would take
    * \param string String in UTF-8 format, zero terminated
    * \return Number of string characters, not bytes (as a character may consist out of two bytes)
    */
-  std::uint16_t get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string) const
+  std::uint16_t get_extend(rect_type& rect, const std::uint8_t* string) const
   {
     if (!!dc_) {
-      // get graphic extend
-      return txr::get_extend(width, height, string);
+      // get extend from text renderer
+      return txr::get_extend(rect, string);
     }
     else {
       // alpha numeric head
+      rect.clear();
       std::uint16_t ch, cnt = 0U;
       while (*string) {
         if ((*string & 0x80U) == 0x00U) {
@@ -278,8 +278,8 @@ public:
         }
         cnt++;
       }
-      width  = cnt;
-      height = 1U;
+      rect.right  = cnt;
+      rect.bottom = 1U;
       return cnt;
     }
   }

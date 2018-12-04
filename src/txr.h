@@ -79,10 +79,28 @@ public:
 
 
   /**
-   * Get the height of the actual selected font
+   * Get the average char width of the actual selected font
+   * \return Width (char 'A' is taken) in pixel units of the selected font, 1 on alpha numeric heads
+   */
+  std::uint8_t char_width() const
+  {
+    if ((font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
+      // prop font
+      const font::prop_type* font_prop = font_->family.prop;
+      return font_prop->char_info[(char)'A' - font_prop->first].xdist;
+    }
+    else {
+      // mono font
+      return ((font::mono_type*)font_->family.mono)->xsize;
+    }
+  }
+
+
+  /**
+   * Get the char height of the actual selected font
    * \return Height in pixel units of the selected font, 1 on alpha numeric heads
    */
-  inline std::uint8_t get_line_height() const
+  inline std::uint8_t char_height() const
   {
     return font_->ysize;
   }
@@ -127,7 +145,7 @@ public:
   void out(std::uint16_t ch)
   {
     const std::uint8_t color_depth = (font_->attr & font::AA_MASK);
-    const std::uint8_t color_mask = (1U << color_depth) - 1U;
+    const std::uint8_t color_mask  = (1U << color_depth) - 1U;
     const std::uint8_t color_shift = 8U - color_depth;
 
     if (ch < 0x20U) {
@@ -301,16 +319,14 @@ public:
   /**
    * Returns the width and height the rendered string would take.
    * The string is not rendered on screen
-   * \param width Width the rendered string would take
-   * \param height Height the rendered string would take
+   * \param rect Width and height that the rendered string would take
    * \param string String in UTF-8 format, zero terminated
-   * \return Number of string characters, not bytes (as a character may consist out of two bytes)
+   * \return Number of string characters, not bytes (as a character may consist out of two or three bytes in UTF-8)
    */
-  std::uint16_t get_extend(std::uint16_t& width, std::uint16_t& height, const std::uint8_t* string) const
+  std::uint16_t get_extend(rect_type& rect, const std::uint8_t* string) const
   {
     std::uint16_t ch, cnt = 0U;
-    width  = 0U;
-    height = 1U;
+    rect.clear();
     while (*string) {
       if ((*string & 0x80U) == 0x00U) {
         // 1 byte sequence (ASCII char)
@@ -339,7 +355,9 @@ public:
           if (ch >= font_prop_ext->first && ch <= font_prop_ext->last) {
             // found char
             const font::charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
-            width += info->xdist;
+            rect.right += info->xdist;
+            rect.bottom = font_->ysize;
+            break;
           }
           font_prop_ext = font_prop_ext->next;
         } while (font_prop_ext);
@@ -354,7 +372,9 @@ public:
             if (ch >= font_prop->first && ch <= font_prop->last) {
               // found char
               const font::charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
-              width += info->xdist;
+              rect.right += info->xdist;
+              rect.bottom = font_->ysize;
+              break;
             }
             font_prop = font_prop->next;
           } while (font_prop);
@@ -364,7 +384,8 @@ public:
           // mono font
           const font::mono_type* font_mono = font_->family.mono;
           if (ch >= font_mono->first && ch <= font_mono->last) {
-            width += font_mono->xsize;   // x-distance is xsize
+            rect.right += font_mono->xsize;   // x-distance is xsize
+            rect.bottom = font_->ysize;
           }
         }
       }
