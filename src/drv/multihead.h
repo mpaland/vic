@@ -63,7 +63,7 @@ namespace head {
 template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
          std::size_t HEAD_COUNT
 >
-class multihead final : public drv
+class multihead : public drv
 {
   typedef struct tag_multihead_head_type {
     multihead*    head;
