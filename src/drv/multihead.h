@@ -264,7 +264,7 @@ protected:
 
 
   /**
-   * Clear the actual line from start to cursor pos
+   * Clear the actual line from start to cursor pos (included)
    */
   inline virtual void text_clear_sol()
   {
