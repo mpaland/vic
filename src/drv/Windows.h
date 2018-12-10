@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -24,7 +24,7 @@
 // THE SOFTWARE.
 //
 // \brief This is a Windows graphics head driver, setup the desired screen and
-// viewport size as template parameter
+//        viewport size as template parameter
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -122,11 +122,13 @@ public:
     ::CloseHandle(wnd_init_ev_);
 
     cls();
+    present();
   }
 
 
   virtual void shutdown()
   {
+    (void)::DeleteDC(hmemdc_);
     (void)::CloseWindow(hwnd_);
   }
 
@@ -235,7 +237,7 @@ private:
     WNDCLASSEXA wc = { };
     wc.cbSize = sizeof(WNDCLASSEXA);
     wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = ::DefWindowProc; 
+    wc.lpfnWndProc = ::DefWindowProc;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = hInstance;
@@ -347,7 +349,7 @@ public:
     char_x_margin_  = 2U;
     char_y_margin_  = 2U;
     char_x_padding_ = 2U;
-    char_y_padding_ = 1U;  
+    char_y_padding_ = 1U;
   }
 
 
@@ -381,11 +383,13 @@ public:
 
     // clear screen
     cls();
+    present();
   }
 
 
   virtual void shutdown()
   {
+    (void)::DeleteDC(hmemdc_);
     (void)::CloseWindow(hwnd_);
     (void)::DeleteObject(hbmp_);
   }
