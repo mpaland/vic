@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -37,9 +37,9 @@ namespace vic {
 namespace font {
 
 
-class LCD_6x8 : public font_type
+class LCD_6x8 final : public font_type
 {
-  virtual const info_type& get_info() const final
+  virtual const info_type& get_info() const
   {
     static const std::uint8_t LCD_6x8_data[] = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
@@ -268,11 +268,11 @@ class LCD_6x8 : public font_type
     };
 
     static const mono_type LCD_6x8_mono = {
-      0x20U,
-      0xFEU,
-      6U,
-      1U,
-      LCD_6x8_data
+      0x20U,                                  // first char code
+      0xFEU,                                  // last char code
+      6U,                                     // x-size of the char in pixel
+      1U,                                     // bytes per char line
+      LCD_6x8_data// char data
     };
 
     static const info_type LCD_6x8_info = {

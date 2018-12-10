@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -39,9 +39,9 @@ namespace font {
 
 // standard character info (prop font)
 typedef struct tag_charinfo_type {
-  std::uint8_t xsize;             // x-size to render in pixel 
+  std::uint8_t xsize;             // x-size to render in pixel
   std::uint8_t xdist;             // x-distance (cursor movement)
-  std::uint8_t bytes_per_line;    // bytes to store the char line
+  std::uint8_t bytes_per_line;    // bytes per char line
   const std::uint8_t* data;       // char data
 } charinfo_type;
 
@@ -59,8 +59,8 @@ typedef struct tag_charinfo_ext_type {
 typedef struct tag_mono_type {
   std::uint8_t first;             // first char code
   std::uint8_t last;              // last char code
-  std::uint8_t xsize;             // x-size of the char in pixel 
-  std::uint8_t bytes_per_line;    // bytes to store the char line
+  std::uint8_t xsize;             // x-size of the char in pixel
+  std::uint8_t bytes_per_line;    // bytes per char line
   const std::uint8_t* data;       // char data
 } mono_type;
 

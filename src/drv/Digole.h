@@ -43,9 +43,9 @@ namespace head {
 
 // interface type
 typedef enum tag_digole_interface_type {
-  digole_spi,
-  digole_i2c,
-  digole_uart
+  DIGOLE_SPI,
+  DIGOLE_I2C,
+  DIGOLE_UART
 } digole_interface_type;
 
 
@@ -63,10 +63,9 @@ template<std::uint16_t Screen_Size_X   = 8U, std::uint16_t Screen_Size_Y   = 8U,
 >
 class digole final : public drv
 {
-  io::handle_type     device_handle_;   // device handle
-  interface_type      interface_;       // interface type
-  std::uint32_t       uart_baudrate_;   // baudrate for UART interface mode
-  color::value_type   color_;           // actual pixel color
+  io::handle_type         device_handle_;   // device handle
+  std::uint32_t           uart_baudrate_;   // baudrate for UART interface mode
+  color::value_type       color_;           // actual pixel color
 
 public:
 
@@ -84,7 +83,6 @@ public:
           0U, 0U)
     , orientation_(Orientation)
     , device_handle_(device_handle)
-    , interface_(iface)
     , uart_baudrate_(uart_baudrate)
     , color_(color::none)
   { }
@@ -108,7 +106,7 @@ public:
   {
     std::uint8_t cmd[8];
 
-    if (interface_ == i2c) {
+    if (Interface_Mode == DIGOLE_I2C) {
       // set I²C address
       const std::uint8_t i2c_adr = static_cast<std::uint8_t>(device_handle_);
       device_handle_ = static_cast<io::dev::handle_type>(0x27U);    // use default I²C address ($27) for init
@@ -141,7 +139,7 @@ public:
     display_enable();
     display_brightness(255U);
 
-    if (interface_ == uart) {
+    if (Interface_Mode == DIGOLE_UART) {
       // set UART baudrate
       std::uint8_t len = 0U;
       cmd[0] = 'S';

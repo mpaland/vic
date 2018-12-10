@@ -111,7 +111,7 @@ typedef struct tag_rect_type {
   std::int16_t bottom;
 
   // clear rect
-  void clear()
+  inline void clear()
   { *this = { 0, 0, 0, 0 }; }
 
   inline vertex_type top_left() const
@@ -385,8 +385,8 @@ inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int
   point = point - center;
 
   // rotate point and translate back
-  return { static_cast<std::int16_t>(div_round_closest(((std::int32_t)point.x * c - (std::int32_t)point.y * s), 16384) + center.x),
-           static_cast<std::int16_t>(div_round_closest(((std::int32_t)point.x * s + (std::int32_t)point.y * c), 16384) + center.y)
+  return { static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(point.x) * c - static_cast<std::int32_t>(point.y) * s), 16384) + center.x),
+           static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(point.x) * s + static_cast<std::int32_t>(point.y) * c), 16384) + center.y)
          };
 }
 

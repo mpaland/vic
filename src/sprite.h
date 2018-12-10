@@ -201,6 +201,7 @@ public:
         }
       }
       // restore pixel and mix it with background color
+      // the shader pipe here can't be used here cause the background is handled here 
       head_.pixel_set(bg_pixel.vertex, color::alpha_blend(mixed_color, bg_pixel.color));
 
       // and delete pixel from the restore buffer, the iterator is invalidated by erase, so set it to next pixel
@@ -240,6 +241,7 @@ public:
       restore_set(bg_pixel);
 
       // finally render the pixel on the head
+      // the shader pipe here can't be used here cause the background is handled here 
       head_.pixel_set(pt_pixel.vertex, color::alpha_blend(mixed_color, bg_pixel.color));
     }
   }
@@ -665,9 +667,9 @@ public:
     for (std::int_fast16_t y = 0; y < sheet_info_->sprite_height; y++) {
       for (std::int_fast16_t x = 0; x < sheet_info_->sprite_width; x++) {
         const std::uint8_t* pos = sheet_info_->data + ((row + y) * sheet_info_->width + (col + x)) * byte_per_pixel;
-        const color::value_type col = format_to_color(pos);
-        if (col != sheet_info_->bg_color) {
-          pixel_set(vertex_type({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }), col);
+        const color::value_type c = format_to_color(pos);
+        if (c != sheet_info_->bg_color) {
+          pixel_set(vertex_type({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }), c);
         }
       }
     }

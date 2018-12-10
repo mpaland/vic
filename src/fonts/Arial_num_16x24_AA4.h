@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2016, PALANDesign Hannover, Germany
+//             2001-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -36,9 +36,9 @@
 namespace vic {
 namespace font {
 
-class Arial_num_16x24_aa4 : public font_type
+class Arial_num_16x24_aa4 final : public font_type
 {
-  virtual const info_type& get_info() const final
+  virtual const info_type& get_info() const
   {
     static const std::uint8_t Arial_num_16x24_aa4_0021[] = { /* code 0021 */
       0x00, 0x00, 0x00, 0x00,
@@ -633,10 +633,10 @@ class Arial_num_16x24_aa4 : public font_type
     };
 
     static const info_type Arial_num_16x24_aa4_info = {
-      ENCODING_ASCII | AA_4 | TYPE_PROP   // type of font
-      ,24   // height of font
-      ,24   // y space of font
-      ,23   // Baseline
+      ENCODING_ASCII | AA_4 | TYPE_PROP     // type of font
+      ,24                                   // height of font
+      ,24                                   // y space of font
+      ,23                                   // Baseline
       ,&Arial_num_16x24_aa4_Prop1
     };
 

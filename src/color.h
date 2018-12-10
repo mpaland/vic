@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2017, PALANDesign Hannover, Germany
+//             2001-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,7 +23,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Color definitions and color/gradient/helper functions
+// \brief Color definitions and color related helper functions
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -44,14 +44,14 @@ namespace color {
 
   /**
    * Supported color formats
-    bits depth  format    usage
+    bits depth   format    colors   usage
     ##########################################################################
-     1     1           1   monochrome
-     2     2           2    2 bit grayscale
-     4     4           4    4 bit grayscale
-     8     8           8    8 bit grayscale
-     8     8        CLUT    8 bit color lookup table for 256 defined colors
-    16    16        CLUT   16 bit color lookup table for 64k defined colors
+     1     1           1      1 bit monochrome
+     2     2           2      2 bit grayscale
+     4     4           4      4 bit grayscale
+     8     8           8      8 bit grayscale
+     8     8        CLUT      8 bit color lookup table for 256 defined colors
+    16    16        CLUT     16 bit color lookup table for 64k defined colors
      8     8       3-3-2    256 RGB display - no palette
     16    12       4-4-4     4k RGB display
     16    15       5-5-5    32k RGB display
@@ -62,7 +62,7 @@ namespace color {
     16    15     A-5-5-5    32k RGB display with 1 bit alpha blending
     24    18     A-6-6-6   262k RGB display
     32    24     A-8-8-8    16M RGB display with 8 bit alpha blending
-                   R-G-B   bit meaning
+                   R-G-B   bits meaning
   */
   typedef enum tag_format_type : std::uint8_t 
   {                           //  upper nibble defines 'bytes/pixel'
@@ -292,7 +292,7 @@ namespace color {
    * \return Native head color value
    */
   inline std::uint8_t color_to_L1(value_type color)
-  { return static_cast<std::uint8_t>((color & 0x00FFFFFFUL) != (std::uint32_t)0U ? 1U : 0U); }
+  { return static_cast<std::uint8_t>(!!(color & 0x00FFFFFFUL)); }
 
   inline std::uint8_t color_to_L2(value_type color)
   { return static_cast<std::uint8_t>(((std::uint16_t)((std::uint16_t)get_red(color) + (std::uint16_t)get_green(color) + (std::uint16_t)get_blue(color)) / 3U) >> 6U); }
