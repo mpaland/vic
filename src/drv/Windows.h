@@ -32,7 +32,6 @@
 #define _VIC_DRV_WINDOWS_H_
 
 #include <Windows.h>
-#include <atlbase.h>
 #include <thread>
 #include <string>
 
@@ -42,7 +41,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_WINDOWS_VERSION   "Windows driver 4.10"
+#define VIC_DRV_WINDOWS_VERSION   "Windows driver 4.11"
 
 
 namespace vic {
@@ -151,6 +150,10 @@ public:
 
 protected:
 
+  /**
+   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
+   */
   virtual void cls( color::value_type bg_color = color::none)
   {
     for (std::int_fast16_t y = 0; y < Screen_Size_Y * zoom_y_; y++) {
@@ -228,9 +231,9 @@ private:
     windows* d = static_cast<windows*>(arg);
 
     const HINSTANCE hInstance = ::GetModuleHandle(NULL);
-    const LPCTSTR className = L"vic_screen";
-    WNDCLASSEX wc = {};
-    wc.cbSize = sizeof(WNDCLASSEX);
+    const char* className = "vic_graphic_screen";
+    WNDCLASSEXA wc = { };
+    wc.cbSize = sizeof(WNDCLASSEXA);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = ::DefWindowProc; 
     wc.cbClsExtra = 0;
@@ -242,7 +245,7 @@ private:
     wc.lpszClassName = className;
     wc.hIcon = ::LoadIcon(NULL, IDI_APPLICATION);
     wc.hIconSm = ::LoadIcon(NULL, IDI_APPLICATION);
-   ::RegisterClassEx(&wc);
+   ::RegisterClassExA(&wc);
 
     // adjust windows size to viewport width and height
     RECT rect;
@@ -253,10 +256,10 @@ private:
     ::AdjustWindowRect(&rect, WS_POPUP | WS_CAPTION, FALSE);
 
     // finally create and display the window
-    d->hwnd_ = CreateWindowEx(
+    d->hwnd_ = ::CreateWindowExA(
       0,
       className,
-      CA2CT(d->caption_.c_str(), CP_UTF8),
+      d->caption_.c_str(),
       WS_POPUP | WS_CAPTION,
       CW_USEDEFAULT, CW_USEDEFAULT,
       ::abs(rect.left) + ::abs(rect.right),
@@ -267,7 +270,7 @@ private:
       NULL
     );
     if (!d->hwnd_) {
-      ::MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
+      ::MessageBoxA(NULL, "Error creating window", "Error", MB_OK | MB_ICONERROR);
       ::SetEvent(d->wnd_init_ev_);
       return;
     }
@@ -447,7 +450,7 @@ protected:
                       x + char_x_margin_ + char_x_padding_ + font_width_,
                       y + char_y_margin_ + char_y_padding_ + font_height_
                     };
-        ::DrawText(hmemdc_, (LPCWSTR)&frame_buffer_[col][row], 1U, &rect, DT_CENTER | DT_TOP | DT_SINGLELINE);
+        ::DrawTextA(hmemdc_, (LPCSTR)&frame_buffer_[col][row], 1U, &rect, DT_CENTER | DT_TOP | DT_SINGLELINE);
 
         // draw a square around the char
         POINT box[] = {{ x + char_x_margin_, y + char_y_margin_ },
@@ -508,9 +511,9 @@ private:
     windows_text* d = static_cast<windows_text*>(arg);
 
     const HINSTANCE hInstance = ::GetModuleHandle(NULL);
-    const LPCTSTR className = L"vic_text_screen";
-    WNDCLASSEX wc = { };
-    wc.cbSize = sizeof(WNDCLASSEX);
+    const char* className = "vic_text_screen";
+    WNDCLASSEXA wc = { };
+    wc.cbSize = sizeof(WNDCLASSEXA);
     wc.style = CS_HREDRAW | CS_VREDRAW;
     wc.lpfnWndProc = ::DefWindowProc; 
     wc.cbClsExtra = 0;
@@ -522,13 +525,13 @@ private:
     wc.lpszClassName = className;
     wc.hIcon = ::LoadIcon(NULL, IDI_APPLICATION);
     wc.hIconSm = ::LoadIcon(NULL, IDI_APPLICATION);
-    (void)::RegisterClassEx(&wc);
+    ::RegisterClassExA(&wc);
 
     // finally create and display the window
-    d->hwnd_ = CreateWindowEx(
+    d->hwnd_ = ::CreateWindowExA(
       0,
       className,
-      CA2CT(d->caption_.c_str(), CP_UTF8),
+      d->caption_.c_str(),
       WS_POPUP | WS_CAPTION,
       CW_USEDEFAULT, CW_USEDEFAULT,
       1,
@@ -539,7 +542,7 @@ private:
       NULL
     );
     if (!d->hwnd_) {
-      ::MessageBox(NULL, L"Error creating window", L"Error", MB_OK | MB_ICONERROR);
+      ::MessageBoxA(NULL, "Error creating window", "Error", MB_OK | MB_ICONERROR);
       ::SetEvent(d->wnd_init_ev_);
       return;
     }
@@ -564,18 +567,18 @@ private:
     ::SelectObject(d->hmemdc_, d->hbmp_);
     ::ReleaseDC(d->hwnd_, hDC);
 
-    wchar_t szFontFile[] = L"enhanced_led_board-7.ttf";
-    ::AddFontResourceEx(szFontFile, FR_PRIVATE, NULL);
+    const char* szFontFile = "enhanced_led_board-7.ttf";
+    ::AddFontResourceExA(szFontFile, FR_PRIVATE, NULL);
 
-    LOGFONT lf;
+    LOGFONTA lf;
     memset(&lf, 0, sizeof(lf));
     lf.lfHeight = -MulDiv(d->font_height_ * 60U / 75U * 72U / GetDeviceCaps(d->hmemdc_, LOGPIXELSY), GetDeviceCaps(d->hmemdc_, LOGPIXELSY), 72);
     lf.lfWeight = FW_NORMAL;
     lf.lfOutPrecision = OUT_TT_ONLY_PRECIS;
-    wcscpy_s(lf.lfFaceName, L"Enhanced LED Board-7");
+    strcpy_s(lf.lfFaceName, sizeof(lf.lfFaceName), "Enhanced LED Board-7");
 
     // create and select it
-    HFONT font = ::CreateFontIndirect(&lf);
+    HFONT font = ::CreateFontIndirectA(&lf);
     ::SelectObject(d->hmemdc_, font);
   
     // copy memory bitmap to viewport
