@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2016-2017, PALANDesign Hannover, Germany
+//             2016-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -58,8 +58,8 @@ namespace sprite {
 class base : public dc
 {
 public:
-  drv&  head_;                // head instance
-  base* next_;                // next sprite (with lower z-index) in chain
+  drv&          head_;        // head instance
+  base*         next_;        // next sprite (with lower z-index) in chain
   std::int16_t  z_index_;     // z-index of this sprite
   std::uint16_t frame_;       // actual displayed frame
   vertex_type   position_;    // actual rendered position
@@ -132,7 +132,7 @@ protected:
     return &_root;
   }
 
-  inline base* get_next()
+  inline base* get_next() const
   {
     return next_;
   }
@@ -177,7 +177,7 @@ public:
 
       // check if this background pixel is part of any other sprite
       bool bg_pixel_copied = false;
-      for (base* sprite = *get_root(); sprite != nullptr; sprite = sprite->next_) {
+      for (base* sprite = *get_root(); !!sprite; sprite = sprite->next_) {
         // iterate through all sprites except the own one
         if (sprite == this) {
           continue;
@@ -217,7 +217,7 @@ public:
       // process all sprites for vertex
       bg_pixel = { pt_pixel.vertex, color::none };
       color::value_type mixed_color = color::none;
-      for (base* sprite = *get_root(); sprite != nullptr; sprite = sprite->next_) {
+      for (base* sprite = *get_root(); !!sprite; sprite = sprite->next_) {
         pixel_type p = pt_pixel - sprite->position_;
         if (sprite->pattern_find(sprite->frame_, p)) {
           // pixel needs to be rendered
@@ -297,13 +297,13 @@ public:
 
       // adjust bounding box
       if (vertex.x > pattern_bounding_[frame_].right) {
-        pattern_bounding_[frame_].right = vertex.x;
+        pattern_bounding_[frame_].right = vertex.x + 1;
       }
       else if (vertex.x < pattern_bounding_[frame_].left) {
         pattern_bounding_[frame_].left = vertex.x;
       }
       if (vertex.y > pattern_bounding_[frame_].bottom) {
-        pattern_bounding_[frame_].bottom = vertex.y;
+        pattern_bounding_[frame_].bottom = vertex.y + 1;
       }
       else if (vertex.y < pattern_bounding_[frame_].top) {
         pattern_bounding_[frame_].top = vertex.y;
@@ -502,7 +502,7 @@ public:
     // sheet constants
     byte_per_pixel    = static_cast<std::uint8_t>(sheet_info_->format) >> 4U;     // upper nibble of format is 'bytes/pixel'
     frames_per_row    = sheet_info_->width / sheet_info_->sprite_width;
-    pattern_bounding_ = { 0, 0, static_cast<std::int16_t>(sheet_info_->sprite_width - 1U), static_cast<std::int16_t>(sheet_info_->sprite_height - 1U) };
+    pattern_bounding_ = { 0, 0, static_cast<std::int16_t>(sheet_info_->sprite_width), static_cast<std::int16_t>(sheet_info_->sprite_height) };
     pattern_size_     = sheet_info_->sprite_width * sheet_info_->sprite_height;
   }
 
@@ -664,8 +664,8 @@ public:
     // load the sheet in the sprite
     const std::uint16_t row = frame / frames_per_row * sheet_info_->sprite_height;
     const std::uint16_t col = frame % frames_per_row * sheet_info_->sprite_width;
-    for (std::int_fast16_t y = 0; y < sheet_info_->sprite_height; y++) {
-      for (std::int_fast16_t x = 0; x < sheet_info_->sprite_width; x++) {
+    for (std::int_fast16_t y = 0; y < sheet_info_->sprite_height; ++y) {
+      for (std::int_fast16_t x = 0; x < sheet_info_->sprite_width; ++x) {
         const std::uint8_t* pos = sheet_info_->data + ((row + y) * sheet_info_->width + (col + x)) * byte_per_pixel;
         const color::value_type c = format_to_color(pos);
         if (c != sheet_info_->bg_color) {

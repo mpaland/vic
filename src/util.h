@@ -66,8 +66,8 @@ typedef struct tag_vertex_type {
     return *this;
   }
   inline tag_vertex_type& operator-=(const tag_vertex_type& rhs) {
-    x -= rhs.x;
-    y -= rhs.y;
+    x = static_cast<std::int16_t>(x - rhs.x);
+    y = static_cast<std::int16_t>(y - rhs.y);
     return *this;
   }
 } vertex_type;
@@ -103,6 +103,7 @@ typedef struct tag_pixel_type {
 
 /**
  * Structure to store rectangles
+ * The rect must be "normalized", means top <= bottom and left <= right
  */
 typedef struct tag_rect_type {
   std::int16_t left;
@@ -114,10 +115,16 @@ typedef struct tag_rect_type {
   inline void clear()
   { *this = { 0, 0, 0, 0 }; }
 
-  inline vertex_type top_left() const
+  inline vertex_type& top_left()
   { return *((vertex_type*)this); }
 
-  inline vertex_type bottom_right() const
+  inline const vertex_type& top_left() const
+  { return *((vertex_type*)this); }
+
+  inline vertex_type& bottom_right()
+  { return *((vertex_type*)this + 1U); }
+
+  inline const vertex_type& bottom_right() const
   { return *((vertex_type*)this + 1U); }
 
   inline std::int16_t width() const
@@ -126,8 +133,12 @@ typedef struct tag_rect_type {
   inline std::int16_t height() const
   { return bottom - top; }
 
-  inline bool contain(vertex_type vertex) const
-  { return (vertex.x <= right) && (vertex.y <= bottom) && (vertex.x >= left) && (vertex.y >= top); }
+  // returns true if width and/or height is 0
+  inline bool empty() const
+  { return !width() || !height(); }
+
+  inline bool contain(const vertex_type& vertex) const
+  { return (vertex.x < right) && (vertex.y < bottom) && (vertex.x >= left) && (vertex.y >= top); }
 
   // operators
   inline bool operator==(const tag_rect_type& rhs) const {
@@ -244,7 +255,7 @@ inline std::int32_t div_round_closest(std::int32_t data, std::int16_t divisor)
  * \param b Vertex b
  * \return The squared distance. To get the real distance square root this returned value
  */
-inline std::uint32_t distance_squared(vertex_type a, vertex_type b)
+inline std::uint32_t distance_squared(const vertex_type& a, const vertex_type& b)
 {
   return static_cast<std::uint32_t>((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
 }
@@ -258,7 +269,7 @@ inline std::uint32_t distance_squared(vertex_type a, vertex_type b)
  * \param v1 Line end vertex
  * \return result > 0 if p is on the "right" side, result = 0 if p is exactly on the line, result < 0 if p is on the "left" side
  */
-inline std::int32_t orient_2d(vertex_type p, vertex_type v0, vertex_type v1)
+inline std::int32_t orient_2d(const vertex_type& p, const vertex_type& v0, const vertex_type& v1)
 {
   return (p.x - v1.x) * (v0.y - v1.y) - (p.y - v1.y) * (v0.x - v1.x);
 }
