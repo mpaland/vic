@@ -4,31 +4,29 @@ If you need a robust, universal and embedded library for rendering text and grap
 
 **The VIC lib is beta and still under heavy development. If you have specific questions, do not hesitate to contact me!**
 
-## Highlights
-- Universal library for graphic and alpha numeric displays
-- HEADER ONLY implementation, no module compilation
-- Platform and CPU independent code, NO dependencies, NO STL, NO new/delete, NO `float` - just clean and pure C++11
-- Platform independent driver design with I/O abstraction, the very same low level display driver runs everywhere
-- High performance primitive rendering of lines, circles, triangles, boxes, text etc.
-- Vertex/pixel shader pipe with dynamic clipping, gradient, brush, zoom, rotate etc. shaders.
-- Antialiasing support for smooth edge rendering
-- Full transparency and alpha channel blending support out of the box
-- Support of advanced controls like gauges, bars, (radio) buttons, checkboxes etc.
+## Highlights and Design Goals
+- Blazing fast primitive rendering of lines, circles, triangles, boxes, text etc.
 - Sprite (sheet and dynamic canvas) support for moving objects
+- Vertex/pixel shader pipe with dynamic clipping, gradient, brush, zoom, rotate etc. shaders.
+- Support of all color formats from monochrome up to 32 bit alpha blending color displays
+- Full transparency and alpha channel blending support out of the box
+- Antialiasing support for smooth edge rendering (in work)
+- HEADER ONLY implementation, no module compilation
 - Multiple heads support, as many displays as you may like in one system
-- Multihead driver, combine any number of single displays to one big display
-- Support of various color formats from 1 to 32 bpp displays
-- Support for different font formats (proportional, monospace), ASCII/UTF-8 support
-and text/font rendering
+- Multihead driver, combine any number of (different) single displays to one big display
+- Platform and CPU independent code, NO dependencies, NO STL, NO new/delete, NO `float` - just clean and pure C++(11)
+- Platform independent low level driver design with I/O abstraction, **the very same low level display driver runs everywhere**
+- Support of advanced controls like bitmaps, progress bars, gauges, (radio) buttons, checkboxes etc.
+- Support of different font formats (proportional, monospace), ASCII/UTF-8 support and text/font rendering
 - Framebuffer and viewport support
-- NO floating point math, only fast integer operations
-- VERY clean and stable C++ code, LINT and L4 warning free, automotive ready
+- **NO floating point math**, only fast integer operations
+- VERY clean, mature and stable C++ code, LINT and L4 warning free, automotive ready
 - Very easy to use and fast implemention of own/new display drivers
 - Doxygen commented code
 - MIT license
 
 ## What is VIC NOT?
-vic is not meant to be a full bloated window manager, widgets, dialogs, theme rendering framework.
+VIC is not meant to be a full bloated window manager, widgets, dialogs, theme rendering framework.
 If you need an advanced windowed GUI, there are many other cool libraries around, like µC/GUI, StWin etc.
 
 ## To be done (and implemented)
@@ -50,17 +48,27 @@ Of cource, native rendering on a specialized LCD controller is always faster and
 ![](https://cdn.rawgit.com/mpaland/vic/v.0.3.0/doc/viclib.svg)
 
 ### gpr
-The Graphic Primitive Renderer provides fast rendering functions for graphic primitives like lines, circles, discs, etc.  
+The Graphic Primitive Renderer provides fast rendering functions for all basic primitives like lines, circles, discs, pies, pattern fill, etc.  
 The `gpr` doesn't use any floating point math, only fast integer operations.
-Furthermore the `gpr` should be a collection of reference implementations of the most modern, fast and reliable primitive rendering algorithms.
-So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and
-contribure!
+Furthermore the `gpr` should be a collection of the fastest implementations of the most modern, fast and reliable primitive rendering algorithms.
+So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and contribure!
 
 ### txr
 The Text Renderer is responsible for rendering text fonts on graphic displays. It supports antialiasing, monospaced and proportional fonts.
 
 ### dc
 To draw on anything on the screen, at least one Drawing Context is necessary. The dc 
+The `dc` stores information about background and pen colors, anti aliasing setting and has an associated pipe of transformation shaders.
+Shaders are extremly fast and modify the the rendered pixed before it is sent to the head driver.
+
+Available stock shaders are:
+- alpha blender
+- clipping
+- zoom
+- offset
+- brush
+- gradient
+- rotate
 
 ### tc
 Text context
@@ -75,13 +83,16 @@ The specific display driver. A display together with its controller is reference
 
 ### sprite
 
+sprite::canvas
+
+sprite::sheet
 
 ### ctrl
 The base class for advanced controls like gauges, progress bars, checkboxes, buttons etc.
 
 
 ## Usage
-Using VIC is really easy and fun.
+Using VIC is really easy and fun.  
 In a single head design (just one display in the system) you create your head first by instancing the according driver.
 E.g. on a Windows (emulation/test) platform this would be:
 ```c++
@@ -137,6 +148,22 @@ vic::head::multihead<24U, 8U, 3U> _multihead = { {_head0, 0U, 0U}, {_head1, 8U, 
 // Now, use the multihead like a normal head
 _multihead.line(0, 0, 23, 7);
 ```
+
+## Projects Using VIC
+- [turnkeyboard](https://github.com/mpaland/turnkeyboard) uses VIC as universal display library.  
+(Just send me a mail/issue to get your project listed here)
+
+
+## Contributing
+
+1. Give this project a :star:
+2. Create an issue and describe your idea
+3. [Fork it](https://github.com/mpaland/vic/fork)
+4. Create your feature branch (`git checkout -b my-new-feature`)
+5. Commit your changes (`git commit -am 'Add some feature'`)
+6. Publish the branch (`git push origin my-new-feature`)
+7. Create a new pull request
+8. Profit! :heavy_check_mark:
 
 
 ## License
