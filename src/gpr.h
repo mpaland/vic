@@ -866,13 +866,13 @@ public:
 
 
   /**
-   * Fill region up to the bounding color with the drawing color
-   * Fill routine is only working on displays which support pixel_get()
-   * \param start Start value inside region to fill
-   * \param bounding_color Color of the surrounding bound or bg_color to fill all what is of bg_color
-   * \return true if successful
+   * Fill a region with the drawing color
+   * This routine is only working on displays which support the pixel_get() function
+   * \param start Start vertex inside the region to fill
+   * \param color Color of the surrounding bound or the background color, depending on use_color_as_bounding
+   * \param use_color_as_bounding True to use color as bouning color, false to use color as background color which should be filled
    */
-  void fill(vertex_type start, color::value_type bounding_color)
+  void fill(vertex_type start, color::value_type color, bool use_color_as_bounding = true)
   {
     class floodfill
     {
@@ -888,13 +888,14 @@ public:
       } segment_type;
 
       gpr&               gpr_;
-      color::value_type  bounding_color_;
+      color::value_type  color_;
+      bool               use_color_as_bounding_;
       std::size_t        stack_count_;
-      segment_type       stack_[VIC_GPR_FILL_STACK_SIZE / 8];
+      segment_type       stack_[VIC_GPR_FILL_STACK_SIZE / 8U];
 
       inline void stack_push(segment_type segment)
       {
-        if (stack_count_ < (VIC_GPR_FILL_STACK_SIZE / 8)) {
+        if (stack_count_ < (VIC_GPR_FILL_STACK_SIZE / 8U)) {
           stack_[stack_count_++] = segment;
         }
       }
@@ -902,19 +903,18 @@ public:
       inline segment_type& stack_pop()
       { return stack_[--stack_count_]; }
 
-      // returns true if pixel is of border or drawing color
-      // returns true if col != bg_color       && bounding_color == bg_color 
-      // returns true if col == bounding_color && bounding_color != bg_color 
-      // returns true if col == pen_color
-      inline bool test(vertex_type point) const
+      // returns true if pixel is of : drawing color or
+      // use_color_as_bounding_ == true  : bounding color
+      // use_color_as_bounding_ == false : not of background color
+      inline bool test(const vertex_type& point) const
       {
         const color::value_type col = gpr_.shader_pipe()->pixel_get({ point.x, point.y });
-        return (col == gpr_.color_);          //                        ||
-//             (col == bounding_color_ && bounding_color_ != gpr_.bg_get_color()) ||
-//             (col != bounding_color_ && bounding_color_ == gpr_.bg_get_color());
+        return (col == gpr_.color_)                         ||
+               ((col == color_) &&  use_color_as_bounding_) ||
+               ((col != color_) && !use_color_as_bounding_);
       }
 
-      void fill(vertex_type& start)
+      void fill(const vertex_type& start)
       {
         stack_push({ start.x, static_cast<std::int16_t>(start.x + 1), start.y, 0, 1U, 1U });
         gpr_.pixel_set({ start.x, start.y });
@@ -968,16 +968,17 @@ public:
       }
 
     public:
-      floodfill(gpr& _gpr, vertex_type& start, color::value_type bounding_color)
-      : gpr_(_gpr)
-      , bounding_color_(bounding_color)
-      , stack_count_(0U)
+      floodfill(gpr& _gpr, vertex_type& start, color::value_type color, bool use_color_as_bounding)
+        : gpr_(_gpr)
+        , color_(color)
+        , use_color_as_bounding_(use_color_as_bounding)
+        , stack_count_(0U)
       {
         fill(start);
       }
     };
 
-    floodfill _floodfill(*this, start, bounding_color);
+    floodfill _floodfill(*this, start, color, use_color_as_bounding);
     present();
   }
 
