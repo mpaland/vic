@@ -194,7 +194,7 @@ protected:
    */
   virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    util::vertex_min_x(v0, v1);   // set v0 to min x
+    v0.min_x(v1);   // set v0 to min x
     for (; v0.x <= v1.x; ++v0.x) {
       pixel_set(v0, color);
     }
@@ -210,7 +210,7 @@ protected:
    */
   virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    util::vertex_min_y(v0, v1);   // set v0 to min y
+    v0.min_y(v1);   // set v0 to min y
     for (; v0.y <= v1.y; ++v0.y) {
       pixel_set(v0, color);
     }

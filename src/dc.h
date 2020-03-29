@@ -275,8 +275,9 @@ public:
    */
   inline void box(vertex_type v0, vertex_type v1)
   {
-    util::vertex_top_left(v0, v1);
-    box({ v0.x, v0.y, v1.x, v1.y });
+    rect_type r;
+    r.normalize(v0, v1);
+    box(r);
   }
 
 
@@ -287,7 +288,7 @@ public:
    * \param width Width of the area
    * \param height Height of the area
    */
-  inline void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  inline void move(const vertex_type& source, const vertex_type& destination, std::uint16_t width, std::uint16_t height)
   {
     head_.move(source, destination, width, height);
     present();
@@ -300,7 +301,7 @@ public:
    * \param orig_bottom_right Source bottom/right vertex
    * \param dest_top_left Destination top/left vertex
    */
-  inline void move(vertex_type orig_top_left, vertex_type orig_bottom_right, vertex_type dest_top_left) {
+  inline void move(const vertex_type& orig_top_left, const vertex_type& orig_bottom_right, vertex_type dest_top_left) {
     move(orig_top_left, dest_top_left, orig_bottom_right.x - orig_top_left.x, orig_bottom_right.y - orig_top_left.y);
   }
 };

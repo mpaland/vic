@@ -259,7 +259,7 @@ public:
    * Set a pixel in the actual pen color, no present is called
    * \param vertex Vertex to set
    */
-  inline void pixel_set(vertex_type vertex)
+  inline void pixel_set(const vertex_type& vertex)
   {
     shader_pipe()->pixel_set(vertex, color_);
   }
@@ -270,7 +270,7 @@ public:
    * \param vertex Vertex to set
    * \param color Color of the pixel in ARGB format
    */
-  inline void pixel_set(vertex_type vertex, color::value_type color)
+  inline void pixel_set(const vertex_type& vertex, color::value_type color)
   {
     shader_pipe()->pixel_set(vertex, color);
   }
@@ -281,7 +281,7 @@ public:
    * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline color::value_type pixel_get(vertex_type vertex)
+  inline color::value_type pixel_get(const vertex_type& vertex)
   {
     return shader_pipe()->pixel_get(vertex);
   }
@@ -291,7 +291,7 @@ public:
    * Plot a point (one pixel) in the actual drawing (pen) color
    * \param point Vertex to plot
    */
-  inline void plot(vertex_type point)
+  inline void plot(const vertex_type& point)
   {
     plot(point, color_);
   }
@@ -303,7 +303,7 @@ public:
    * \param point Vertex to plot
    * \param color Color of the pixel
    */
-  inline void plot(vertex_type point, color::value_type color)
+  inline void plot(const vertex_type& point, color::value_type color)
   {
     shader_pipe()->pixel_set(point, color);
     present();
@@ -373,7 +373,7 @@ public:
    */
   inline void line_horz(vertex_type v0, vertex_type v1)
   {
-    util::vertex_min_x(v0, v1);   // set v0 to min x
+    v0.min_x(v1);   // set v0 to min x
     for (; v0.x <= v1.x; ++v0.x) {
       shader_pipe()->pixel_set(v0, color_);
     }
@@ -389,7 +389,7 @@ public:
    */
   inline void line_vert(vertex_type v0, vertex_type v1)
   {
-    util::vertex_min_y(v0, v1);   // set v0 to min y
+    v0.min_y(v1);   // set v0 to min y
     for (; v0.y <= v1.y; ++v0.y) {
       shader_pipe()->pixel_set(v0, color_);
     }
@@ -438,10 +438,11 @@ public:
    * \param v1 Second corner vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
-  inline void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  inline void box(const vertex_type& v0, const vertex_type& v1, std::uint16_t border_radius)
   {
-    util::vertex_top_left(v0, v1);
-    box({ v0.x, v0.y, v1.x, v1.y }, border_radius);
+    rect_type r;
+    r.normalize(v0, v1);
+    box(r, border_radius);
   }
 
 
@@ -465,10 +466,11 @@ public:
    * \param v0 top/left vertex
    * \param v1 bottom/right vertex
    */
-  void rectangle(vertex_type v0, vertex_type v1)
+  void rectangle(const vertex_type& v0, const vertex_type& v1)
   {
-    util::vertex_top_left(v0, v1);
-    rectangle({ v0.x, v0.y, v1.x, v1.y });
+    rect_type r;
+    r.normalize(v0, v1);
+    rectangle(r);
   }
 
 
@@ -498,10 +500,11 @@ public:
    * \param v1 bottom/right vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
-  void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  void rectangle(const vertex_type& v0, const vertex_type& v1, std::uint16_t border_radius)
   {
-    util::vertex_top_left(v0, v1);
-    rectangle({ v0.x, v0.y, v1.x, v1.y }, border_radius);
+    rect_type r;
+    r.normalize(v0, v1);
+    rectangle(r, border_radius);
   }
 
 
@@ -550,15 +553,15 @@ public:
     present_lock();
 
     // ensure v0 is min_x
-    util::vertex_min_x(v1, v2);
-    util::vertex_min_x(v0, v1);
+    v0.min_x(v1);
+    v0.min_x(v2);
 
     // ensure clockwise vertex winding
     const std::int32_t r = util::orient_2d(v1, v0, v2);
     // check if the area of the triangle is 0 (straight line)
     if (r > 0) {
       // v1 is on the right side, swap to get it on the left side (clockwise vertex winding)
-      util::vertex_swap(v1, v2);
+      v1.swap(v2);
     }
     else if (r == 0) {
       // v1 is on a line with v0 and v2
@@ -625,7 +628,7 @@ public:
    * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
-  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 359U)
+  void circle(const vertex_type& center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 359U)
   {
     const std::int16_t xs = center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384;
     const std::int16_t ys = center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384;
@@ -709,7 +712,7 @@ public:
    * \param center Center value
    * \param radius Disc radius
    */
-  void disc(vertex_type center, std::uint16_t radius)
+  void disc(const vertex_type& center, std::uint16_t radius)
   {
     anti_aliasing aa0(*this), aa1(*this), aa2(*this), aa3(*this);
 
@@ -742,7 +745,7 @@ public:
    * \param radius Disc radius
    * \param quadrant Quadrant number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
    */
-  void disc_sector(vertex_type center, std::uint16_t radius, std::uint8_t quadrant)
+  void disc_sector(const vertex_type& center, std::uint16_t radius, std::uint8_t quadrant)
   {
     anti_aliasing aa(*this);
 
@@ -795,7 +798,7 @@ public:
    * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
-  void sector(vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
+  void sector(const vertex_type& center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
   {
     present_lock();
 

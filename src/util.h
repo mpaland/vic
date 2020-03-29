@@ -70,6 +70,39 @@ typedef struct tag_vertex_type {
     y = static_cast<std::int16_t>(y - rhs.y);
     return *this;
   }
+
+  /**
+   * Helper function to swap two vertices (as coordinates)
+   * \param v2 Second vertex
+   */
+  inline void swap(tag_vertex_type& v2)
+  {
+    const tag_vertex_type v = v2;
+    v2    = *this;
+    *this = v;
+  }
+
+  /**
+   * Helper function to swap two vertices so that this vertex contains min x
+   * \param max_x Vertex with the bigger x coord on return
+   */
+  inline void min_x(tag_vertex_type& max_x)
+  {
+    if (x > max_x.x) {
+      swap(max_x);
+    }
+  }
+
+  /**
+   * Helper function to swap two vertices so that this vertex contains min y
+   * \param max_y Vertex with the bigger y coord on return
+   */
+  inline void min_y(tag_vertex_type& max_y)
+  {
+    if (y > max_y.y) {
+      swap(max_y);
+    }
+  }
 } vertex_type;
 
 
@@ -114,6 +147,16 @@ typedef struct tag_rect_type {
   // clear rect
   inline void clear()
   { *this = { 0, 0, 0, 0 }; }
+
+  // set rect and normalize input
+  void normalize(const vertex_type& v1, const vertex_type& v2)
+  {
+    *this = { v1.x < v2.x ? v1.x : v2.x,
+              v1.y < v2.y ? v1.y : v2.y,
+              v2.x < v1.x ? v1.x : v2.x,
+              v2.y < v1.y ? v1.y : v2.y
+            };
+  }
 
   inline vertex_type& top_left()
   { return *((vertex_type*)this); }
@@ -241,7 +284,7 @@ inline std::uint16_t div255(std::uint16_t data)
  * Helper function for integer division with round to closest, like 8 / 3 = 3
  * \param data Input data
  * \param divisor Divisor
- * \return data / divisor 
+ * \return data / divisor
  */
 inline std::int32_t div_round_closest(std::int32_t data, std::int16_t divisor)
 {
@@ -250,14 +293,14 @@ inline std::int32_t div_round_closest(std::int32_t data, std::int16_t divisor)
 
 
 /**
- * Calculate the squared distance between two vertices
- * \param a Vertex a
- * \param b Vertex b
+ * Calculate the squared distance between two vertices (v0 and v1)
+ * \param v0 Vertex v0
+ * \param v1 Vertex v1
  * \return The squared distance. To get the real distance square root this returned value
  */
-inline std::uint32_t distance_squared(const vertex_type& a, const vertex_type& b)
+inline std::uint32_t distance_squared(const vertex_type& v0, const vertex_type& v1)
 {
-  return static_cast<std::uint32_t>((b.x - a.x) * (b.x - a.x) + (b.y - a.y) * (b.y - a.y));
+  return static_cast<std::uint32_t>((v1.x - v0.x) * (v1.x - v0.x) + (v1.y - v0.y) * (v1.y - v0.y));
 }
 
 
@@ -322,82 +365,23 @@ inline std::int16_t cos(std::int16_t angle)
 
 
 /**
- * Helper function to swap two vertices (as coordinates)
- * \param v0 First vertex
- * \param v1 Second vertex
- */
-inline void vertex_swap(vertex_type& v0, vertex_type& v1)
-{
-  const vertex_type vt = v0;
-  v0 = v1;
-  v1 = vt;
-}
-
-
-/**
- * Helper function to swap two vertices so that first vertex contains min x
- * \param min_x Vertex with the smaller x coord on return
- * \param max_x Vertex with the bigger x coord on return
- */
-inline void vertex_min_x(vertex_type& min_x, vertex_type& max_x)
-{
-  if (min_x.x > max_x.x) {
-    vertex_swap(min_x, max_x);
-  }
-}
-
-
-/**
- * Helper function to swap two vertices that first vertex contains min y
- * \param min_y Vertex with the smaller y coord on return
- * \param max_y Vertex with the bigger y coord on return
- */
-inline void vertex_min_y(vertex_type& min_y, vertex_type& max_y)
-{
-  if (min_y.y > max_y.y) {
-    vertex_swap(min_y, max_y);
-  }
-}
-
-
-/**
- * Helper function for rectangles to change two vertices so that the first vertex contains top/left
- * \param top_left Top/left vertex on return
- * \param bottom_right Bottom/right vertex on return
- */
-inline void vertex_top_left(vertex_type& top_left, vertex_type& bottom_right)
-{
-  if (top_left.x > bottom_right.x) {
-    const std::int16_t t = top_left.x;
-    top_left.x     = bottom_right.x;
-    bottom_right.x = t;
-  }
-  if (top_left.y > bottom_right.y) {
-    const std::int16_t t = top_left.y;
-    top_left.y     = bottom_right.y;
-    bottom_right.y = t;
-  }
-}
-
-
-/**
  * Helper function to rotate a vertex of a given angle in respect to given center
  * \param point Vertex to rotate
  * \param center Rotation center
  * \param angle Rotation angle in degree, direction is math positive (clockwise in screen coords system)
  * \return Rotated vertex
  */
-inline vertex_type vertex_rotate(vertex_type point, vertex_type center, std::int16_t angle)
+inline vertex_type vertex_rotate(const vertex_type& point, const vertex_type& center, std::int16_t angle)
 {
   const std::int32_t s = sin(angle);  // normalized to 16384
   const std::int32_t c = cos(angle);  // normalized to 16384
 
   // translate point to center
-  point = point - center;
+  const vertex_type p = point - center;
 
   // rotate point and translate back
-  return { static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(point.x) * c - static_cast<std::int32_t>(point.y) * s), 16384) + center.x),
-           static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(point.x) * s + static_cast<std::int32_t>(point.y) * c), 16384) + center.y)
+  return { static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(p.x) * c - static_cast<std::int32_t>(p.y) * s), 16384) + center.x),
+           static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(p.x) * s + static_cast<std::int32_t>(p.y) * c), 16384) + center.y)
          };
 }
 
