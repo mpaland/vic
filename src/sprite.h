@@ -28,7 +28,7 @@
 // sprite usage:
 //
 // vic::sprite::canvas<400, 1> greenball(_head, 5);   // create 400 pixel sprite object with one frame, z-index 5
-// greenball.set_color(vic::color::brightgreen);      // set drawing color to brightgreen
+// greenball.set_color(vic::color::green);            // set drawing color to green
 // greenball.disc({ 10, 10 }, 10);                    // draw a green filled circle
 // greenball.render({ 50, 10 });                      // render the sprite to 50,10
 //
@@ -45,7 +45,7 @@
 #define _VIC_SPRITE_H_
 
 #include "dc.h"
-#include "util/avl_array.h"
+#include "lib/avl_array.h"
 
 
 namespace vic {
@@ -177,7 +177,8 @@ public:
 
       // check if this background pixel is part of any other sprite
       bool bg_pixel_copied = false;
-      for (base* sprite = *get_root(); !!sprite; sprite = sprite->next_) {
+      for (base* sprite = *get_root(); !!sprite; sprite = sprite->next_)
+      {
         // iterate through all sprites except the own one
         if (sprite == this) {
           continue;
@@ -241,7 +242,7 @@ public:
       restore_set(bg_pixel);
 
       // finally render the pixel on the head
-      // the shader pipe here can't be used here cause the background is handled here 
+      // the shader pipe here can't be used here cause the background is handled here
       head_.pixel_set(pt_pixel.vertex, color::alpha_blend(mixed_color, bg_pixel.color));
     }
   }
@@ -497,6 +498,7 @@ public:
    */
   sheet(drv& head, const sheet_info_type* sheet_info, std::int16_t z_index = 0)
     : base(head, z_index)
+    , pattern_it_(0U)
     , sheet_info_(sheet_info)
   {
     // sheet constants

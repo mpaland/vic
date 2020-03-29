@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2017, PALANDesign Hannover, Germany
+//             2017-2020, paland consult, Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -10,10 +10,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -60,7 +60,7 @@ class avl_array
     size_type right;
   } child_type;
 
-  // node storage, due to possible structure packing effects, single arrays are used instead of a 'node' structure 
+  // node storage, due to possible structure packing effects, single arrays are used instead of a 'node' structure
   Key         key_[Size];                 // node key
   T           val_[Size];                 // node value
   std::int8_t balance_[Size];             // subtree balance
@@ -227,7 +227,7 @@ public:
       return true;
     }
 
-    for (size_type i = root_; i != INVALID_IDX; i = (key < key_[i]) ? child_[i].left : child_[i].right) {     
+    for (size_type i = root_; i != INVALID_IDX; i = (key < key_[i]) ? child_[i].left : child_[i].right) {
       if (key < key_[i]) {
         if (child_[i].left == INVALID_IDX) {
           if (size_ >= max_size()) {
@@ -362,11 +362,8 @@ public:
 
     if (left == INVALID_IDX) {
       if (right == INVALID_IDX) {
-        if (node == root_) {
-          root_ = INVALID_IDX;
-        }
-        else {
-          const size_type parent = get_parent(node);
+        const size_type parent = get_parent(node);
+        if (parent != INVALID_IDX) {
           if (child_[parent].left == node) {
             child_[parent].left = INVALID_IDX;
             delete_balance(parent, -1);
@@ -376,22 +373,31 @@ public:
             delete_balance(parent, 1);
           }
         }
+        else {
+          root_ = INVALID_IDX;
+        }
       }
       else {
         const size_type parent = get_parent(node);
-        child_[parent].left == node ? child_[parent].left = right : child_[parent].right = right;
-
+        if (parent != INVALID_IDX) {
+          child_[parent].left == node ? child_[parent].left = right : child_[parent].right = right;
+        }
+        else {
+          root_ = right;
+        }
         set_parent(right, parent);
-
         delete_balance(right, 0);
       }
     }
     else if (right == INVALID_IDX) {
       const size_type parent = get_parent(node);
-      child_[parent].left == node ? child_[parent].left = left : child_[parent].right = left;
-
+      if (parent != INVALID_IDX) {
+        child_[parent].left == node ? child_[parent].left = left : child_[parent].right = left;
+      }
+      else {
+        root_ = left;
+      }
       set_parent(left, parent);
-
       delete_balance(left, 0);
     }
     else {
@@ -458,22 +464,25 @@ public:
 
     // relocate the node at the end to the deleted node, if it's not the deleted one
     if (node != size_) {
+      size_type parent = INVALID_IDX;
       if (root_ == size_) {
         root_ = node;
       }
       else {
-        const size_type parent = get_parent(size_);
-        if (parent != INVALID_IDX) {  // should never be invalid, but anyway for security
+        parent = get_parent(size_);
           child_[parent].left == size_ ? child_[parent].left = node : child_[parent].right = node;
         }
-      }
 
       // correct childs parent
       set_parent(child_[size_].left,  node);
       set_parent(child_[size_].right, node);
 
       // move content
-      replace(node, size_);
+      key_[node]     = key_[size_];
+      val_[node]     = val_[size_];
+      balance_[node] = balance_[size_];
+      child_[node]   = child_[size_];
+      set_parent(node, parent);
     }
 
     return true;
@@ -554,16 +563,6 @@ private:
         parent_[node] = parent;
       }
     }
-  }
-
-
-  inline void replace(size_type target, size_type source)
-  {
-    key_[target]     = key_[source];
-    val_[target]     = val_[source];
-    balance_[target] = balance_[source];
-    child_[target]   = child_[source];
-    set_parent(target, get_parent(source));
   }
 
 
