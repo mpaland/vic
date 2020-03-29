@@ -31,7 +31,7 @@
 #ifndef _VIC_WIDGET_H_
 #define _VIC_WIDGET_H_
 
-#include "../drv.h"
+#include "../tc.h"
 
 
 namespace vic {
