@@ -28,8 +28,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_WINDOWS_H_
-#define _VIC_DRV_WINDOWS_H_
+#ifndef _VIC_HEAD_WINDOWS_H_
+#define _VIC_HEAD_WINDOWS_H_
 
 #include <Windows.h>
 #include <thread>
@@ -40,8 +40,8 @@
 #include "../tc.h"
 
 
-// defines the driver name and version
-#define VIC_DRV_WINDOWS_VERSION   "Windows driver 4.11"
+// defines the head name and version
+#define VIC_HEAD_WINDOWS_VERSION   "Windows driver 4.11"
 
 
 namespace vic {
@@ -135,7 +135,7 @@ public:
 
   inline virtual const char* version() const
   {
-    return (const char*)VIC_DRV_WINDOWS_VERSION;
+    return (const char*)VIC_HEAD_WINDOWS_VERSION;
   }
 
 
@@ -397,7 +397,7 @@ public:
 
   virtual inline const char* version() const
   {
-    return (const char*)VIC_DRV_WINDOWS_VERSION;
+    return (const char*)VIC_HEAD_WINDOWS_VERSION;
   }
 
 
@@ -633,4 +633,4 @@ public:
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_WINDOWS_H_
+#endif  // _VIC_HEAD_WINDOWS_H_

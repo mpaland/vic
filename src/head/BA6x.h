@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2011-2018, PALANDesign Hannover, Germany
+//             2011-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -34,8 +34,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_BA6X_H_
-#define _VIC_DRV_BA6X_H_
+#ifndef _VIC_HEAD_BA6X_H_
+#define _VIC_HEAD_BA6X_H_
 
 #include <string.h>
 
@@ -44,7 +44,7 @@
 
 
 // defines the driver name and version
-#define VIC_DRV_BA6X_VERSION  "Wincor BA6x driver 2.0.1"
+#define VIC_HEAD_BA6X_VERSION  "Wincor BA6x driver 2.0.1"
 
 
 namespace vic {
@@ -132,7 +132,7 @@ public:
 
   inline virtual const char* version() const
   {
-    return (const char*)VIC_DRV_BA6X_VERSION;
+    return (const char*)VIC_HEAD_BA6X_VERSION;
   }
 
 
@@ -290,7 +290,7 @@ protected:
 public:
 
   // country-specific character set
-  typedef enum tag_country_code_type {
+  typedef enum tag_country_code_type : std::uint8_t {
     USA           = 0x00,
     France        = 0x01,
     Germany       = 0x02,
@@ -322,7 +322,7 @@ public:
    * Set the country-specific character set
    * \return true if successful
    */
-  inline void set_country_code(country_code_type code)
+  void set_country_code(country_code_type code)
   {
     // send 1B 52 CC
     const std::uint8_t cmd[3] = { ESC, 0x52U, static_cast<std::uint8_t>(code) };
@@ -402,7 +402,7 @@ private:
       memcpy(&msg[3], &data[offset], blk_size);
 
       // send data to display
-      bool res = io::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
+      const bool res = io::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
       std::uint8_t response[4];
       std::size_t  len = 4U;
       if (!(res && (read_response(response, len)) && (len == 4U) && (response[0] == 0x04U) && (!(response[1] & 0xA0U)))) {
@@ -444,4 +444,4 @@ private:
 } // namespace head
 } // namespace vic
 
-#endif // _VIC_DRV_BA6X_H_
+#endif // _VIC_HEAD_BA6X_H_

@@ -23,19 +23,19 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Skeleton driver, use this as an easy start for own drivers
-//        Change 'Skeleton' to the new drivers name
+// \brief Skeleton driver, use this as an easy start for own head drivers
+//        Change 'Skeleton' to the new drivers head name
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_SKELETON_H_
-#define _VIC_DRV_SKELETON_H_
+#ifndef _VIC_HEAD_SKELETON_H_
+#define _VIC_HEAD_SKELETON_H_
 
 #include "../drv.h"
 
 
-// defines the driver name and version
-#define VIC_DRV_SKELETON_VERSION   "Skeleton driver 1.00"
+// defines the heads name and version
+#define VIC_HEAD_SKELETON_VERSION   "Skeleton head 1.00"
 
 namespace vic {
 namespace head {
@@ -361,4 +361,4 @@ public:
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_SKELETON_H_
+#endif  // _VIC_HEAD_SKELETON_H_
