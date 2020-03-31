@@ -297,18 +297,7 @@ public:
       pattern_[frame_].insert(vertex, color);
 
       // adjust bounding box
-      if (vertex.x > pattern_bounding_[frame_].right) {
-        pattern_bounding_[frame_].right = vertex.x + 1;
-      }
-      else if (vertex.x < pattern_bounding_[frame_].left) {
-        pattern_bounding_[frame_].left = vertex.x;
-      }
-      if (vertex.y > pattern_bounding_[frame_].bottom) {
-        pattern_bounding_[frame_].bottom = vertex.y + 1;
-      }
-      else if (vertex.y < pattern_bounding_[frame_].top) {
-        pattern_bounding_[frame_].top = vertex.y;
-      }
+      pattern_bounding_[frame_].inflate(vertex);
     }
   }
 

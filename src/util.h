@@ -38,7 +38,7 @@ namespace vic {
 
 
 /**
- * Structure to store coordinates
+ * POD structure to store a vertex (x,y coordinates)
  */
 typedef struct tag_vertex_type {
   std::int16_t x;
@@ -107,7 +107,7 @@ typedef struct tag_vertex_type {
 
 
 /**
- * Structure to store coordinates and an associated ARGB color
+ * POD structure to store a pixel (vertex with an associated ARGB color)
  */
 typedef struct tag_pixel_type {
   vertex_type   vertex;
@@ -135,7 +135,7 @@ typedef struct tag_pixel_type {
 
 
 /**
- * Structure to store rectangles
+ * POD structure to store rectangles
  * The rect must be "normalized", means top <= bottom and left <= right
  */
 typedef struct tag_rect_type {
@@ -180,8 +180,37 @@ typedef struct tag_rect_type {
   inline bool empty() const
   { return !width() || !height(); }
 
+  /**
+   * A vertex is within the rect if it lies on the left or top side or is within all four sides.
+   * A vertex on the right or bottom side is outside the rect.
+   * \param vertex The vertex to check
+   * \return True if the vertex is inside the rect
+   */
   inline bool contain(const vertex_type& vertex) const
-  { return (vertex.x < right) && (vertex.y < bottom) && (vertex.x >= left) && (vertex.y >= top); }
+  {
+    return (vertex.x < right) && (vertex.y < bottom) && (vertex.x >= left) && (vertex.y >= top);
+  }
+
+  /**
+   * Inflate the rect so that the given vertex is inside the rect
+   * If the vertex is already inside the rect, nothing is done
+   * \param rect The vertex to be inside the rect
+   */
+  inline void inflate(const vertex_type& vertex)
+  {
+    if (vertex.x >= right) {
+      right = vertex.x + 1;
+    }
+    else if (vertex.x < left) {
+      left = vertex.x;
+    }
+    if (vertex.y >= bottom) {
+      bottom = vertex.y + 1;
+    }
+    else if (vertex.y < top) {
+      top = vertex.y;
+    }
+  }
 
   // operators
   inline bool operator==(const tag_rect_type& rhs) const {
@@ -191,6 +220,7 @@ typedef struct tag_rect_type {
     return !(*this == rhs);
   }
 } rect_type;
+
 
 
 namespace util {
