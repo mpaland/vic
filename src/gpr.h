@@ -46,6 +46,13 @@ namespace vic {
  */
 class gpr
 {
+  // class is non copyable
+  const gpr& operator=(const gpr& rhs)
+  { return rhs; }
+
+  bool              anti_aliasing_;   // true if AA is enabled
+  color::value_type color_;           // actual drawing color
+
 protected:
 
   // virtual context/driver functions
@@ -54,6 +61,19 @@ protected:
   virtual shader::base*     shader_pipe(void) const = 0;
   virtual void              present(void) = 0;
   virtual void              present_lock(bool lock = true) = 0;
+
+
+  /**
+  * protected ctor
+  * Init vars
+  */
+  gpr()
+    : anti_aliasing_(false)   // no AA as default
+    , color_(color::gray)     // default drawing color
+  { }
+
+
+public:
 
   /**
    * Anti Alising renderer
@@ -213,24 +233,14 @@ protected:
   };
 
 
-public:
-
-  /**
-   * ctor
-   * Init vars
-   */
-  gpr()
-    : anti_aliasing_(false)   // no AA as default
-    , color_(color::gray)     // default drawing color
-  { }
-
-
   /**
    * Set the drawing color
    * \param color Drawing color in ARGB format
    */
   void set_color(color::value_type color)
-  { color_ = color; }
+  {
+    color_ = color;
+  }
 
 
   /**
@@ -238,7 +248,9 @@ public:
    * \return Actual drawing color in ARGB format
    */
   color::value_type get_color() const
-  { return color_; }
+  {
+    return color_;
+  }
 
 
 
@@ -985,18 +997,6 @@ public:
     present();
   }
 
-
-///////////////////////////////////////////////////////////////////////////////
-
-protected:
-  bool                anti_aliasing_;   // true if AA is enabled
-  color::value_type   color_;           // actual drawing color
-
-private:
-
-  // non copyable
-  const gpr& operator=(const gpr& rhs)
-  { return rhs; }
 };
 
 } // namespace vic

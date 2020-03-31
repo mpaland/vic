@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2018, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -161,6 +161,7 @@ protected:
   ///////////////////////////////////////////////////////////////////////////////
   // G R A P H I C   F U N C T I O N S
   //
+  // These are fallback functions if the head does not implement them
 
   /**
    * Set pixel in given color
@@ -279,6 +280,7 @@ protected:
   ///////////////////////////////////////////////////////////////////////////////
   // A L P H A   T E X T   F U N C T I O N S
   //
+  // These are fallback functions if the head does not implement them
 
   /**
    * Output a single ASCII/UNICODE char at the actual cursor position
@@ -389,7 +391,9 @@ public:
    * \return Screen width in pixel or chars
    */
   inline std::uint16_t screen_width() const
-  { return screen_size_x_; }
+  {
+    return screen_size_x_;
+  }
 
 
   /**
@@ -397,7 +401,9 @@ public:
    * \return Screen height in pixel or chars
    */
   inline std::uint16_t screen_height() const
-  { return screen_size_y_; }
+  {
+    return screen_size_y_;
+  }
 
 
   /**
@@ -406,7 +412,9 @@ public:
    * \return true if the given vertex is within the screen area
    */
   inline bool screen_is_inside(const vertex_type& v) const
-  { return v.x < screen_size_x_ && v.y < screen_size_y_ && v.x >= 0 && v.y >= 0; }
+  {
+    return v.x < screen_size_x_ && v.y < screen_size_y_ && v.x >= 0 && v.y >= 0;
+  }
 
 
   /**
@@ -414,7 +422,9 @@ public:
    * \return Viewport width in pixel or chars
    */
   inline std::uint16_t viewport_width() const
-  { return viewport_size_x_; }
+  {
+    return viewport_size_x_;
+  }
 
 
   /**
@@ -422,7 +432,9 @@ public:
    * \return Viewport height in pixel or chars
    */
   inline std::uint16_t viewport_height() const
-  { return viewport_size_y_; }
+  {
+    return viewport_size_y_;
+  }
 
 
   /**
@@ -431,8 +443,10 @@ public:
    * \return true if the given vertex is within the viewport area
    */
   inline bool viewport_is_inside(vertex_type v) const
-  { return v.x >= viewport_.x && v.x < (viewport_.x + viewport_size_x_) &&
-           v.y >= viewport_.y && v.y < (viewport_.y + viewport_size_y_); }
+  {
+    return v.x >= viewport_.x && v.x < (viewport_.x + viewport_size_x_) &&
+           v.y >= viewport_.y && v.y < (viewport_.y + viewport_size_y_);
+  }
 
 
   /**
@@ -451,7 +465,9 @@ public:
    * \return Viewport origin in screen coordinates
    */
   inline virtual vertex_type viewport_get() const
-  { return viewport_; }
+  {
+    return viewport_;
+  }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -464,7 +480,9 @@ public:
    * \param alpha Alpha level, 0 = opaque/active, 255 = complete transparent/disabled
    */
   virtual bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0U)
-  { (void)plane; (void)alpha; return false; }
+  {
+    (void)plane; (void)alpha; return false;
+  }
 
 
  /**
@@ -472,7 +490,10 @@ public:
   * \param plane The index of the framebuffer/plane to access, 0 for 1st
   */
   virtual bool framebuffer_set_access(std::size_t plane)
-  { (void)plane; return false; }
+  {
+    (void)plane;
+    return false;
+  }
 
 
   /**
@@ -480,7 +501,9 @@ public:
    * \return Number of frame buffers
    */
   virtual std::size_t framebuffer_get_count() const
-  { return 1U; }
+  {
+    return 1U;
+  }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -492,7 +515,9 @@ public:
    * \param enable True to switch the display on, false to switch it off (standby, powersave)
    */
   virtual void display_enable(bool enable = true)
-  { (void)enable; }
+  {
+    (void)enable;
+  }
 
 
   /**
@@ -500,7 +525,9 @@ public:
    * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
    */
   virtual void display_brightness(std::uint8_t level)
-  { (void)level; }
+  {
+    (void)level;
+  }
 
 
   /**
@@ -508,7 +535,9 @@ public:
    * \param level 0: minimum; 255: maximum
    */
   virtual void display_contrast(std::uint8_t level)
-  { (void)level; }
+  {
+    (void)level;
+  }
 
 };
 

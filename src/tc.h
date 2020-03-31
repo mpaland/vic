@@ -138,7 +138,9 @@ public:
    * \return Screen width in chars
    */
   inline std::uint16_t screen_width() const
-  { return head_->screen_width(); }
+  {
+    return head_->screen_width();
+  }
 
 
   /**
@@ -146,7 +148,9 @@ public:
    * \return Screen height in chars
    */
   inline std::uint16_t screen_height() const
-  { return head_->screen_height(); }
+  {
+    return head_->screen_height();
+  }
 
 
   ///////////////////////////////////////////////////////////////////////////////
