@@ -130,7 +130,7 @@ public:
 /**
  * Alpha blending shader
  * This shader alpha blends all pixels
- * Use this for partial alpha blending when alpha blending is disabled in the output shader
+ * Use this for dynamic alpha blending effects when alpha blending is disabled in the output shader
  */
 class alpha_blend : public base
 {
@@ -206,17 +206,17 @@ public:
 
   /**
    * Test if the given vertex is inside the clipping region - and should be drawn
-   * \param v Vertex to test
+   * \param vertex Vertex to test
    * \return True if given vertex is within the active clipping region and should be drawn
    */
-  inline bool is_inside(const vertex_type& v) const
+  inline bool is_inside(const vertex_type& vertex) const
   {
     // region_contain  inside_  is_inside
     //       1            1         1
     //       1            0         0
     //       0            1         0
     //       0            0         1
-    return !(region_.contain(v) ^ inside_);
+    return !(region_.contain(vertex) ^ inside_);
   }
 
 
@@ -276,7 +276,7 @@ public:
 
   /**
    * Return the color of the pixel
-   * \param point Vertex of the pixel
+   * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
   inline virtual color::value_type pixel_get(vertex_type vertex) final
@@ -339,12 +339,83 @@ public:
 
   /**
    * Return the color of the pixel
-   * \param point Vertex of the pixel
+   * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
   inline virtual color::value_type pixel_get(vertex_type vertex) final
   {
     return next_->pixel_get(vertex + offset_);
+  }
+};
+
+
+
+/**
+ * Flip (mirror) vertex shader class
+ */
+class flip final : public base
+{
+  bool        enable_h_;
+  bool        enable_v_;
+  vertex_type axis_h_;
+  vertex_type axis_v_;
+
+public:
+
+  /**
+  * ctor
+  */
+  flip()
+    : enable_h_(false)
+    , enable_v_(false)
+  { }
+
+
+  /**
+  * Enable/disable the horizontal flip effect
+  * \param enable Enable/disable the horizontal flip effect
+  * \param axis Horizontal flip axis
+  */
+  void set_horizontal(bool enable, const vertex_type& axis)
+  {
+    enable_h_ = enable;
+    axis_h_   = axis;
+  }
+
+
+  /**
+  * Enable/disable the vertical flip effect
+  * \param enable Enable/disable the vertical flip effect
+  * \param axis Vertical flip axis
+  */
+  void set_vertical(bool enable, const vertex_type& axis)
+  {
+    enable_v_ = enable;
+    axis_v_   = axis;
+  }
+
+
+  /**
+   * Set pixel in given color
+   * \param vertex Pixel coordinates
+   * \param color Color of pixel in ARGB format
+   */
+  inline virtual void pixel_set(vertex_type vertex, color::value_type color)
+  {
+    next_->pixel_set({ enable_h_ ? 2 * axis_h_.x - vertex.x : vertex.x,
+                       enable_v_ ? 2 * axis_v_.y - vertex.y : vertex.y }, color);
+  }
+
+
+  /**
+  * Return the color of the pixel
+  * \param vertex Vertex of the pixel
+  * \return Color of pixel in ARGB format
+  */
+  inline virtual color::value_type pixel_get(vertex_type vertex)
+  {
+    return next_->pixel_get({ enable_h_ ? 2 * axis_h_.x - vertex.x : vertex.x,
+                              enable_v_ ? 2 * axis_v_.y - vertex.y : vertex.y });
   }
 };
 
