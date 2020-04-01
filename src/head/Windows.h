@@ -36,12 +36,10 @@
 #include <string>
 
 #include "../drv.h"
-#include "../dc.h"
-#include "../tc.h"
 
 
 // defines the head name and version
-#define VIC_HEAD_WINDOWS_VERSION   "Windows driver 4.11"
+#define VIC_HEAD_WINDOWS_VERSION   "Windows head 4.11"
 
 
 namespace vic {
@@ -60,6 +58,21 @@ template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y,
 class windows final : public drv
 {
 public:
+  // must be public for thread accessibility
+  HANDLE        thread_handle_;     // worker thread handle
+  HANDLE        wnd_init_ev_;       // window init event
+  std::string   caption_;           // window caption
+
+  HWND          hwnd_;              // window handle
+  HDC           hmemdc_;            // mem dc
+
+  std::int16_t  window_x_;          // x coordinate of output window
+  std::int16_t  window_y_;          // y coordinate of output window
+  std::uint8_t  zoom_x_;            // x zoom factor of output window
+  std::uint8_t  zoom_y_;            // y zoom factor of output window
+
+  std::uint32_t*  frame_buffer_;    // frame buffer for fast drawing
+
 
   /**
    * ctor
@@ -237,7 +250,7 @@ private:
     WNDCLASSEXA wc = { };
     wc.cbSize = sizeof(WNDCLASSEXA);
     wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = ::DefWindowProc;
+    wc.lpfnWndProc = ::DefWindowProcA;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = hInstance;
@@ -288,29 +301,13 @@ private:
 
     // process upon WM_QUIT or error
     MSG Msg;
-    while (::GetMessage(&Msg, nullptr, 0, 0) > 0)
+    while (::GetMessageA(&Msg, nullptr, 0, 0) > 0)
     {
       ::TranslateMessage(&Msg);
-      ::DispatchMessage(&Msg); 
+      ::DispatchMessageA(&Msg); 
     }
   }
 
-
-public:
-  // must be public for thread accessibility
-  HANDLE        thread_handle_;     // worker thread handle
-  HANDLE        wnd_init_ev_;       // window init event
-  std::string   caption_;           // window caption
-
-  HWND          hwnd_;              // window handle
-  HDC           hmemdc_;            // mem dc
-
-  std::int16_t  window_x_;          // x coordinate of output window
-  std::int16_t  window_y_;          // y coordinate of output window
-  std::uint8_t  zoom_x_;            // x zoom factor of output window
-  std::uint8_t  zoom_y_;            // y zoom factor of output window
-
-  std::uint32_t*  frame_buffer_;    // frame buffer for fast drawing
 };
 
 
@@ -327,6 +324,32 @@ template<std::uint16_t Columns, std::uint16_t Rows,
 class windows_text final : public drv
 {
 public:
+  // must be public for thread accessibility
+  HANDLE        thread_handle_;           // worker thread handle
+  HANDLE        wnd_init_ev_;             // window init event
+  std::string   caption_;                 // window caption
+
+  std::uint16_t frame_buffer_[Columns][Rows];
+
+  std::uint16_t font_height_;             // font height in pixel
+  std::uint16_t font_width_;
+  std::uint16_t char_x_margin_;
+  std::uint16_t char_y_margin_;
+  std::uint16_t char_x_padding_;
+  std::uint16_t char_y_padding_;
+
+  vertex_type   text_pos_;
+
+  std::int16_t  window_x_;                // x coordinate of output window
+  std::int16_t  window_y_;                // y coordinate of output window
+  std::int16_t  window_size_x_;           // window x size
+  std::int16_t  window_size_y_;           // window y size
+  HWND          hwnd_;
+  HDC           hmemdc_;
+  HBITMAP       hbmp_;
+
+  color::value_type bg_color_;            // background color
+
 
   /**
    * ctor
@@ -519,7 +542,7 @@ private:
     WNDCLASSEXA wc = { };
     wc.cbSize = sizeof(WNDCLASSEXA);
     wc.style = CS_HREDRAW | CS_VREDRAW;
-    wc.lpfnWndProc = ::DefWindowProc; 
+    wc.lpfnWndProc = ::DefWindowProcA;
     wc.cbClsExtra = 0;
     wc.cbWndExtra = 0;
     wc.hInstance = hInstance;
@@ -594,40 +617,13 @@ private:
 
     // process upon WM_QUIT or error
     MSG Msg;
-    while (::GetMessage(&Msg, nullptr, 0, 0) > 0)
+    while (::GetMessageA(&Msg, nullptr, 0, 0) > 0)
     {
       ::TranslateMessage(&Msg);
-      ::DispatchMessage(&Msg); 
+      ::DispatchMessageA(&Msg); 
     }
   }
 
-
-public:
-  // must be public for thread accessibility
-  HANDLE        thread_handle_;           // worker thread handle
-  HANDLE        wnd_init_ev_;             // window init event
-  std::string   caption_;                 // window caption
-
-  std::uint16_t frame_buffer_[Columns][Rows];
-
-  std::uint16_t font_height_;             // font height in pixel
-  std::uint16_t font_width_;
-  std::uint16_t char_x_margin_;
-  std::uint16_t char_y_margin_;
-  std::uint16_t char_x_padding_;
-  std::uint16_t char_y_padding_;
-
-  vertex_type   text_pos_;
-
-  std::int16_t  window_x_;                // x coordinate of output window
-  std::int16_t  window_y_;                // y coordinate of output window
-  std::int16_t  window_size_x_;           // window x size
-  std::int16_t  window_size_y_;           // window y size
-  HWND          hwnd_;
-  HDC           hmemdc_;
-  HBITMAP       hbmp_;
-
-  color::value_type bg_color_;            // background color
 };
 
 } // namespace head

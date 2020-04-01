@@ -27,15 +27,15 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_ILI9325_H_
-#define _VIC_DRV_ILI9325_H_
+#ifndef _VIC_HEAD_ILI9325_H_
+#define _VIC_HEAD_ILI9325_H_
 
 #include "../drv.h"
-#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
 // defines the driver name and version
-#define VIC_DRV_ILI9325_VERSION   "ILI9325 driver 0.10"
+#define VIC_HEAD_ILI9325_VERSION   "ILI9325 driver 0.20"
+
 
 namespace vic {
 namespace head {
@@ -541,4 +541,4 @@ private:
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_ILI9325_H_
+#endif  // _VIC_HEAD_ILI9325_H_
