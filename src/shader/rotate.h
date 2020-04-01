@@ -63,7 +63,7 @@ public:
    * \param center Rotation center
    * \param angle Rotation angle in degree, direction is math positive (clockwise in screen coords system)
    */
-  void set_param(vertex_type center, std::int16_t angle)
+  void set(vertex_type center, std::int16_t angle)
   {
     center_ = center;
     angle_  = angle;

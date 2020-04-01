@@ -42,9 +42,6 @@
 #include "font/LCD_8x8.h"
 #include "font/Arial_num_16x24_AA4.h"
 
-// sprite sheets
-#include "sprite_sheets/bina.h"
-
 
 extern vic::drv& get_singlehead(void);
 
