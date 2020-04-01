@@ -76,7 +76,7 @@ protected:
     , head_(head)
     , next_(nullptr)
     , z_index_(z_index)
-    , frame_(0U)
+    , frame_(0xFFFFU)       // invalid frame as default
     , position_({ 0, 0 })
   {
     // register sprite
@@ -86,22 +86,20 @@ protected:
     }
     else {
       // insert sprite in sprite chain, the highest z-index is first (root), the lowest z-index is last
-      for (base* b = *get_root(); b != nullptr; b = b->next_) {
+      if ((*get_root())->z_index_ < z_index_) {
+        // exchange root element
+        base* tmp   = *get_root();
+        *get_root() = this;
+        next_       = tmp;
+        return;
+      }
+      for (base* b = *get_root(); !!b; b = b->next_) {
         if ((b->z_index_ < z_index_) || (!b->next_)) {
-          if (b == *get_root()) {
-            // exchange root element
-            base* tmp   = *get_root();
-            *get_root() = this;
-            next_       = tmp;
-            return;
-          }
-          else {
-            // exchange/append list element
-            base* tmp = b->next_;
-            b->next_  = this;
-            next_     = tmp;
-            return;
-          }
+          // exchange/append list element
+          base* tmp = b->next_;
+          b->next_  = this;
+          next_     = tmp;
+          return;
         }
       }
     }
@@ -395,8 +393,8 @@ public:
 
   virtual inline bool pattern_find(std::uint16_t frame, pixel_type& pixel) final
   {
-    if (!pattern_bounding_[frame].contain(pixel.vertex)) {
-      // pixel is out of canvas
+    if ((frame == 0xFFFFU) || !pattern_bounding_[frame].contain(pixel.vertex)) {
+      // frame invalid or pixel is out of canvas
       return false;
     }
     return pattern_[frame].find(pixel.vertex, pixel.color);
@@ -534,8 +532,8 @@ public:
 
   virtual inline bool pattern_find(std::uint16_t frame, pixel_type& pixel) final
   {
-    if (!pattern_bounding_.contain(pixel.vertex)) {
-      // pixel is out of sheet frame
+    if ((frame == 0xFFFFU) || !pattern_bounding_.contain(pixel.vertex)) {
+      // frame invalid or pixel is out of sheet frame
       return false;
     }
 
