@@ -137,6 +137,7 @@ typedef struct tag_pixel_type {
 /**
  * POD structure to store rectangles
  * The rect must be "normalized", means top <= bottom and left <= right
+ * Top and left side is within the rect. Bottom and right side are outside the rect.
  */
 typedef struct tag_rect_type {
   std::int16_t left;
@@ -149,12 +150,13 @@ typedef struct tag_rect_type {
   { *this = { 0, 0, 0, 0 }; }
 
   // set rect and normalize input
+  // Both vertices will be inside the box
   void normalize(const vertex_type& v1, const vertex_type& v2)
   {
-    *this = { v1.x < v2.x ? v1.x : v2.x,
-              v1.y < v2.y ? v1.y : v2.y,
-              v2.x < v1.x ? v1.x : v2.x,
-              v2.y < v1.y ? v1.y : v2.y
+    *this = { v1.x < v2.x ? v1.x     : v2.x,      // left
+              v1.y < v2.y ? v1.y     : v2.y,      // top
+              v2.x < v1.x ? v1.x + 1 : v2.x + 1,  // right
+              v2.y < v1.y ? v1.y + 1 : v2.y + 1   // bottom
             };
   }
 
