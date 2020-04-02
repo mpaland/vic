@@ -271,7 +271,7 @@ public:
    * Set a pixel in the actual pen color, no present is called
    * \param vertex Vertex to set
    */
-  inline void pixel_set(const vertex_type& vertex)
+  inline void pixel_set(vertex_type vertex)
   {
     shader_pipe()->pixel_set(vertex, color_);
   }
@@ -282,7 +282,7 @@ public:
    * \param vertex Vertex to set
    * \param color Color of the pixel in ARGB format
    */
-  inline void pixel_set(const vertex_type& vertex, color::value_type color)
+  inline void pixel_set(vertex_type vertex, color::value_type color)
   {
     shader_pipe()->pixel_set(vertex, color);
   }
@@ -293,7 +293,7 @@ public:
    * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline color::value_type pixel_get(const vertex_type& vertex)
+  inline color::value_type pixel_get(vertex_type vertex)
   {
     return shader_pipe()->pixel_get(vertex);
   }
@@ -301,23 +301,23 @@ public:
 
   /**
    * Plot a point (one pixel) in the actual drawing (pen) color
-   * \param point Vertex to plot
+   * \param vertex Vertex to plot
    */
-  inline void plot(const vertex_type& point)
+  inline void plot(vertex_type vertex)
   {
-    plot(point, color_);
+    plot(vertex, color_);
   }
 
 
   /**
    * Plot a point (one pixel) in the given color
    * Basically this is pixel_set with immediate present()
-   * \param point Vertex to plot
+   * \param vertex Vertex to plot
    * \param color Color of the pixel
    */
-  inline void plot(const vertex_type& point, color::value_type color)
+  inline void plot(vertex_type vertex, color::value_type color)
   {
-    shader_pipe()->pixel_set(point, color);
+    shader_pipe()->pixel_set(vertex, color);
     present();
   }
 
@@ -412,12 +412,13 @@ public:
   /**
    * Draw a box (filled rectangle)
    * This is should be done by a high speed driver implementation if no shader is used
+   * Top, left is inside the box. Bottom, right is outside the box
    * \param rect Box bounding
    */
   void box(const rect_type& rect)
   {
-    for (std::int16_t y = rect.top; y <= rect.bottom; ++y) {
-      for (std::int16_t x = rect.left; x <= rect.right; ++x) {
+    for (std::int16_t y = rect.top; y < rect.bottom; ++y) {
+      for (std::int16_t x = rect.left; x < rect.right; ++x) {
         shader_pipe()->pixel_set({ x, y }, color_);
       }
     }
@@ -433,13 +434,13 @@ public:
   void box(const rect_type& rect, std::uint16_t border_radius)
   {
     present_lock();
-    box({ static_cast<std::int16_t>(rect.left + border_radius), rect.top, static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top + border_radius) });
-    box({ rect.left, static_cast<std::int16_t>(rect.top + border_radius), rect.right, static_cast<std::int16_t>(rect.bottom - border_radius) });
-    box({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - border_radius), static_cast<std::int16_t>(rect.right - border_radius), rect.bottom });
-    disc_sector({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top    + border_radius) }, border_radius, 0U);
-    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.top    + border_radius) }, border_radius, 1U);
-    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 2U);
-    disc_sector({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 3U);
+    box({ static_cast<std::int16_t>(rect.left + border_radius), rect.top, static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.top + border_radius) });
+    box({ rect.left, static_cast<std::int16_t>(rect.top + border_radius), static_cast<std::int16_t>(rect.right - 1), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) });
+    box({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius), static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.bottom - 1) });
+    disc_sector({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 0U);
+    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 1U);
+    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 2U);
+    disc_sector({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 3U);
     present_lock(false);    // unlock and present
   }
 
@@ -450,7 +451,7 @@ public:
    * \param v1 Second corner vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
-  inline void box(const vertex_type& v0, const vertex_type& v1, std::uint16_t border_radius)
+  inline void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
     rect_type r;
     r.normalize(v0, v1);
@@ -465,20 +466,20 @@ public:
   void rectangle(const rect_type& rect)
   {
     present_lock();
-    line(rect.top_left(), { rect.right, rect.top });
-    line({ rect.right, rect.top }, rect.bottom_right());
-    line(rect.bottom_right(), { rect.left, rect.bottom });
-    line({ rect.left, rect.bottom }, rect.top_left());
+    line(rect.top_left(), { rect.right - 1, rect.top });
+    line({ rect.right - 1, rect.top }, { rect.right - 1, rect.bottom - 1 });
+    line({ rect.right - 1, rect.bottom - 1 }, { rect.left, rect.bottom - 1});
+    line({ rect.left, rect.bottom - 1}, rect.top_left());
     present_lock(false);    // unlock and present
   }
 
 
   /**
    * Draw a rectangle (frame) with the current pen, vertex to rect wrapper
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
    */
-  void rectangle(const vertex_type& v0, const vertex_type& v1)
+  void rectangle(vertex_type v0, vertex_type v1)
   {
     rect_type r;
     r.normalize(v0, v1);
@@ -494,25 +495,25 @@ public:
   void rectangle(const rect_type& rect, std::uint16_t border_radius)
   {
     present_lock();
-    line({ static_cast<std::int16_t>(rect.right - border_radius), rect.top }, { static_cast<std::int16_t>(rect.left + border_radius), rect.top });
+    line({ static_cast<std::int16_t>(rect.right - 1 - border_radius), rect.top }, { static_cast<std::int16_t>(rect.left + border_radius), rect.top });
     circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 90U, 180U);
-    line({ rect.left, static_cast<std::int16_t>(rect.top + border_radius) }, { rect.left, static_cast<std::int16_t>(rect.bottom - border_radius) });
-    circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 180U, 270U);
-    line({ static_cast<std::int16_t>(rect.left + border_radius), rect.bottom }, { static_cast<std::int16_t>(rect.right - border_radius), rect.bottom });
-    circle({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.bottom - border_radius) }, border_radius, 270U, 360U);
-    line({ rect.right, static_cast<std::int16_t>(rect.bottom - border_radius) }, { rect.right, static_cast<std::int16_t>(rect.top + border_radius) });
-    circle({ static_cast<std::int16_t>(rect.right - border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 0U,  90U);
+    line({ rect.left, static_cast<std::int16_t>(rect.top + border_radius) }, { rect.left, static_cast<std::int16_t>(rect.bottom - 1 - border_radius) });
+    circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 180U, 270U);
+    line({ static_cast<std::int16_t>(rect.left + border_radius), rect.bottom }, { static_cast<std::int16_t>(rect.right - 1 - border_radius), rect.bottom });
+    circle({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 270U, 360U);
+    line({ static_cast<std::int16_t>(rect.right - 1), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, { rect.right, static_cast<std::int16_t>(rect.top + border_radius) });
+    circle({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 0U,  90U);
     present_lock(false);    // unlock and present
   }
 
 
   /**
    * Draw a rectangle (frame) with a corner radius, vertex to rect wrapper
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
-  void rectangle(const vertex_type& v0, const vertex_type& v1, std::uint16_t border_radius)
+  void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
     rect_type r;
     r.normalize(v0, v1);
@@ -640,7 +641,7 @@ public:
    * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
-  void circle(const vertex_type& center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 359U)
+  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 359U)
   {
     const std::int16_t xs = center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384;
     const std::int16_t ys = center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384;
@@ -724,7 +725,7 @@ public:
    * \param center Center value
    * \param radius Disc radius
    */
-  void disc(const vertex_type& center, std::uint16_t radius)
+  void disc(vertex_type center, std::uint16_t radius)
   {
     anti_aliasing aa0(*this), aa1(*this), aa2(*this), aa3(*this);
 
@@ -757,7 +758,7 @@ public:
    * \param radius Disc radius
    * \param quadrant Quadrant number: 0: top/right, 1: top/left, 2: bottom/left, 3: bottom/right
    */
-  void disc_sector(const vertex_type& center, std::uint16_t radius, std::uint8_t quadrant)
+  void disc_sector(vertex_type center, std::uint16_t radius, std::uint8_t quadrant)
   {
     anti_aliasing aa(*this);
 
@@ -810,7 +811,7 @@ public:
    * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
-  void sector(const vertex_type& center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
+  void sector(vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::uint16_t start_angle, std::uint16_t end_angle)
   {
     present_lock();
 

@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2018, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -188,7 +188,9 @@ public:
    * \return Screen width in pixel
    */
   inline virtual std::uint16_t screen_width() const final
-  { return head_.screen_width(); }
+  {
+    return head_.screen_width();
+  }
 
 
   /**
@@ -196,7 +198,9 @@ public:
    * \return Screen height in pixel
    */
   inline virtual std::uint16_t screen_height() const final
-  { return head_.screen_height(); }
+  {
+    return head_.screen_height();
+  }
 
 
   /**
@@ -270,8 +274,8 @@ public:
 
   /**
    * Draw a box (filled rectangle), vertex to rect wrapper
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
    */
   inline void box(vertex_type v0, vertex_type v1)
   {
@@ -283,27 +287,30 @@ public:
 
   /**
    * Move display area
+   * \param source Source rect
+   * \param destination Destination top/left vertex
+   */
+  inline void move(const rect_type& source, vertex_type destination) {
+    head_.move(source, destination);
+  }
+
+
+  /**
+   * Move display area, wrapper
    * \param source Source top/left vertex
    * \param destination Destination top/left vertex
    * \param width Width of the area
    * \param height Height of the area
    */
-  inline void move(const vertex_type& source, const vertex_type& destination, std::uint16_t width, std::uint16_t height)
+  inline void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
   {
-    head_.move(source, destination, width, height);
+    rect_type src;
+    src.top_left()     = source;
+    src.bottom_right() = { source.x + width, source.y + height };
+    move(src, destination);
     present();
   }
 
-
-  /**
-   * move wrapper, vertex based
-   * \param orig_top_left Source top/left vertex
-   * \param orig_bottom_right Source bottom/right vertex
-   * \param dest_top_left Destination top/left vertex
-   */
-  inline void move(const vertex_type& orig_top_left, const vertex_type& orig_bottom_right, vertex_type dest_top_left) {
-    move(orig_top_left, dest_top_left, orig_bottom_right.x - orig_top_left.x, orig_bottom_right.y - orig_top_left.y);
-  }
 };
 
 } // namespace vic

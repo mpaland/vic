@@ -224,9 +224,9 @@ protected:
    * \param rect Box bounding, included in box
    * \param color Box color
    */
-  virtual void box(rect_type rect, color::value_type color)
+  virtual void box(const rect_type& rect, color::value_type color)
   {
-    for (std::int_fast16_t y = rect.top; y <= rect.bottom; ++y) {
+    for (std::int_fast16_t y = rect.top; y < rect.bottom; ++y) {
       line_horz({ rect.left, static_cast<std::int16_t>(y) }, { rect.right, static_cast<std::int16_t>(y) }, color);
     }
   }
@@ -235,40 +235,38 @@ protected:
   /**
    * Move display area
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param source Source top/left vertex
+   * \param source Source rect
    * \param destination Destination top/left vertex
-   * \param width Width of the area
-   * \param height Height of the area
    */
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  virtual void move(const rect_type& source, vertex_type destination)
   {
-    if (source.x < destination.x) {
-      if (source.y < destination.y) {
-        for (std::int_fast16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int_fast16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
+    if (source.left < destination.x) {
+      if (source.top < destination.y) {
+        for (std::int_fast16_t dy = destination.y + source.height() - 1, sy = source.bottom - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int_fast16_t dx = destination.x + source.width() - 1, sx = source.right - 1; dx >= destination.x; --dx, --sx) {
             pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
       else {
-        for (std::int_fast16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int_fast16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
+        for (std::int_fast16_t dy = destination.y, sy = source.top; dy < destination.y + source.height(); ++dy, ++sy) {
+          for (std::int_fast16_t dx = destination.x + source.width() - 1, sx = source.right - 1; dx >= destination.x; --dx, --sx) {
             pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
     }
     else {
-      if (source.y < destination.y) {
-        for (std::int_fast16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int_fast16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
+      if (source.top < destination.y) {
+        for (std::int_fast16_t dy = destination.y + source.height() - 1, sy = source.bottom - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int_fast16_t dx = destination.x, sx = source.left; dx < destination.x + source.width(); ++dx, ++sx) {
             pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
       }
       else {
-        for (std::int_fast16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int_fast16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
+        for (std::int_fast16_t dy = destination.y, sy = source.top; dy < destination.y + source.height(); ++dy, ++sy) {
+          for (std::int_fast16_t dx = destination.x, sx = source.left; dx < destination.x + source.width(); ++dx, ++sx) {
             pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
           }
         }
@@ -411,9 +409,9 @@ public:
    * \param v Vertex in screen coordinates
    * \return true if the given vertex is within the screen area
    */
-  inline bool screen_is_inside(const vertex_type& v) const
+  inline bool screen_is_inside(vertex_type v) const
   {
-    return v.x < screen_size_x_ && v.y < screen_size_y_ && v.x >= 0 && v.y >= 0;
+    return (v.x < screen_size_x_) && (v.y < screen_size_y_) && (v.x >= 0) && (v.y >= 0);
   }
 
 
@@ -444,8 +442,8 @@ public:
    */
   inline bool viewport_is_inside(vertex_type v) const
   {
-    return v.x >= viewport_.x && v.x < (viewport_.x + viewport_size_x_) &&
-           v.y >= viewport_.y && v.y < (viewport_.y + viewport_size_y_);
+    return (v.x >= viewport_.x) && (v.x < (viewport_.x + viewport_size_x_)) &&
+           (v.y >= viewport_.y) && (v.y < (viewport_.y + viewport_size_y_));
   }
 
 
@@ -481,7 +479,8 @@ public:
    */
   virtual bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0U)
   {
-    (void)plane; (void)alpha; return false;
+    (void)plane; (void)alpha;
+    return false;
   }
 
 
