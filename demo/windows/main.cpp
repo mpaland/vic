@@ -1,44 +1,99 @@
-// main.cpp : Defines the entry point for the demo application.
+///////////////////////////////////////////////////////////////////////////////
+// \author (c) Marco Paland (info@paland.com)
+//             2014-2020, paland consult, Hannover, Germany
+//
+// \license The MIT License (MIT)
+//
+// This file is part of the vic library.
+// Permission is hereby granted, free of charge, to any person obtaining a copy
+// of this software and associated documentation files (the "Software"), to deal
+// in the Software without restriction, including without limitation the rights
+// to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+// copies of the Software, and to permit persons to whom the Software is
+// furnished to do so, subject to the following conditions:
+//
+// The above copyright notice and this permission notice shall be included in
+// all copies or substantial portions of the Software.
+//
+// THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+// IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+// FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+// AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+// LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+// OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+// THE SOFTWARE.
+//
+// \brief main() for Windows demo programs
+// Link this file together with the according demo_xxx.cpp file
+//
+///////////////////////////////////////////////////////////////////////////////
 
 #include <Windows.h>
 
-#include "drv/windows/vgx_drv_windows.h"
-#include "vgx_theme.h"
-#include "ctrl/vgx_progress_bar.h"
-#include "ctrl/vgx_bar.h"
-#include "ctrl/vgx_radio.h"
+#include "head/windows.h"
+#include "head/multihead.h"
 
 
-// create a single windows head
-static vgx::head::windows& get_head_drv()
+// create a single head
+vic::drv& get_singlehead()
 {
-  // create a windows head with 240x120 pixel, zero offset, screen pos at 50,50, zoom factor 2
-  static vgx::head::windows _head_drv(240, 120, 0, 0, 50, 50, 4, 4);
-  return _head_drv;
+  // create 320 x 200 pixel window with zoom factor 2
+  static vic::head::windows<320, 200> _head( 0, 0, 0, 0, 2U, 2U );
+  return _head;
 }
 
-vgx::drv& head()
+
+// create a two windows as multihead
+template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y>
+vic::drv& get_multihead()
 {
-  return get_head_drv();
+  static vic::head::windows<250, 100> _head0( 0, 0, 0,   0, 4U, 4U );
+  static vic::head::windows<250, 100> _head1( 0, 0, 0, 440, 4U, 4U );
+  static vic::head::multihead<250U, 400U, 2U> _multihead = { { _head0, { 0, 0 }}, { _head1, { 0, 100 }} };
+  return _multihead;
 }
 
-//////////////////////////////////////////////////////////////////////////
+
+// create a text single head
+vic::drv& get_text_singlehead()
+{
+  static vic::head::windows_text<16, 4> _head( 0, 0, 0, 0 );
+  return _head;
+}
+
+
+// create a text multihead
+vic::drv& get_text_multihead()
+{
+  static vic::head::windows_text<12, 4> _head0( 0, 0,   0, 0 );
+  static vic::head::windows_text<12, 4> _head1( 0, 0, 450, 0 );
+  static vic::head::multihead<24U, 4U, 2U> _multihead = { { _head0, { 0U, 0U }}, { _head1, { 12U, 0U }} };
+  return _multihead;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// I / O   A B S T R A C T I O N
+
+void vic::io::delay(std::uint32_t time_to_delay)
+{
+  ::Sleep(time_to_delay);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+
+
+// demo
+extern void demo(void);
+
+// main
 int main()
 {
-  head().init();    // init head
+  // run the demo
+  demo();
 
-  head().color_set(VGX_COLOR_BRIGHTBLUE);
-  head().triangle_solid(30, 10, 10, 30, 60, 30);
-
-  head().color_set(VGX_COLOR_RED);
-  head().box(65, 5, 80, 15);
-
-  head().color_set(VGX_COLOR_YELLOW);
-  head().text_set_font(vgx::font_Arial_num_16x24_aa4);
-  head().text_string_pos(10, 50, (const std::uint8_t*)"12,34.56-7890");
-
-  ::Sleep(20000);
+  // sleep
+  vic::io::delay(100000U);
 
   return 0;
 }
-

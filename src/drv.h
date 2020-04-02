@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -30,82 +30,25 @@
 #ifndef _VIC_DRV_H_
 #define _VIC_DRV_H_
 
-#include "gpr.h"
-#include "txr.h"
+#include "util.h"
+#include "color.h"
 #include "io.h"     // hardware dependent IO access
 
 
 namespace vic {
 
+namespace sprite { class base; }
+namespace shader { class output; }
 
-typedef struct tag_clipping_type
+
+class drv
 {
-  /**
-   * ctor
-   * Create a clipping region, default disabled
-   */
-  tag_clipping_type()
-    : active_(false)
-  { }
+  // friends which can access protected functions
+  friend class dc;
+  friend class tc;
+  friend class shader::output;
+  friend class sprite::base;
 
-  /**
-   * ctor
-   * Create an enabled clipping region
-   * \param v0 Left top corner of the region
-   * \param v1 Bottom right corner of the region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
-   */
-  tag_clipping_type(vertex_type v0, vertex_type v1, bool inside = true) {
-    set(v0, v1, inside);
-  }
-
-  /**
-   * Set the clipping region
-   * \param v0 Left top corner of the region
-   * \param v1 Bottom right corner of the region
-   * \param inside True if the clipping region is INSIDE the given box, so all pixels inside the clipping region are drawn. This is the default.
-   */
-  void set(vertex_type v0, vertex_type v1, bool inside = true) {
-    v0_ = v0; v1_ = v1; inside_ = inside; active_ = true;
-    if (v0_.x > v1_.x) { std::int16_t t = v0_.x; v0_.x = v1_.x; v1_.x = t; }
-    if (v0_.y > v1_.y) { std::int16_t t = v0_.y; v0_.y = v1_.y; v1_.y = t; }
-  }
-
-  /**
-   * Test if clipping is active and if the given vertex is inside the clipping region
-   * \param v Vertex to test
-   * \return True if given vertex is within the active clipping region and should be drawn
-   */
-  inline bool is_inside(vertex_type v) const {
-    return !active_ || ((v.x >= v0_.x && v.x <= v1_.x && v.y >= v0_.y && v.y <= v1_.y) ? inside_ : !inside_);
-  }
-
-  /**
-   * Enable the clipping function
-   * \param enable True to enable
-   */
-  inline void enable(bool _enable = true) {
-    active_ = _enable;
-  }
-
-  /**
-   * Return the clipping status
-   * \return True if clipping is enabled
-   */
-  inline bool is_enabled() const {
-    return active_;
-  }
-
-private:
-  vertex_type v0_;
-  vertex_type v1_;
-  bool        active_;
-  bool        inside_;
-} clipping_type;
-
-
-class drv : public gpr, public txr
-{
 public:
 
   /**
@@ -127,6 +70,13 @@ public:
   ///////////////////////////////////////////////////////////////////////////////
 
 protected:
+  const std::uint16_t     screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
+  const std::uint16_t     screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
+  const std::uint16_t     viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
+  const std::uint16_t     viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
+  const orientation_type  orientation_;       // hardware orientation/rotation  of the display
+  vertex_type             viewport_;          // viewport top/left corner (x offset to screen)
+
 
   /**
    * ctor
@@ -151,69 +101,328 @@ protected:
   { }
 
 
-/////////////////////////////////////////////////////////////////////////////
-// D R I V E R   B A S E   F U N C T I O N S
-//
+  /////////////////////////////////////////////////////////////////////////////
+  // M A N D A T O R Y   D R I V E R   F U N C T I O N S
+  //
+  // All pure virtual functions in this section are MANDATORY driver functions!
+  // Every driver MUST implement them - even if unsupported
 public:
 
-  // wrapper for low level driver 'init'
-  inline void init()
-  { drv_init(); }
-
-
-  // wrapper for low level driver 'shutdown'
-  inline void shutdown()
-  { drv_shutdown(); }
-
-
-  // wrapper for low level driver 'version'
-  inline const char* version() const
-  { return drv_version(); }
+  /**
+   * Driver init
+   */
+  virtual void init(void) = 0;
 
 
   /**
-   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
-   * wrapper for low level driver 'cls'
+   * Driver shutdown
    */
-  inline void cls()
+  virtual void shutdown(void) = 0;
+
+
+  /**
+   * Returns the driver version and name
+   * \return Driver version and name
+   */
+  virtual const char* version(void) const = 0;
+
+
+  /**
+   * Returns the display capability: graphic or alpha numeric
+   * \return True if graphic display type
+   */
+  virtual bool is_graphic(void) const = 0;
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // C O M M O N  F U N C T I O N S
+  //
+
+protected:
+
+  /**
+   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * \param bg_color Backgound/erase color, defines normally the default color of the display
+   */
+  virtual void cls(color::value_type bg_color = color::none)
   {
-    drv_cls();
-    present();
+    (void)bg_color;
   }
 
+
+  /**
+   * Primitive rendering is done. May be overridden by driver to update the display,
+   * frame buffer or something else (like copy RAM / rendering buffer to screen)
+   */
+  virtual void present()
+  { }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // G R A P H I C   F U N C T I O N S
+  //
+  // These are fallback functions if the head does not implement them
+
+  /**
+   * Set pixel in given color
+   * \param vertex Pixel coordinates
+   * \param color Color of pixel in ARGB format, alpha channel is/maybe ignored
+   */
+  virtual void pixel_set(vertex_type vertex, color::value_type color)
+  {
+    (void)vertex; (void)color;
+  }
+
+
+  /**
+   * Return the color of the pixel
+   * \param vertex Vertex of the pixel
+   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
+   */
+  virtual color::value_type pixel_get(vertex_type vertex)
+  {
+    (void)vertex;
+    return color::none;
+  }
+
+
+  /**
+   * Draw a horizontal line in the given color, width is one pixel
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, y component is ignored
+   * \param color Line color
+   */
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    v0.min_x(v1);   // set v0 to min x
+    for (; v0.x <= v1.x; ++v0.x) {
+      pixel_set(v0, color);
+    }
+  }
+
+
+  /**
+   * Draw a vertical line in the given color, width is one pixel
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, x component is ignored
+   * \param color Line color
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    v0.min_y(v1);   // set v0 to min y
+    for (; v0.y <= v1.y; ++v0.y) {
+      pixel_set(v0, color);
+    }
+  }
+
+
+  /**
+   * Draw a box (filled rectangle) in given color
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * \param rect Box bounding, included in box
+   * \param color Box color
+   */
+  virtual void box(const rect_type& rect, color::value_type color)
+  {
+    for (std::int_fast16_t y = rect.top; y < rect.bottom; ++y) {
+      line_horz({ rect.left, static_cast<std::int16_t>(y) }, { rect.right, static_cast<std::int16_t>(y) }, color);
+    }
+  }
+
+
+  /**
+   * Move display area
+   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * \param source Source rect
+   * \param destination Destination top/left vertex
+   */
+  virtual void move(const rect_type& source, vertex_type destination)
+  {
+    if (source.left < destination.x) {
+      if (source.top < destination.y) {
+        for (std::int_fast16_t dy = destination.y + source.height() - 1, sy = source.bottom - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int_fast16_t dx = destination.x + source.width() - 1, sx = source.right - 1; dx >= destination.x; --dx, --sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
+          }
+        }
+      }
+      else {
+        for (std::int_fast16_t dy = destination.y, sy = source.top; dy < destination.y + source.height(); ++dy, ++sy) {
+          for (std::int_fast16_t dx = destination.x + source.width() - 1, sx = source.right - 1; dx >= destination.x; --dx, --sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
+          }
+        }
+      }
+    }
+    else {
+      if (source.top < destination.y) {
+        for (std::int_fast16_t dy = destination.y + source.height() - 1, sy = source.bottom - 1; dy >= destination.y; --dy, --sy) {
+          for (std::int_fast16_t dx = destination.x, sx = source.left; dx < destination.x + source.width(); ++dx, ++sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
+          }
+        }
+      }
+      else {
+        for (std::int_fast16_t dy = destination.y, sy = source.top; dy < destination.y + source.height(); ++dy, ++sy) {
+          for (std::int_fast16_t dx = destination.x, sx = source.left; dx < destination.x + source.width(); ++dx, ++sx) {
+            pixel_set({ static_cast<std::int16_t>(dx), static_cast<std::int16_t>(dy) }, pixel_get({ static_cast<std::int16_t>(sx), static_cast<std::int16_t>(sy) }));
+          }
+        }
+      }
+    }
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // A L P H A   T E X T   F U N C T I O N S
+  //
+  // These are fallback functions if the head does not implement them
+
+  /**
+   * Output a single ASCII/UNICODE char at the actual cursor position
+   * The cursor position is moved by the char width (distance)
+   * \param ch Output character in 16 bit ASCII/UNICODE (NOT UTF-8) format, 00-7F is compatible with ASCII
+   */
+  virtual void text_out(std::uint16_t ch)
+  {
+    (void)ch;
+  }
+
+
+  /**
+   * Render an UTF-8 / ASCII coded string at the actual cursor position
+   * \param string Output string in UTF-8/ASCII format, zero terminated
+   * \return Number of written characters, not bytes (as an UTF-8 character may consist out of more bytes)
+   */
+  virtual std::uint16_t text_out(const std::uint8_t* string)
+  {
+    std::uint16_t ch, cnt = 0U;
+    while (*string) {
+      if ((*string & 0x80U) == 0x00U) {
+        // 1 byte sequence (ASCII char)
+        ch = (std::uint16_t)(*string++ & 0x7FU);
+      }
+      else if ((*string & 0xE0U) == 0xC0U) {
+        // 2 byte UTF-8 sequence
+        ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
+        string += 2U;
+      }
+      else if ((*string & 0xF0U) == 0xE0U) {
+        // 3 byte UTF-8 sequence
+        ch = (((std::uint16_t)*string & 0x000FU) << 12U) | (((std::uint16_t)*(string + 1U) & 0x003FU) << 6U) | ((std::uint16_t)*(string + 2U) & 0x003FU);
+        string += 3U;
+      }
+      else {
+        // unknown sequence
+        string++;
+        continue;
+      }
+
+      // handling of special chars
+      if ((char)ch == '\n') {
+        // LF: X = 0, Y = next line
+      }
+      else if ((char)ch == '\r') {
+        // CR: X = 0
+      }
+      else {
+        text_out(ch);
+      }
+      cnt++;
+    }
+    present();
+    return cnt;
+  }
+
+
+  /**
+   * Set the new text position
+   * \param pos Position in chars on text displays (0/0 is left/top)
+   */
+  virtual void text_set_pos(vertex_type pos)
+  {
+    (void)pos;
+  }
+
+
+  /**
+   * Set inverse text mode
+   * \param inverse Set normal or inverse video
+   */
+  virtual void text_set_inverse(bool inverse)
+  {
+    (void)inverse;
+  }
+
+
+  /**
+   * Clear the actual line from cursor pos (included) to end of line
+   */
+  virtual void text_clear_eol()
+  { }
+
+
+  /**
+   * Clear the actual line from start to cursor pos (included)
+   */
+  virtual void text_clear_sol()
+  { }
+
+
+  /**
+   * Clear the actual line
+   */
+  virtual void text_clear_line()
+  { }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // S C R E E N   /   V I E W P O R T   F U N C T I O N S
+  //
+
+public:
 
   /**
    * Returns the screen (buffer) width
    * \return Screen width in pixel or chars
    */
-  inline virtual std::uint16_t screen_width() const final
-  { return screen_size_x_; }
+  inline std::uint16_t screen_width() const
+  {
+    return screen_size_x_;
+  }
 
 
   /**
    * Returns the screen (buffer) height
    * \return Screen height in pixel or chars
    */
-  inline virtual std::uint16_t screen_height() const final
-  { return screen_size_y_; }
+  inline std::uint16_t screen_height() const
+  {
+    return screen_size_y_;
+  }
 
 
   /**
-   * Returns the true if the given vertex is within the screen area
-   * \param x X value in screen coordinates
-   * \param y Y value in screen coordinates
+   * Returns true if the given vertex is within the screen area
+   * \param v Vertex in screen coordinates
    * \return true if the given vertex is within the screen area
    */
   inline bool screen_is_inside(vertex_type v) const
-  { return v.x >= 0 && v.x < screen_size_x_ && v.y >= 0 && v.y < screen_size_y_; }
+  {
+    return (v.x < screen_size_x_) && (v.y < screen_size_y_) && (v.x >= 0) && (v.y >= 0);
+  }
 
 
   /**
-   * Returns the viewport (display) height
-   * \return Viewport height in pixel or chars
+   * Returns the viewport (display) width
+   * \return Viewport width in pixel or chars
    */
   inline std::uint16_t viewport_width() const
-  { return viewport_size_x_; }
+  {
+    return viewport_size_x_;
+  }
 
 
   /**
@@ -221,24 +430,26 @@ public:
    * \return Viewport height in pixel or chars
    */
   inline std::uint16_t viewport_height() const
-  { return viewport_size_y_; }
+  {
+    return viewport_size_y_;
+  }
 
 
   /**
    * Returns true, if the given vertex is within the visible viewport
-   * \param x X value in screen coordinates
-   * \param y Y value in screen coordinates
+   * \param v Vertex in screen coordinates
    * \return true if the given vertex is within the viewport area
    */
   inline bool viewport_is_inside(vertex_type v) const
-  { return v.x >= viewport_.x && v.x < (viewport_.x + viewport_size_x_) &&
-           v.y >= viewport_.y && v.y < (viewport_.y + viewport_size_y_); }
+  {
+    return (v.x >= viewport_.x) && (v.x < (viewport_.x + viewport_size_x_)) &&
+           (v.y >= viewport_.y) && (v.y < (viewport_.y + viewport_size_y_));
+  }
 
 
   /**
    * Set the new viewport origin
-   * \param x Left corner in screen coordinates
-   * \param y Top corner in screen coordinates
+   * \param v New viewport origin in screen coordinates
    */
   inline virtual void viewport_set(vertex_type v)
   {
@@ -249,12 +460,17 @@ public:
 
   /**
    * Get the actual viewport origin
-   * \param x Left corner in screen coordinates
-   * \param y Top corner in screen coordinates
+   * \return Viewport origin in screen coordinates
    */
   inline virtual vertex_type viewport_get() const
-  { return viewport_; }
+  {
+    return viewport_;
+  }
 
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // F R A M E B U F F E R
+  //
 
   /**
    * Set the given framebuffer plane index as active display
@@ -262,15 +478,21 @@ public:
    * \param alpha Alpha level, 0 = opaque/active, 255 = complete transparent/disabled
    */
   virtual bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0U)
-  { (void)plane; (void)alpha; return false; }
+  {
+    (void)plane; (void)alpha;
+    return false;
+  }
 
 
  /**
-   * Use the given framebuffer plane as as read/write buffer
-   * \param plane The index of the framebuffer/plane to access, 0 for 1st
-   */
+  * Use the given framebuffer plane as read/write buffer
+  * \param plane The index of the framebuffer/plane to access, 0 for 1st
+  */
   virtual bool framebuffer_set_access(std::size_t plane)
-  { (void)plane; return false; }
+  {
+    (void)plane;
+    return false;
+  }
 
 
   /**
@@ -278,7 +500,9 @@ public:
    * \return Number of frame buffers
    */
   virtual std::size_t framebuffer_get_count() const
-  { return 1U; }
+  {
+    return 1U;
+  }
 
 
   ///////////////////////////////////////////////////////////////////////////////
@@ -286,123 +510,34 @@ public:
   //
 
   /**
-   * Enable / disable the display
-   * \param enable True to switch the display on, false to switch it off
+   * Enable/disable the display
+   * \param enable True to switch the display on, false to switch it off (standby, powersave)
    */
   virtual void display_enable(bool enable = true)
-  { (void)enable; }
+  {
+    (void)enable;
+  }
+
 
   /**
    * Set display or backlight brightness
    * \param level 0: dark, backlight off; 255: maximum brightness, backlight full on
    */
-  virtual void brightness_set(std::uint8_t level)
-  { (void)level; }
-
-
-  ///////////////////////////////////////////////////////////////////////////////
-  // C L I P P I N G   F U N C T I O N S 
-  //
-
-  /**
-   * Set the clipping region
-   * All further points within the region are not drawn
-   * \param top_left Top left corner of the clipping region
-   * \param bottom_right Bottom right corner of the clipping region
-   * \param inside True if 
-   */
-  void inline clipping_set(vertex_type top_left, vertex_type bottom_right, bool inside = true)
+  virtual void display_brightness(std::uint8_t level)
   {
-    clipping_.set(top_left, bottom_right, inside);
+    (void)level;
   }
 
 
   /**
-   * Disable clipping
+   * Set display contrast brightness
+   * \param level 0: minimum; 255: maximum
    */
-  void inline clipping_reset()
+  virtual void display_contrast(std::uint8_t level)
   {
-    clipping_.enable(false);
+    (void)level;
   }
 
-  ///////////////////////////////////////////////////////////////////////////////
-  // C O L O R   C O N V E R S I O N
-  //
-
-  /**
-   * Convert internal 32 bpp ARGB color to native head color format
-   * \param color Internal 32 bpp ARGB color value
-   * \return Native head color value
-   */
-  inline std::uint8_t color_to_head_L1(color::value_type color) const
-  { return static_cast<std::uint8_t>((color & 0x00FFFFFFUL) != (std::uint32_t)0U ? 1U : 0U); }
-
-  inline std::uint8_t color_to_head_L2(color::value_type color) const
-  { return static_cast<std::uint8_t>(((std::uint16_t)((std::uint16_t)color::get_red(color) + (std::uint16_t)color::get_green(color) + (std::uint16_t)color::get_blue(color)) / 3U) >> 6U); }
-
-  inline std::uint8_t color_to_head_L4(color::value_type color) const
-  { return static_cast<std::uint8_t>(((std::uint16_t)((std::uint16_t)color::get_red(color) + (std::uint16_t)color::get_green(color) + (std::uint16_t)color::get_blue(color)) / 3U) >> 4U); }
-
-  inline std::uint8_t color_to_head_L8(color::value_type color) const
-  { return static_cast<std::uint8_t>((std::uint16_t)((std::uint16_t)color::get_red(color) + (std::uint16_t)color::get_green(color) + (std::uint16_t)color::get_blue(color)) / 3U); }
-
-  inline std::uint8_t color_to_head_RGB332(color::value_type color) const
-  { return static_cast<std::uint8_t>((std::uint8_t)(color::get_red(color) & 0xE0U) | (std::uint8_t)((color::get_green(color) & 0xE0U) >> 3U) | (std::uint8_t)((color::get_blue(color)) >> 6U)); }
-
-  inline std::uint16_t color_to_head_RGB444(color::value_type color) const
-  { return static_cast<std::uint16_t>(((std::uint16_t)(color::get_red(color) & 0xF0U) <<  8U) | ((std::uint16_t)(color::get_green(color) & 0xF0U) << 4U) | (std::uint16_t)(color::get_blue(color) >> 4U)); }
-
-  inline std::uint16_t color_to_head_RGB555(color::value_type color) const
-  { return static_cast<std::uint16_t>(((std::uint16_t)(color::get_red(color) & 0xF8U) << 10U) | ((std::uint16_t)(color::get_green(color) & 0xF8U) << 5U) | (std::uint16_t)(color::get_blue(color) >> 3U)); }
-
-  inline std::uint16_t color_to_head_RGB565(color::value_type color) const
-  { return static_cast<std::uint16_t>(((std::uint16_t)(color::get_red(color) & 0xF8U) << 11U) | ((std::uint16_t)(color::get_green(color) & 0xFCU) << 5U) | (std::uint16_t)(color::get_blue(color) >> 3U)); }
-
-  inline std::uint32_t color_to_head_RGB666(color::value_type color) const
-  { return static_cast<std::uint32_t>(((std::uint32_t)(color::get_red(color) & 0xFCU) << 12U) | ((std::uint32_t)(color::get_green(color) & 0xFCU) << 6U) | (std::uint32_t)(color::get_blue(color) >> 2U)); }
-
-  inline std::uint32_t color_to_head_RGB888(color::value_type color) const
-  { return static_cast<std::uint32_t>(color & 0x00FFFFFFUL); }
-
-  inline color::value_type color_from_head_L1(std::uint8_t head_color) const
-  { return head_color ? color::white : color::black; }
-
-  inline color::value_type color_from_head_L2(std::uint8_t head_color) const
-  { return color::dim(color::white, (255U / 3U * (head_color & 0x03U))); }
-
-  inline color::value_type color_from_head_L4(std::uint8_t head_color) const
-  { return color::dim(color::white, (255U / 15U * (head_color & 0x0FU))); }
-
-  inline color::value_type color_from_head_L8(std::uint8_t head_color) const
-  { return color::dim(color::white, head_color); }
-
-  inline color::value_type color_from_head_RGB332(std::uint8_t head_color) const
-  { return color::argb(static_cast<std::uint8_t>(head_color & 0xE0U), static_cast<std::uint8_t>((head_color & 0x1CU) << 3U), static_cast<std::uint8_t>((head_color & 0x03U) << 6U)); }
-
-  inline color::value_type color_from_head_RGB444(std::uint16_t head_color) const
-  { return color::argb(static_cast<std::uint8_t>((head_color & 0x0F00U) >> 4U), static_cast<std::uint8_t>((head_color & 0x00F0U)      ), static_cast<std::uint8_t>((head_color & 0x000FU) << 4U)); }
-
-  inline color::value_type color_from_head_RGB555(std::uint16_t head_color) const
-  { return color::argb(static_cast<std::uint8_t>((head_color & 0x7C00U) >> 7U), static_cast<std::uint8_t>((head_color & 0x03E0U) >> 2U), static_cast<std::uint8_t>((head_color & 0x001FU) << 3U)); }
-
-  inline color::value_type color_from_head_RGB565(std::uint16_t head_color) const
-  { return color::argb(static_cast<std::uint8_t>((head_color & 0xF800U) >> 8U), static_cast<std::uint8_t>((head_color & 0x07E0U) >> 3U), static_cast<std::uint8_t>((head_color & 0x001FU) << 3U)); }
-
-  inline color::value_type color_from_head_RGB666(std::uint32_t head_color) const
-  { return color::argb(static_cast<std::uint8_t>((head_color & 0x0003F000UL) >> 10U), static_cast<std::uint8_t>((head_color & 0x00000FC0UL) >> 4U), static_cast<std::uint8_t>((head_color & 0x0000003FUL) << 2U)); }
-
-  inline color::value_type color_from_head_RGB888(std::uint32_t head_color) const
-  { return static_cast<color::value_type>(head_color & 0x00FFFFFFUL); }
-
-
-protected:
-  const std::uint16_t     screen_size_x_;     // screen (buffer) width  in pixel (graphic) or chars (alpha)
-  const std::uint16_t     screen_size_y_;     // screen (buffer) height in pixel (graphic) or chars (alpha)
-  const std::uint16_t     viewport_size_x_;   // viewport (display) width in pixel (graphic) or chars (alpha)
-  const std::uint16_t     viewport_size_y_;   // viewport (display) height in pixel (graphic) or chars (alpha)
-  const orientation_type  orientation_;       // hardware orientation/rotation  of the display
-  vertex_type             viewport_;          // viewport top/left corner (x offset to screen)
-  clipping_type           clipping_;          // clipping region
 };
 
 } // namespace vic

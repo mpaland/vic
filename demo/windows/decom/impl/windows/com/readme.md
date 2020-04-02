@@ -1,0 +1,1 @@
+Implementation of communicators on the Windows platform.

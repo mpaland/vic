@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2001-2017, PALANDesign Hannover, Germany
+//             2001-2018, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -32,93 +32,52 @@
 #ifndef _VIC_GPR_H_
 #define _VIC_GPR_H_
 
-#include "base.h"
+#include "vic_cfg.h"
+#include "util.h"
+#include "color.h"
+#include "shader/base.h"
 
 
 namespace vic {
 
 
-typedef enum tag_pen_style_type {
-  pen_style_solid = 0,
-  pen_style_dash,
-  pen_style_dot,
-  pen_style_dashdot
-} pen_style_type;
-
-
-typedef struct tag_pen_shape_type {
-  std::uint16_t       width;          // width of pen shape
-  std::uint16_t       height;         // height of pen shape
-  color::value_type   color;          // color of pen
-  pen_style_type      style;          // style of pen
-  std::uint8_t        style_ctl;      // internal style control, set to 0 on init
-  const std::uint8_t* alpha;          // pen shape as alpha value array
-} pen_shape_type;
-
-
 /**
  * Graphic Primitive Renderer
  */
-class gpr : virtual public base
+class gpr
 {
+  // class is non copyable
+  const gpr& operator=(const gpr& rhs)
+  { return rhs; }
+
+  bool              anti_aliasing_;   // true if AA is enabled
+  color::value_type color_;           // actual drawing color
+
 protected:
 
-  /**
-   * Helper function to swap two vertexes (as coordinates)
-   * \param v0 First vertex
-   * \param v1 Second vertex
-   */
-  inline void vertex_swap(vertex_type& v0, vertex_type& v1) const
-  {
-    const vertex_type vt = v0;
-    v0 = v1;
-    v1 = vt;
-  }
+  // virtual context/driver functions
+  virtual std::uint16_t     screen_width(void) const = 0;
+  virtual std::uint16_t     screen_height(void) const = 0;
+  virtual shader::base*     shader_pipe(void) const = 0;
+  virtual void              present(void) = 0;
+  virtual void              present_lock(bool lock = true) = 0;
+
 
   /**
-   * Helper function to swap two vertexes so that first vertex contains min x
-   * \param v_min_x vertex
-   * \param v_max_x vertex
-   */
-  inline void vertex_min_x(vertex_type& v_min_x, vertex_type& v_max_x) const
-  {
-    if (v_min_x.x > v_max_x.x) {
-      vertex_swap(v_min_x, v_max_x);
-    }
-  }
+  * protected ctor
+  * Init vars
+  */
+  gpr()
+    : anti_aliasing_(false)   // no AA as default
+    , color_(color::gray)     // default drawing color
+  { }
+
+
+public:
 
   /**
-   * Helper function to swap two vertexes that first vertex contains min y
-   * \param v_min_y vertex
-   * \param v_max_y vertex
+   * Anti Alising renderer
    */
-  inline void vertex_min_y(vertex_type& v_min_y, vertex_type& v_max_y) const
-  {
-    if (v_min_y.y > v_max_y.y) {
-      vertex_swap(v_min_y, v_max_y);
-    }
-  }
-
-  /**
-   * Helper function to change two vertexes so that the first vertex contains top/left
-   * \param v_min_y vertex
-   * \param v_max_y vertex
-   */
-  void vertex_top_left(vertex_type& v_top_left, vertex_type& v_bottom_right) const
-  {
-    if (v_top_left.x > v_bottom_right.x) {
-      const std::int16_t t = v_top_left.x;
-      v_top_left.x     = v_bottom_right.x;
-      v_bottom_right.x = t;
-    }
-    if (v_top_left.y > v_bottom_right.y) {
-      const std::int16_t t = v_top_left.y;
-      v_top_left.y     = v_bottom_right.y;
-      v_bottom_right.y = t;
-    }
-  }
-
-
   class anti_aliasing
   {
     gpr&        gpr_;
@@ -128,13 +87,14 @@ protected:
   public:
     anti_aliasing(gpr& _gpr)
       : gpr_(_gpr)
+      , pipe_{ }
       , pipe_idx_(0)
     { }
 
-    inline void render(vertex_type v)
+    void render(vertex_type v)
     {
 //WIP
-      gpr_.drv_pixel_set_color({v.x, v.y}, color::yellow);
+      gpr_.shader_pipe()->pixel_set({v.x, v.y}, color::yellow);
 
       // calculate gradient
       const std::int16_t dx = v.x - pipe_[0].x;
@@ -147,12 +107,12 @@ protected:
       // check conditions
       if (util::abs<std::int16_t>(dx) > 2 || util::abs<std::int16_t>(dy) > 2) {
         // antialising not possible, distance too far
-        gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightred);
+        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::red);
         return;
       }
       if (dx == 0 || dy == 0) {
         // antialising not necessary, 90� or 180�
-        gpr_.drv_pixel_set_color({ v.x, v.y }, color::brightgreen);
+        gpr_.shader_pipe()->pixel_set({ v.x, v.y }, color::green);
         return;
       }
 
@@ -273,16 +233,25 @@ protected:
   };
 
 
-public:
+  /**
+   * Set the drawing color
+   * \param color Drawing color in ARGB format
+   */
+  void set_color(color::value_type color)
+  {
+    color_ = color;
+  }
+
 
   /**
-   * ctor
-   * Init vars
+   * Get the drawing color
+   * \return Actual drawing color in ARGB format
    */
-  gpr()
-    : anti_aliasing_(false)     // no AA as default
-    , pen_shape_(nullptr)       // 1 pixel pen as default
-  { }
+  color::value_type get_color() const
+  {
+    return color_;
+  }
+
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -299,152 +268,62 @@ public:
 
 
   /**
-   * Select the actual drawing pen
-   * \param pen_shape Set the actual pen shape or nullptr for 1 pixel default pen (fastest)
+   * Set a pixel in the actual pen color, no present is called
+   * \param vertex Vertex to set
    */
-  inline void pen_set_shape(pen_shape_type* pen_shape = nullptr)
+  inline void pixel_set(vertex_type vertex)
   {
-    pen_shape_ = pen_shape;
+    shader_pipe()->pixel_set(vertex, color_);
   }
 
 
   /**
-   * Get a stock pen
-   * \param shape Receiving pen struct
-   * \param style Pen style 
-   * \param width Pen width
-   * \param color Pen color
+   * Set a pixel in the given color, no present is called
+   * \param vertex Vertex to set
+   * \param color Color of the pixel in ARGB format
    */
-  void pen_get_stock(pen_shape_type& shape, pen_style_type style, std::uint8_t width, color::value_type color) const
+  inline void pixel_set(vertex_type vertex, color::value_type color)
   {
-    // stock pens
-    static const std::uint8_t   pen_shape_width_1[1] = { 0 };         // one pixel pen
-    static const std::uint8_t   pen_shape_width_2[4] = { 0, 0,
-                                                         0, 0 };      // two pixel pen
-    static const std::uint8_t   pen_shape_width_3[9] = { 0, 0, 0,
-                                                         0, 0, 0,
-                                                         0, 0, 0 };   // three pixel pen
-    static const std::uint8_t* alpha[3] = { pen_shape_width_1, pen_shape_width_2, pen_shape_width_3 };
-
-    shape = { width, width, color, style, 0U, alpha[width - 1U] };
+    shader_pipe()->pixel_set(vertex, color);
   }
 
 
   /**
-   * Render the pen at the given position
-   * \param center Pen center position
-   */
-  inline void pen_render(vertex_type center)
-  {
-    if (!pen_shape_) {
-      drv_pixel_set_color(center, pen_get_color(center));
-    }
-    else {
-      switch (pen_shape_->style) {
-        case pen_style_solid :
-          break;
-        case pen_style_dot :
-          // * * * *
-          if (pen_shape_->style_ctl >= pen_shape_->width * 2U) {
-            pen_shape_->style_ctl = 0U;
-          }
-          if (pen_shape_->style_ctl++ > 0U) {
-            return;
-          }
-          break;
-        case pen_style_dash :
-          // *** *** ***
-          if (pen_shape_->style_ctl >= pen_shape_->width * 4U) {
-            pen_shape_->style_ctl = 0U;
-          }
-          if (pen_shape_->style_ctl++ > pen_shape_->width * 2U) {
-            return;
-          }
-          break;
-        case pen_style_dashdot :
-          // *** * *** * ***
-          if (pen_shape_->style_ctl >= pen_shape_->width * 6U) {
-            pen_shape_->style_ctl = 0U;
-          }
-          if ((pen_shape_->style_ctl >  pen_shape_->width * 2U) &&
-              (pen_shape_->style_ctl != pen_shape_->width * 4U )) {
-            pen_shape_->style_ctl++;
-            return;
-          }
-          pen_shape_->style_ctl++;
-          break;
-        default:
-          break;
-      }
-      std::size_t i = 0U;
-      for (std::int16_t y = center.y - pen_shape_->height / 2, ye = y + pen_shape_->height; y < ye; ++y) {
-        for (std::int16_t x = center.x - pen_shape_->width / 2, xe = x + pen_shape_->width; x < xe; ++x, ++i) {
-          drv_pixel_set_color({ x, y }, pen_shape_->alpha[i] == 0U ? pen_shape_->color : color::mix(drv_pixel_get({ x, y }), pen_get_color({ x, y }), pen_shape_->alpha[i]));
-        }
-      }
-    }
-  }
-
-
-  /**
-   * Set a pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color, which is protected)
-   * Uncommon to override this function, but may be done for in case of a monochrome displays
-   * \param point Vertex to set
-   */
-  inline virtual void pixel_set(vertex_type point)
-  {
-    drv_pixel_set_color(point, pen_get_color(point));
-  }
-
-
-  /**
-   * Set a pixel in the actual pen color, no present is called (is a slim wrapper for drv_pixel_set_color, which is protected)
-   * Uncommon to override this function, but may be done for in case of a monochrome displays
-   * \param point Vertex to set
-   * \param color Color of the pixel
-   */
-  inline virtual void pixel_set(vertex_type point, color::value_type color)
-  {
-    drv_pixel_set_color(point, color);
-  }
-
-
-  /**
-   * Return the color of the pixel (is a slim wrapper for drv_pixel_get, which is protected)
-   * \param point Vertex of the pixel
+   * Return the color of the pixel (is a slim wrapper for drv_pixel_get)
+   * \param vertex Vertex of the pixel
    * \return Color of pixel in ARGB format
    */
-  inline virtual color::value_type pixel_get(vertex_type point)
+  inline color::value_type pixel_get(vertex_type vertex)
   {
-    return drv_pixel_get(point);
+    return shader_pipe()->pixel_get(vertex);
   }
 
 
   /**
    * Plot a point (one pixel) in the actual drawing (pen) color
-   * \param point Vertex to plot
+   * \param vertex Vertex to plot
    */
-  void plot(vertex_type point)
+  inline void plot(vertex_type vertex)
   {
-    drv_pixel_set_color(point, pen_get_color(point));
-    present();
+    plot(vertex, color_);
   }
 
 
   /**
-   * Plot a point (one pixel) with the given color, drawing color is not affected
-   * \param point Vertex to plot
+   * Plot a point (one pixel) in the given color
+   * Basically this is pixel_set with immediate present()
+   * \param vertex Vertex to plot
    * \param color Color of the pixel
    */
-  void plot(vertex_type point, color::value_type color)
+  inline void plot(vertex_type vertex, color::value_type color)
   {
-    drv_pixel_set_color(point, color);
+    shader_pipe()->pixel_set(vertex, color);
     present();
   }
 
 
   /**
-   * Draw a line with the actual selected pen in drawing (pen) color
+   * Draw a line with the actual selected pen (with pen color)
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line
    */
@@ -458,24 +337,7 @@ public:
           std::int16_t er = dx - dy;
 
     // start Bresenham line algorithm
-    if (pen_shape_) {
-      for (;;) {
-        pen_render(v0);
-        if (v0 == v1) {
-          break;
-        }
-        std::int16_t er2 = er * 2;
-        if (er2 + dy > 0) {
-          er -= dy;
-          v0.x += sx;
-        }
-        if (er2 < dx) {
-          er += dx;
-          v0.y += sy;
-        }
-      }
-    }
-    else if (anti_aliasing_) {
+    if (anti_aliasing_) {
       anti_aliasing aa(*this);
       for (;;) {
         aa.render(v0);
@@ -495,7 +357,7 @@ public:
     }
     else {
       for (;;) {
-        pixel_set(v0);
+        shader_pipe()->pixel_set(v0, color_);
         if (v0 == v1) {
           break;
         }
@@ -515,51 +377,33 @@ public:
 
 
   /**
-   * Draw a horizontal line, width is one pixel, no pen style support
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * Draw a horizontal line, width is one pixel
+   * This is should be done by a high speed driver implementation if no shader is used
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
    * \return true if successful
    */
-  virtual void line_horz(vertex_type v0, vertex_type v1)
+  inline void line_horz(vertex_type v0, vertex_type v1)
   {
-    // set v0 to min x
-    vertex_min_x(v0, v1);
-
-    if (pen_color_is_function()) {
-      for (; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0);
-      }
-    }
-    else {
-      for (; v0.x <= v1.x; ++v0.x) {
-        pixel_set(v0, pen_get_color());
-      }
+    v0.min_x(v1);   // set v0 to min x
+    for (; v0.x <= v1.x; ++v0.x) {
+      shader_pipe()->pixel_set(v0, color_);
     }
     present();
   }
 
 
   /**
-   * Draw a vertical line, width is one pixel, no pen style support
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
+   * Draw a vertical line, width is one pixel
+   * This is should be done by a high speed driver implementation if no shader is used
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
    */
-  virtual void line_vert(vertex_type v0, vertex_type v1)
+  inline void line_vert(vertex_type v0, vertex_type v1)
   {
-    // set v0 to min y
-    vertex_min_y(v0, v1);
-
-    if (pen_color_is_function()) {
-      for (; v0.y <= v1.y; ++v0.y) {
-        pixel_set(v0);
-      }
-    }
-    else {
-      for (; v0.y <= v1.y; ++v0.y) {
-        pixel_set(v0, pen_get_color());
-      }
+    v0.min_y(v1);   // set v0 to min y
+    for (; v0.y <= v1.y; ++v0.y) {
+      shader_pipe()->pixel_set(v0, color_);
     }
     present();
   }
@@ -567,100 +411,129 @@ public:
 
   /**
    * Draw a box (filled rectangle)
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * This is should be done by a high speed driver implementation if no shader is used
+   * Top, left is inside the box. Bottom, right is outside the box
+   * \param rect Box bounding
    */
-  virtual void box(vertex_type v0, vertex_type v1)
+  void box(const rect_type& rect)
   {
-    // set v0 to min y
-    vertex_min_y(v0, v1);
-
-    present_lock();
-    for (; v0.y <= v1.y; ++v0.y) {
-      line_horz(v0, v1);
+    for (std::int16_t y = rect.top; y < rect.bottom; ++y) {
+      for (std::int16_t x = rect.left; x < rect.right; ++x) {
+        shader_pipe()->pixel_set({ x, y }, color_);
+      }
     }
+    present();
+  }
+
+
+  /**
+   * Draw a box (filled rectangle) with a corner radius
+   * \param rect Box bounding
+   * \param border_radius Radius of the corner, 0 for angular
+   */
+  void box(const rect_type& rect, std::uint16_t border_radius)
+  {
+    present_lock();
+    box({ static_cast<std::int16_t>(rect.left + border_radius), rect.top, static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.top + border_radius) });
+    box({ rect.left, static_cast<std::int16_t>(rect.top + border_radius), static_cast<std::int16_t>(rect.right - 1), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) });
+    box({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius), static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.bottom - 1) });
+    disc_sector({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 0U);
+    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 1U);
+    disc_sector({ static_cast<std::int16_t>(rect.left  + border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 2U);
+    disc_sector({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 3U);
     present_lock(false);    // unlock and present
   }
 
 
   /**
-   * Draw a box (filled rectangle)
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * Draw a box (filled rectangle) with a corner radius, vertex to rect wrapper
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
-  void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
+  inline void box(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
-    // make sure v0 is top/left
-    vertex_top_left(v0, v1);
-
-    present_lock();
-    box({ static_cast<std::int16_t>(v0.x + border_radius), v0.y }, { static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) });
-    box({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v1.x, static_cast<std::int16_t>(v1.y - border_radius) });
-    box({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, { static_cast<std::int16_t>(v1.x - border_radius), v1.y });
-    disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 0U);
-    disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius, 1U);
-    disc_sector({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 2U);
-    disc_sector({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 3U);
-    present_lock(false);    // unlock and present
+    rect_type r;
+    r.normalize(v0, v1);
+    box(r, border_radius);
   }
 
 
   /**
    * Draw a rectangle (frame) with the current pen
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * \param rect Rectangle
+   */
+  void rectangle(const rect_type& rect)
+  {
+    present_lock();
+    line(rect.top_left(), { rect.right - 1, rect.top });
+    line({ rect.right - 1, rect.top }, { rect.right - 1, rect.bottom - 1 });
+    line({ rect.right - 1, rect.bottom - 1 }, { rect.left, rect.bottom - 1});
+    line({ rect.left, rect.bottom - 1}, rect.top_left());
+    present_lock(false);    // unlock and present
+  }
+
+
+  /**
+   * Draw a rectangle (frame) with the current pen, vertex to rect wrapper
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
    */
   void rectangle(vertex_type v0, vertex_type v1)
   {
+    rect_type r;
+    r.normalize(v0, v1);
+    rectangle(r);
+  }
+
+
+  /**
+   * Draw a rectangle (frame) with a corner radius
+   * \param rect Rectangle
+   * \param border_radius Radius of the corner, 0 for angular
+   */
+  void rectangle(const rect_type& rect, std::uint16_t border_radius)
+  {
     present_lock();
-    line(v0, { v0.x, v1.y });
-    line({ v0.x, v1.y }, v1);
-    line(v1, { v1.x, v0.y });
-    line({ v1.x, v0.y },  v0);
+    line({ static_cast<std::int16_t>(rect.right - 1 - border_radius), rect.top }, { static_cast<std::int16_t>(rect.left + border_radius), rect.top });
+    circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 90U, 180U);
+    line({ rect.left, static_cast<std::int16_t>(rect.top + border_radius) }, { rect.left, static_cast<std::int16_t>(rect.bottom - 1 - border_radius) });
+    circle({ static_cast<std::int16_t>(rect.left + border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 180U, 270U);
+    line({ static_cast<std::int16_t>(rect.left + border_radius), rect.bottom }, { static_cast<std::int16_t>(rect.right - 1 - border_radius), rect.bottom });
+    circle({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, border_radius, 270U, 360U);
+    line({ static_cast<std::int16_t>(rect.right - 1), static_cast<std::int16_t>(rect.bottom - 1 - border_radius) }, { rect.right, static_cast<std::int16_t>(rect.top + border_radius) });
+    circle({ static_cast<std::int16_t>(rect.right - 1 - border_radius), static_cast<std::int16_t>(rect.top + border_radius) }, border_radius, 0U,  90U);
     present_lock(false);    // unlock and present
   }
 
 
   /**
-   * Draw a rectangle (frame) with the current pen
-   * \param v0 top/left vertex
-   * \param v1 bottom/right vertex
+   * Draw a rectangle (frame) with a corner radius, vertex to rect wrapper
+   * \param v0 First corner vertex
+   * \param v1 Second corner vertex
    * \param border_radius Radius of the corner, 0 for angular
    */
   void rectangle(vertex_type v0, vertex_type v1, std::uint16_t border_radius)
   {
-    // make sure v0 is top/left
-    vertex_top_left(v0, v1);
-
-    present_lock();
-    line({ static_cast<std::int16_t>(v1.x - border_radius), v0.y }, { static_cast<std::int16_t>(v0.x + border_radius), v0.y });
-    circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,  90U, 180U);
-    line({ v0.x, static_cast<std::int16_t>(v0.y + border_radius) }, { v0.x, static_cast<std::int16_t>(v1.y - border_radius) });
-    circle({ static_cast<std::int16_t>(v0.x + border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 180U, 270U);
-    line({ static_cast<std::int16_t>(v0.x + border_radius), v1.y }, { static_cast<std::int16_t>(v1.x - border_radius), v1.y });
-    circle({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v1.y - border_radius) }, border_radius, 270U, 360U);
-    line({ v1.x, static_cast<std::int16_t>(v1.y - border_radius) }, { v1.x, static_cast<std::int16_t>(v0.y + border_radius) });
-    circle({ static_cast<std::int16_t>(v1.x - border_radius), static_cast<std::int16_t>(v0.y + border_radius) }, border_radius,   0U,  90U);
-    present_lock(false);    // unlock and present
+    rect_type r;
+    r.normalize(v0, v1);
+    rectangle(r, border_radius);
   }
 
 
   /**
    * Draw multiple connected lines
-   * \param vertexes Pointer to array of vertexes, at least 2
-   * \param vertex_count Number of vertexes in the array, at least 2
+   * \param vertices Pointer to array of vertices, at least 2
+   * \param vertex_count Number of vertices in the array, at least 2
    */
-  void polyline(const vertex_type* vertexes, std::size_t vertex_count)
+  void polyline(const vertex_type* vertices, std::size_t vertex_count)
   {
     if (vertex_count-- < 2U) {
       return;
     }
     present_lock();
     for (std::size_t n = 0U; n < vertex_count; ++n) {
-      line(vertexes[n], vertexes[vertex_count + 1U]);
+      line(vertices[n], vertices[vertex_count + 1U]);
     }
     present_lock(false);    // present
   }
@@ -692,64 +565,70 @@ public:
   {
     present_lock();
 
-    // check if triangle is a horizontal line
-    if ((v0.y == v1.y) && (v1.y == v2.y)) {
-      line_horz(v0, v1);
-      line_horz(v1, v2);
-      present_lock(false);
-      return;
-    }
+    // ensure v0 is min_x
+    v0.min_x(v1);
+    v0.min_x(v2);
 
-    // check if triangle is a vertical line
-    if ((v0.x == v1.x) && (v1.x == v2.x)) {
-      line_vert(v0, v1);
-      line_vert(v1, v2);
+    // ensure clockwise vertex winding
+    const std::int32_t r = util::orient_2d(v1, v0, v2);
+    // check if the area of the triangle is 0 (straight line)
+    if (r > 0) {
+      // v1 is on the right side, swap to get it on the left side (clockwise vertex winding)
+      v1.swap(v2);
+    }
+    else if (r == 0) {
+      // v1 is on a line with v0 and v2
+      line(v0, v1);
+      line(v1, v2);
       present_lock(false);
       return;
     }
 
     // compute triangle bounding box
-    const std::int16_t min_x = util::min3(v0.x, v1.x, v2.x);
+    const std::int16_t min_x = v0.x;
+    const std::int16_t max_x = util::max2(v1.x, v2.x);
     const std::int16_t min_y = util::min3(v0.y, v1.y, v2.y);
-    const std::int16_t max_x = util::max3(v0.x, v1.x, v2.x);
     const std::int16_t max_y = util::max3(v0.y, v1.y, v2.y);
 
     // triangle setup
-    const std::int16_t a01 = v0.y - v1.y, B01 = v1.x - v0.x;
-    const std::int16_t a12 = v1.y - v2.y, B12 = v2.x - v1.x;
-    const std::int16_t a20 = v2.y - v0.y, B20 = v0.x - v2.x;
+    const std::int16_t a01 = v0.y - v1.y, b01 = v1.x - v0.x;
+    const std::int16_t a12 = v1.y - v2.y, b12 = v2.x - v1.x;
+    const std::int16_t a20 = v2.y - v0.y, b20 = v0.x - v2.x;
 
     // Barycentric coordinates at minX/minY corner
     vertex_type p = { min_x, min_y };
-    std::int16_t w0_row = util::orient_2d(v1, v2, p);
-    std::int16_t w1_row = util::orient_2d(v2, v0, p);
-    std::int16_t w2_row = util::orient_2d(v0, v1, p);
+    std::int32_t w0_row = util::orient_2d(p, v1, v2);
+    std::int32_t w1_row = util::orient_2d(p, v2, v0);
+    std::int32_t w2_row = util::orient_2d(p, v0, v1);
 
     // rasterize
     anti_aliasing aa0(*this), aa1(*this);
     for (p.y = min_y; p.y <= max_y; ++p.y) {
       // Barycentric coordinates at start of row
-      std::int16_t w0 = w0_row, w1 = w1_row, w2 = w2_row, l_x = 0;
+      std::int32_t w0 = w0_row, w1 = w1_row, w2 = w2_row;
+      std::int16_t l_x = 0;
       bool inside = false;
       for (p.x = min_x; p.x <= max_x; ++p.x) {
         // if p is on or inside all edges, render the pixel
-        if (!inside && w0 <= 0 && w1 <= 0 && w2 <= 0) {
+        if (!inside && w0 >= 0 && w1 >= 0 && w2 >= 0) {
           inside = true;
           l_x = p.x;
         }
-        if (inside && (w0 + a12 > 0 || w1 + a20 > 0 || w2 + a01 > 0)) {
-          line_horz({ l_x, p.y }, { p.x, p.y });
+
+        // one step to the right
+        w0 += a12; w1 += a20; w2 += a01;
+
+        if (inside && (w0 < 0 || w1 < 0 || w2 < 0)) {
+          line_horz({ l_x, p.y }, p);
           if (anti_aliasing_) {
             aa0.render({ l_x, p.y });
-            aa1.render({ p.x, p.y });
+            aa1.render(p);
           }
           break;
         }
-        // one step to the right
-        w0 += a12; w1 += a20; w2 += a01;
       }
       // one row step
-      w0_row += B12; w1_row += B20; w2_row += B01;
+      w0_row += b12; w1_row += b20; w2_row += b01;
     }
     present_lock(false);
   }
@@ -762,7 +641,7 @@ public:
    * \param start_angle Start angle in degree, 0 is horizontal right, counting anticlockwise
    * \param end_angle End angle in degree
    */
-  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 360U)
+  void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0U, std::uint16_t end_angle = 359U)
   {
     const std::int16_t xs = center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384;
     const std::int16_t ys = center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384;
@@ -828,7 +707,7 @@ public:
             break;
         }
         if (render) {
-          pen_shape_ ? pen_render(p) : (anti_aliasing_ ? aa.render(p) : pixel_set(p));
+          anti_aliasing_ ? aa.render(p) : shader_pipe()->pixel_set(p, color_);
         }
         r = err;
         if (r <= x)
@@ -856,7 +735,9 @@ public:
       for (std::int16_t x = -radius; x <= 0; ++x) {
         if (x * x + y * y < radius_sqr) {
           line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
-          line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+          if (y != 0) {
+            line_horz({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y - y) }, { static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y - y) });
+          }
           if (anti_aliasing_) {
             aa0.render({ static_cast<std::int16_t>(center.x + x), static_cast<std::int16_t>(center.y + y) });
             aa1.render({ static_cast<std::int16_t>(center.x - x), static_cast<std::int16_t>(center.y + y) });
@@ -956,9 +837,9 @@ public:
       const std::int16_t xse = util::cos(static_cast<std::int16_t>(end_angle));
       const std::int16_t yse = util::sin(static_cast<std::int16_t>(end_angle));
 
-      for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; yp++) {
+      for (std::int16_t yp = center.y - outer_radius; yp <= center.y + outer_radius; ++yp) {
         std::int16_t inside = 0, lxp = 0;
-        for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; xp++) {
+        for (std::int16_t xp = center.x - outer_radius; xp <= center.x + outer_radius; ++xp) {
           // check if xp/yp is within the sector
           std::int16_t xr = xp - center.x;
           std::int16_t yr = center.y - yp;   // * -1 for coords to screen conversion
@@ -1001,13 +882,13 @@ public:
 
 
   /**
-   * Fill region up to the bounding color with the drawing color
-   * Fill routine is only working on displays which support drv_pixel_get() (or using the framebuffer ctrl)
-   * \param start Start value inside region to fill
-   * \param bounding_color Color of the surrounding bound or bg_color to fill all what is of bg_color
-   * \return true if successful
+   * Fill a region with the drawing color
+   * This routine is only working on displays which support the pixel_get() function
+   * \param start Start vertex inside the region to fill
+   * \param color Color of the surrounding bound or the background color, depending on use_color_as_bounding
+   * \param use_color_as_bounding True to use color as bouning color, false to use color as background color which should be filled
    */
-  void fill(vertex_type start, color::value_type bounding_color)
+  void fill(vertex_type start, color::value_type color, bool use_color_as_bounding = true)
   {
     class floodfill
     {
@@ -1023,35 +904,33 @@ public:
       } segment_type;
 
       gpr&               gpr_;
-      color::value_type  bounding_color_;
+      color::value_type  color_;
+      bool               use_color_as_bounding_;
       std::size_t        stack_count_;
-      segment_type       stack_[VIC_GPR_FILL_STACK_SIZE / 8];
+      segment_type       stack_[VIC_GPR_FILL_STACK_SIZE / 8U];
 
       inline void stack_push(segment_type segment)
       {
-        if (stack_count_ < (VIC_GPR_FILL_STACK_SIZE / 8)) {
+        if (stack_count_ < (VIC_GPR_FILL_STACK_SIZE / 8U)) {
           stack_[stack_count_++] = segment;
         }
       }
 
       inline segment_type& stack_pop()
+      { return stack_[--stack_count_]; }
+
+      // returns true if pixel is of : drawing color or
+      // use_color_as_bounding_ == true  : bounding color
+      // use_color_as_bounding_ == false : not of background color
+      inline bool test(const vertex_type& point) const
       {
-        return stack_[--stack_count_];
+        const color::value_type col = gpr_.shader_pipe()->pixel_get({ point.x, point.y });
+        return (col == gpr_.color_)                         ||
+               ((col == color_) &&  use_color_as_bounding_) ||
+               ((col != color_) && !use_color_as_bounding_);
       }
 
-      // returns true if pixel is of border or drawing color
-      // returns true if col != bg_color       && bounding_color == bg_color 
-      // returns true if col == bounding_color && bounding_color != bg_color 
-      // returns true if col == pen_color
-      inline bool test(vertex_type point) const
-      {
-        const color::value_type col = gpr_.drv_pixel_get({ point.x, point.y });
-        return (col == gpr_.pen_get_color())                                      ||
-               (col == bounding_color_ && bounding_color_ != gpr_.bg_get_color()) ||
-               (col != bounding_color_ && bounding_color_ == gpr_.bg_get_color());
-      }
-
-      void fill(vertex_type& start)
+      void fill(const vertex_type& start)
       {
         stack_push({ start.x, static_cast<std::int16_t>(start.x + 1), start.y, 0, 1U, 1U });
         gpr_.pixel_set({ start.x, start.y });
@@ -1105,105 +984,20 @@ public:
       }
 
     public:
-      floodfill(gpr& _gpr, vertex_type& start, color::value_type bounding_color)
-      : gpr_(_gpr)
-      , bounding_color_(bounding_color)
-      , stack_count_(0U)
+      floodfill(gpr& _gpr, vertex_type& start, color::value_type color, bool use_color_as_bounding)
+        : gpr_(_gpr)
+        , color_(color)
+        , use_color_as_bounding_(use_color_as_bounding)
+        , stack_count_(0U)
       {
         fill(start);
       }
     };
 
-    floodfill _floodfill(*this, start, bounding_color);
+    floodfill _floodfill(*this, start, color, use_color_as_bounding);
     present();
   }
 
-
-  ///////////////////////////////////////////////////////////////////////////////
-
-  /**
-   * Move display area
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param source Source top/left vertex
-   * \param destination Destination top/left vertex
-   * \param width Width of the area
-   * \param height Height of the area
-   */
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
-  {
-    if (source.x < destination.x) {
-      if (source.y < destination.y) {
-        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-      else {
-        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int16_t dx = destination.x + width - 1, sx = source.x + width - 1; dx >= destination.x; --dx, --sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-    }
-    else {
-      if (source.y < destination.y) {
-        for (std::int16_t dy = destination.y + height - 1, sy = source.y + height - 1; dy >= destination.y; --dy, --sy) {
-          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-      else {
-        for (std::int16_t dy = destination.y, sy = source.y; dy < destination.y + height; ++dy, ++sy) {
-          for (std::int16_t dx = destination.x, sx = source.x; dx < destination.x + width; ++dx, ++sx) {
-            drv_pixel_set_color({ dx, dy }, drv_pixel_get({ sx, sy }));
-          }
-        }
-      }
-    }
-    present();
-  }
-
-
-  /**
-   * move vertex wrapper
-   * \param orig_top_left Source top/left vertex
-   * \param orig_bottom_right Source bottom/right vertex
-   * \param dest_top_left Destination top/left vertex
-   */
-  inline void move(vertex_type orig_top_left, vertex_type orig_bottom_right, vertex_type dest_top_left) {
-    move(orig_top_left, dest_top_left, orig_bottom_right.x - orig_top_left.x, orig_bottom_right.y - orig_top_left.y);
-  }
-
-
-  /**
-   * Bit block image transfer to the display area
-   * This is a slow fallback implementation which should be overridden by a high speed driver implementation
-   * \param top_left
-   * \param bottom_right
-   * \param color_format
-   * \param data
-   */
-  virtual void blitter(vertex_type top_left, vertex_type bottom_right, color::format_type color_format, const void* data)
-  {
-    (void)top_left; (void)bottom_right; (void)color_format; (void)data;
-  }
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-
-protected:
-  bool            anti_aliasing_;   // true if AA is enabled
-  pen_shape_type* pen_shape_;       // actual selected drawing pen
-
-private:
-
-  // non copyable
-  const gpr& operator=(const gpr& rhs)
-  { return rhs; }
 };
 
 } // namespace vic
