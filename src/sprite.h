@@ -57,14 +57,14 @@ namespace sprite {
  */
 class base : public dc
 {
-public:
+protected:
+
   drv&          head_;        // head instance
   base*         next_;        // next sprite (with lower z-index) in chain
   std::int16_t  z_index_;     // z-index of this sprite
   std::uint16_t frame_;       // actual displayed frame
   vertex_type   position_;    // actual rendered position
 
-protected:
 
   /**
    * ctor
@@ -123,12 +123,13 @@ protected:
     }
   }
 
-protected:
+
   inline base** get_root()
   {
     static base* _root = nullptr;
     return &_root;
   }
+
 
   inline base* get_next() const
   {
@@ -147,6 +148,12 @@ public:
   virtual void restore_it_delete(void) = 0;
   virtual bool restore_find(pixel_type& pixel) = 0;
   virtual void restore_set(const pixel_type& pixel) = 0;
+
+
+  inline vertex_type get_position() const
+  {
+    return position_;
+  }
 
 
   /**
