@@ -90,12 +90,12 @@ void render_face(const vic::vertex_type& center)
 {
   const std::int16_t radius = CLOCK_SIZE / 2U;
 
-  vic::dc dc_(head());  // create a drawing context
-  vic::tc tc_(dc_);     // create a text context
+  vic::dc _dc(head());  // create a drawing context
+  vic::tc tc_(_dc);     // create a text context
 
   // draw bounding
-  dc_.set_color(vic::color::gray);
-  dc_.circle(center, radius);
+  _dc.set_color(vic::color::gray);
+  _dc.circle(center, radius);
 
   // background fill
   vic::shader::gradient<4> gr = { { center.x, center.y - radius, vic::color::darkred },
@@ -103,10 +103,10 @@ void render_face(const vic::vertex_type& center)
                                   { center.x, center.y + radius, vic::color::darkblue },
                                   { center.x - radius, center.y, vic::color::darkyellow }
                                 };
-  dc_.shader_register(&gr);
-  dc_.fill(center, vic::color::gray);
-  dc_.shader_remove(&gr);
-  dc_.present();
+  _dc.shader_register(&gr);
+  _dc.fill(center, vic::color::gray);
+  _dc.shader_remove(&gr);
+  _dc.present();
 
   // select text font
   tc_.set_color(vic::color::gray12);
@@ -115,9 +115,9 @@ void render_face(const vic::vertex_type& center)
   tc_.set_font(_lcd_8x8);
 
   // draw tickmarks and text
-  dc_.set_color(vic::color::white);
+  _dc.set_color(vic::color::white);
   for (std::uint16_t n = 0U; n < 12U; ++n) {
-    dc_.line(center + get_hand(radius * 5U / 6U, (360U * n / 12U)),
+    _dc.line(center + get_hand(radius * 5U / 6U, (360U * n / 12U)),
              center + get_hand(radius,           (360U * n / 12U))
             );
 
@@ -182,7 +182,7 @@ void demo()
   // create the face background
   render_face(center);
 
-  // draw the hands every 200 ms
+  // draw the hands every 100 ms
   for(;;) {
     std::uint8_t h, m, s;
     get_time(h, m, s);
