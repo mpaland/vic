@@ -1,0 +1,21 @@
+# build directories
+build/
+build-*/
+out/
+
+# cmake user presets
+CMakeUserPresets.json
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.opendb
+demo/windows/Debug/
+demo/windows/Release/
+demo/windows/x64/
+
+# editors
+*.swp
+.idea/

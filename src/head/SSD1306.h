@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2018, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,20 +23,33 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief SSD1306 driver (128 x 64 monochrome display driver)
-//        I²C mode: the bus address is 0x3C (default) or 0x3D
+// \brief SSD1306 / SSD1309 / SH1106 head, monochrome OLED controller (128 x 64 typical)
+// The controller RAM is organized in pages of 8 vertical pixels. With the (default)
+// framebuffer the pixels are rendered in RAM and the whole buffer is sent with
+// present(), which is the fastest option on a serial bus. Without framebuffer every
+// pixel is a read-modify-write of one page byte on the display. The GDDRAM can only
+// be read on the parallel buses (not on SPI / I2C) and the controller needs a dummy
+// read first, both is the job of the io layer.
+// See doc/SSD1306.md for the programming summary of the controller.
+//
+// Interface option values of io::write(): 0 = command, 1 = data (D/C# line on SPI).
+// The head emits plain 8 bit command/data bytes for all interfaces: in 3-wire SPI mode
+// the io layer has to build the 9 bit frames (D/C# bit + byte), in I2C mode the control
+// byte is part of the stream. Panels which are not mapped to RAM column 0 (SH1106 with
+// 128 pixels at column 2, 64 x 48 SSD1306 panels at column 32) use Column_Offset.
+// The SH1106 has no horizontal addressing mode, every page is addressed and sent
+// separately (see doc/SSD1306.md).
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_SSD1306_H_
-#define _VIC_DRV_SSD1306_H_
+#ifndef _VIC_HEAD_SSD1306_H_
+#define _VIC_HEAD_SSD1306_H_
 
 #include "../drv.h"
-#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
-// defines the driver name and version
-#define VIC_DRV_SSD1306_VERSION   "SSD1306 driver 0.01"
+// defines the head name and version
+#define VIC_HEAD_SSD1306_VERSION   "SSD1306 head 1.00"
 
 namespace vic {
 namespace head {
@@ -45,43 +58,57 @@ namespace head {
 // interface type
 typedef enum tag_SSD1306_interface_type {
   SSD1306_SPI3,  // 3-wire SPI
-  SSD1306_SPI4,  // 4 wire SPI
+  SSD1306_SPI4,  // 4-wire SPI (D/C# line is the io option)
   SSD1306_I2C,   // I²C
-  SSD1306_MEM    // 8-bit memory
+  SSD1306_MEM    // 8-bit memory interface
 } SSD1306_interface_type;
+
+// controller type
+typedef enum tag_SSD1306_controller_type {
+  SSD1306_CTRL_SSD1306,   // SSD1306: 128 columns, horizontal addressing mode, charge pump 8Dh
+  SSD1306_CTRL_SSD1309,   // SSD1309: like the SSD1306 without charge pump
+  SSD1306_CTRL_SH1106     // SH1106: 132 columns (128 pixel panels at column 2), page addressing only, charge pump ADh
+} SSD1306_controller_type;
 
 
 /**
  * SSD1306 display controller
- * Default is 128 pixel per line and 64 lines
+ * \param Screen_Size_X Screen width in pixel, 128 typical
+ * \param Screen_Size_Y Screen height in pixel, 64 or 32 typical, must be a multiple of 8
+ * \param Orientation Hardware orientation of the display (0, 0m, 180, 180m); orientation_0 is the datasheet default,
+ *                    the reference drivers (Adafruit_SSD1306, u8g2) use segment remap + COM scan remap (A1h, C8h) as
+ *                    their rotation 0, which is orientation_180 here
+ * \param Interface_Mode Interface mode
+ * \param Framebuffer True to render into a RAM framebuffer which is sent with present() (recommended)
+ * \param Charge_Pump True to enable the internal charge pump (SSD1306 8Dh 14h, SH1106 ADh 8Bh), false for an
+ *                    external VCC supply; the SSD1309 has no charge pump
+ * \param Controller SSD1306 (default), SSD1309 or SH1106
+ * \param Column_Offset First RAM column of the panel: 2 for 128 pixel SH1106 panels (132 column RAM), 32 for 64 x 48 SSD1306 panels
  */
 template<std::uint16_t Screen_Size_X = 128U, std::uint16_t Screen_Size_Y = 64U,   // X, Y size, must match the orientation
          drv::orientation_type Orientation = drv::orientation_0,                  // hardware orientation of the display
          SSD1306_interface_type Interface_Mode = SSD1306_I2C,                     // interface mode
-         bool Framebuffer = false                                                 // use framebuffer for fast pixel read
+         bool Framebuffer = true,                                                 // use framebuffer for fast rendering and pixel read
+         bool Charge_Pump = true,                                                 // enable the internal charge pump, false for external VCC
+         SSD1306_controller_type Controller = SSD1306_CTRL_SSD1306,               // controller variant
+         std::uint8_t Column_Offset = (Controller == SSD1306_CTRL_SH1106) ? 2U : 0U   // first RAM column of the panel
 >
 class SSD1306 final : public drv
 {
-private:
+  static_assert(Screen_Size_Y % 8U == 0U, "SSD1306: Screen_Size_Y must be a multiple of 8 (page height)");
 
-  // I²C control
-  // bit 7 : Co : Continuation bit - If 0, then all the next bytes are data (no more control bytes)
-  //       :      You can send a stream of data, ie: gRAM dump - if Co=0
-  //       :      For a command, set this - one at a time. Hence, Co=1 for commands
-  //       :      For Data stream, Co=0
+  static const bool SH1106 = (Controller == SSD1306_CTRL_SH1106);
+
+  // I²C control byte
+  // bit 7 : Co : Continuation bit - 0: all following bytes are data/commands (stream), 1: single command
   // bit 6 : D/C# : Data/Command Selection bit, Data=1/Command=0
-  // bit [5-0] : lower 6 bits have to be 0
-  static const std::uint8_t I2C_CONTROL_CMD_SINGLE  = 0x80U;    // send a single command
   static const std::uint8_t I2C_CONTROL_CMD_STREAM  = 0x00U;    // send a cmd stream
   static const std::uint8_t I2C_CONTROL_DATA_STREAM = 0x40U;    // send a data stream
-
 
   // Fundamental Commands
   static const std::uint8_t CMD_CONTRAST            = 0x81U;    // set contrast
   static const std::uint8_t CMD_TEST_OFF            = 0xA4U;    // test mode off, display RAM content
-  static const std::uint8_t CMD_TEST_ON             = 0xA5U;    // test mode on, all pixel on
   static const std::uint8_t CMD_INVERSE_OFF         = 0xA6U;    // normal video mode
-  static const std::uint8_t CMD_INVERSE_ON          = 0xA7U;    // inverse video mode
   static const std::uint8_t CMD_DISPLAY_OFF         = 0xAEU;    // sleep mode
   static const std::uint8_t CMD_DISPLAY_ON          = 0xAFU;    // normal mode
 
@@ -89,39 +116,45 @@ private:
   static const std::uint8_t CMD_MEMORY_ADDR_MODE    = 0x20U;    // memory addressing mode
   static const std::uint8_t CMD_COLUMN_ADDR         = 0x21U;    // column start and end address
   static const std::uint8_t CMD_PAGE_ADDR           = 0x22U;    // page start and end address
-  static const std::uint8_t CMD_PAGE_START          = 0xB0U;    // GDDRAM Page Start Address
 
   // Hardware Configuration Commands
   static const std::uint8_t CMD_DISPLAY_START_LINE  = 0x40U;    // set RAM display start line
   static const std::uint8_t CMD_SEGMENT_REMAP_OFF   = 0xA0U;    // column address 0 is mapped to SEG0
   static const std::uint8_t CMD_SEGMENT_REMAP_ON    = 0xA1U;    // column address 127 is mapped to SEG0
   static const std::uint8_t CMD_MUX_RATIO           = 0xA8U;    // set MUX ratio to N+1 MUX
-  static const std::uint8_t CMD_SCAN_DIR_REMAP_OFF  = 0xC0U;    // normal mode (RESET) Scan from COM0 to COM[N –1]
-  static const std::uint8_t CMD_SCAN_DIR_REMAP_ON   = 0xC8U;    // remapped mode. Scan from COM[N-1] to COM0 where N is the Multiplex ratio
+  static const std::uint8_t CMD_SCAN_DIR_REMAP_OFF  = 0xC0U;    // normal mode (RESET) Scan from COM0 to COM[N-1]
+  static const std::uint8_t CMD_SCAN_DIR_REMAP_ON   = 0xC8U;    // remapped mode. Scan from COM[N-1] to COM0
   static const std::uint8_t CMD_DISPLAY_OFFSET      = 0xD3U;    // set vertical shift by COM from 0d~63d
-  static const std::uint8_t CMD_COM_PIN_REMAP       = 0xDAU;    //
+  static const std::uint8_t CMD_COM_PIN_REMAP       = 0xDAU;    // COM pins hardware configuration
 
   // Timing & Driving Scheme Setting Commands
   static const std::uint8_t CMD_DISPLAY_CLK_DIV     = 0xD5U;    // define the divide ratio and set the Oscillator Frequency
   static const std::uint8_t CMD_PRECHARGE_PERIOD    = 0xD9U;    // Phase 1 period, Phase 2 period
   static const std::uint8_t CMD_VCOMH_DESELECT      = 0xDBU;    // VCOMH Deselect
-  static const std::uint8_t CMD_NOP                 = 0xE3U;    // no operation
 
   // Charge Pump Commands
-  static const std::uint8_t CMD_CHARGE_PUMP         = 0x8DU;    // charge pump setting
+  static const std::uint8_t CMD_CHARGE_PUMP         = 0x8DU;    // charge pump setting (SSD1306)
+  static const std::uint8_t CMD_SH1106_DCDC         = 0xADU;    // DC-DC control mode set (SH1106), 8Ah off, 8Bh on
 
+  // page addressing commands (SH1106)
+  static const std::uint8_t CMD_COLUMN_LOW          = 0x00U;    // lower nibble of the column address
+  static const std::uint8_t CMD_COLUMN_HIGH         = 0x10U;    // upper nibble of the column address
+  static const std::uint8_t CMD_PAGE_START          = 0xB0U;    // page start address
 
-  // IO buffer for SPI and I²C, 32 data/cmd byte + one control byte as max
-  #define SSD1306_IO_BUFFER_SIZE  33U
+  // IO buffer for SPI and I²C: 32 data/cmd bytes + one control byte as max
+  static const std::size_t IO_BUFFER_SIZE = 33U;
+  static const std::size_t PAGES          = Screen_Size_Y / 8U;
+  static const std::size_t FB_SIZE        = Framebuffer ? PAGES * Screen_Size_X : 1U;
 
   // vars
-  const io::dev::handle_type  device_handle_;
-  struct framebuffer_ {
-    std::uint8_t              ctrl;   // ctrl byte, needed for I²C interface
-    std::uint8_t              data[Framebuffer ? Screen_Size_Y / 8U : 1U][Framebuffer ? Screen_Size_X / 8U];
-  };
-  std::uint8_t                io_buffer_[SSD1306_IO_BUFFER_SIZE];
-  std::uint8_t                io_buffer_idx_;
+  const io::handle_type device_handle_;
+  struct tag_framebuffer_type {
+    std::uint8_t ctrl;              // control byte, needed for I²C data streams, so that ctrl and data are sent as one block
+    std::uint8_t data[FB_SIZE];     // page organized pixel data: data[page * Screen_Size_X + x], bit (y & 7)
+  } framebuffer_;
+  std::uint8_t          io_buffer_[IO_BUFFER_SIZE];
+  std::size_t           io_buffer_idx_;
+  bool                  io_data_;     // true if the current sequence is a data sequence
 
 public:
 
@@ -132,13 +165,20 @@ public:
    * ctor
    * \param device_handle Device handle
    */
-  SSD1306(io::dev::handle_type device_handle)   // device handle
+  SSD1306(io::handle_type device_handle)
     : drv(Screen_Size_X, Screen_Size_Y,
           Screen_Size_X, Screen_Size_Y,         // no viewport support (screen = viewport)
           0, 0,                                 // no viewport support
           Orientation)
     , device_handle_(device_handle)
-  { }
+    , io_buffer_idx_(0U)
+    , io_data_(false)
+  {
+    framebuffer_.ctrl = I2C_CONTROL_DATA_STREAM;
+    for (std::size_t i = 0U; i < FB_SIZE; ++i) {
+      framebuffer_.data[i] = 0U;
+    }
+  }
 
 
   /**
@@ -146,21 +186,23 @@ public:
    * Shutdown the driver
    */
   ~SSD1306()
-  { }
+  {
+    shutdown();
+  }
 
-
-protected:
 
   virtual void init()
   {
-    // start command sequence, needed for SPI and I²C
+    io::init(device_handle_);
+
+    // start command sequence
     write_begin(false);
 
     // display off
     write_cmd(CMD_DISPLAY_OFF);
 
-    // set mux ration tp select max number of rows - 64
-    write_cmd(CMD_MUX_RATIO, 0x3FU);
+    // set mux ratio to the number of rows
+    write_cmd(CMD_MUX_RATIO, static_cast<std::uint8_t>(Screen_Size_Y - 1U));
 
     // set the display offset to 0
     write_cmd(CMD_DISPLAY_OFFSET, 0x00U);
@@ -168,30 +210,33 @@ protected:
     // set the display start line to 0
     write_cmd(CMD_DISPLAY_START_LINE);
 
-    // TBD: set the orientation
+    // orientation
     switch (Orientation) {
       case orientation_0 :
         write_cmd(CMD_SEGMENT_REMAP_OFF);   // x-axis: normal
         write_cmd(CMD_SCAN_DIR_REMAP_OFF);  // y-axis: normal
         break;
-      case orientation_90 :
+      case orientation_0m :
         write_cmd(CMD_SEGMENT_REMAP_OFF);   // x-axis: normal
         write_cmd(CMD_SCAN_DIR_REMAP_ON);   // y-axis: mirror
         break;
-      case orientation_180 :
+      case orientation_180m :
         write_cmd(CMD_SEGMENT_REMAP_ON);    // x-axis: mirror
         write_cmd(CMD_SCAN_DIR_REMAP_OFF);  // y-axis: normal
         break;
-      case orientation_270 :
+      case orientation_180 :
         write_cmd(CMD_SEGMENT_REMAP_ON);    // x-axis: mirror
         write_cmd(CMD_SCAN_DIR_REMAP_ON);   // y-axis: mirror
         break;
       default :
+        // 90 and 270 degree need a rotated framebuffer, not supported yet
+        write_cmd(CMD_SEGMENT_REMAP_OFF);
+        write_cmd(CMD_SCAN_DIR_REMAP_OFF);
         break;
     }
 
-    // set COM pin map - maybe the must be in config for different displays
-    write_cmd(CMD_COM_PIN_REMAP), 0x12U);
+    // set COM pin map: alternative configuration for 64 lines, sequential for 32 lines
+    write_cmd(CMD_COM_PIN_REMAP, Screen_Size_Y > 32U ? 0x12U : 0x02U);
 
     // set default contrast
     write_cmd(CMD_CONTRAST, 0x7FU);
@@ -205,18 +250,26 @@ protected:
     // default oscillator clock
     write_cmd(CMD_DISPLAY_CLK_DIV, 0x80U);
 
-    // enable the charge pump
-    write_cmd(CMD_CHARGE_PUMP, 0x14U);
+    // enable the charge pump (must be set before display on), the SSD1309 has none
+    if (Charge_Pump && (Controller != SSD1306_CTRL_SSD1309)) {
+      if (SH1106) {
+        write_cmd(CMD_SH1106_DCDC, 0x8BU);
+      }
+      else {
+        write_cmd(CMD_CHARGE_PUMP, 0x14U);
+      }
+    }
 
     // set the precharge cycles to high cap type
     write_cmd(CMD_PRECHARGE_PERIOD, 0x22U);
 
-    // aet the V_COMH deselect voltage to max
+    // set the V_COMH deselect voltage to max
     write_cmd(CMD_VCOMH_DESELECT, 0x30U);
 
-    // use horizonatal addressing mode as default
-    // TBD: maybe this can be used for fast vertical line drawing
-    write_cmd(CMD_MEMORY_ADDR_MODE, 0x00U);
+    // use horizontal addressing mode as default (the SH1106 has page addressing only)
+    if (!SH1106) {
+      write_cmd(CMD_MEMORY_ADDR_MODE, 0x00U);
+    }
 
     // turn the display on
     write_cmd(CMD_DISPLAY_ON);
@@ -224,6 +277,7 @@ protected:
     write_end();
 
     cls();
+    present();
   }
 
 
@@ -236,7 +290,7 @@ protected:
 
   inline virtual const char* version() const
   {
-    return (const char*)VIC_DRV_SSD1306_VERSION;
+    return (const char*)VIC_HEAD_SSD1306_VERSION;
   }
 
 
@@ -247,6 +301,16 @@ protected:
   }
 
 
+  /**
+   * Access the framebuffer (page organized), only meaningful with Framebuffer = true
+   * \return Pointer to PAGES * Screen_Size_X bytes
+   */
+  inline const std::uint8_t* framebuffer() const
+  {
+    return framebuffer_.data;
+  }
+
+
   ///////////////////////////////////////////////////////////////////////////////
   // C O M M O N  F U N C T I O N S
   //
@@ -254,32 +318,52 @@ protected:
 protected:
 
   /**
-   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * Clear screen, set all pixels off
+   * \param bg_color Background color, every color which is not black switches the pixels on
    */
-  virtual void cls(color::value_type)
-  { 
+  virtual void cls(color::value_type bg_color = color::none)
+  {
+    const std::uint8_t fill = color::color_to_L1(bg_color) ? 0xFFU : 0x00U;
+    if (Framebuffer) {
+      for (std::size_t i = 0U; i < FB_SIZE; ++i) {
+        framebuffer_.data[i] = fill;
+      }
+    }
+    else {
+      // stream the whole GDDRAM page by page
+      for (std::uint8_t page = 0U; page < static_cast<std::uint8_t>(PAGES); ++page) {
+        set_address(0U, static_cast<std::uint8_t>(Screen_Size_X - 1U), page, page);
+        write_begin(true);
+        for (std::size_t i = 0U; i < Screen_Size_X; ++i) {
+          write_cmd(fill);
+        }
+        write_end();
+      }
+    }
   }
 
 
   /**
-   * Primitive rendering is done, copy framebuffer to the display
+   * Primitive rendering is done, copy the framebuffer to the display
    */
   virtual void present()
   {
     if (Framebuffer) {
-      // start cmd sequence
-      write_begin(false);
-      // use horizontal addressing mode
-      write_cmd(CMD_MEMORY_ADDR_MODE, 0x00U);
-      // set column start and end address (this sets the column pointer to 0)
-      write_cmd(CMD_COLUMN_ADDR, 0x00U, Screen_Size_X);
-      // set page start and end address (this sets the page pointer to 0)
-      write_cmd(CMD_PAGE_ADDR, 0x00U, Screen_Size_Y / 8U);
-      // finish sequence
-      write_end();
-
-      // write the framebuffer
-      write_framebuffer();
+      if (SH1106) {
+        // page addressing: every page is addressed and sent separately
+        for (std::uint8_t page = 0U; page < static_cast<std::uint8_t>(PAGES); ++page) {
+          set_address(0U, static_cast<std::uint8_t>(Screen_Size_X - 1U), page, page);
+          write_begin(true);
+          for (std::size_t i = 0U; i < Screen_Size_X; ++i) {
+            write_cmd(framebuffer_.data[page * Screen_Size_X + i]);
+          }
+          write_end();
+        }
+      }
+      else {
+        set_address(0U, static_cast<std::uint8_t>(Screen_Size_X - 1U), 0U, static_cast<std::uint8_t>(PAGES - 1U));
+        write_framebuffer();
+      }
     }
   }
 
@@ -288,11 +372,6 @@ protected:
   // G R A P H I C   F U N C T I O N S
   //
 
-  /**
-   * Set pixel in given color
-   * \param vertex Pixel coordinates
-   * \param color Color of pixel in ARGB format, alpha channel is/maybe ignored
-   */
   virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
     // check limits
@@ -301,103 +380,53 @@ protected:
       return;
     }
 
+    const std::uint8_t page = static_cast<std::uint8_t>(vertex.y >> 3U);
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (vertex.y & 0x07U));
+
     if (Framebuffer) {
-      // set pixel in framebuffer
-      if (color::color_to_L1(color)) {
-        framebuffer_.data[vertex.y >> 3U][vertex.x] |= static_cast<std::uint8_t>(  0x01U << (vertex.y & 0x07U));   // set pixel
-      }
-      else {
-        framebuffer_.data[vertex.y >> 3U][vertex.x] &= static_cast<std::uint8_t>(~(0x01U << (vertex.y & 0x07U)));  // clear pixel
-      }
+      std::uint8_t& data = framebuffer_.data[page * Screen_Size_X + vertex.x];
+      data = static_cast<std::uint8_t>(color::color_to_L1(color) ? (data | mask) : (data & ~mask));
     }
     else {
-      // start cmd sequence
-      write_begin(false);
-      // use page addressing mode
-      write_cmd(CMD_MEMORY_ADDR_MODE, 0x02U);
-      // set column start and end address (this sets the column pointer to 0)
-      write_cmd(CMD_COLUMN_ADDR, vertex.x, Screen_Size_X);
-      // set page start and end address (this sets the page pointer to 0)
-      write_cmd(CMD_PAGE_ADDR, vertex.y >> 8U, Screen_Size_Y / 8U);
-      // finish sequence
-      write_end();
-
-      std::uint8 gdd_data;
-      read_data(gdd_data);
-
-      // start cmd sequence
-      write_begin(false);
-      // set column start and end address (this sets the column pointer to 0)
-      write_cmd(CMD_COLUMN_ADDR, vertex.x, Screen_Size_X);
-      // set page start and end address (this sets the page pointer to 0)
-      write_cmd(CMD_PAGE_ADDR, vertex.y >> 8U, Screen_Size_Y / 8U);
-      // finish sequence
-      write_end();
-
-      gdd_data &= static_cast<std::uint8_t>(~(0x01U << (vertex.y & 0x07U));
-      gdd_data |= static_cast<std::uint8_t>((color::color_to_L1(color) & 0x01U) << (vertex.y & 0x07U));
-
-      // start data sequence
+      // read-modify-write of the page byte on the display
+      set_address(static_cast<std::uint8_t>(vertex.x), static_cast<std::uint8_t>(vertex.x), page, page);
+      std::uint8_t data = 0U;
+      read_data(data);
+      data = static_cast<std::uint8_t>(color::color_to_L1(color) ? (data | mask) : (data & ~mask));
+      set_address(static_cast<std::uint8_t>(vertex.x), static_cast<std::uint8_t>(vertex.x), page, page);
       write_begin(true);
-      write_cmd(&gdd_data);
+      write_cmd(data);
       write_end();
     }
   }
 
 
-  /**
-   * Return the color of the pixel
-   * \param vertex Vertex of the pixel
-   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
-   */
   virtual color::value_type pixel_get(vertex_type vertex)
   {
     // check limits
     if (!screen_is_inside(vertex)) {
       // out of bounds
-      return color::L1_to_color(0U);
+      return color::none;
     }
 
+    const std::uint8_t page = static_cast<std::uint8_t>(vertex.y >> 3U);
+    std::uint8_t data = 0U;
     if (Framebuffer) {
-      // read pixel out of framebuffer
-      return color::L1_to_color((framebuffer_.data[vertex.y][vertex.x >> 3U] >> (vertex.y & 0x07U)) & 0x01U);
+      data = framebuffer_.data[page * Screen_Size_X + vertex.x];
     }
     else {
-      // start cmd sequence
-      write_begin(false);
-      // use page addressing mode
-      write_cmd(CMD_MEMORY_ADDR_MODE, 0x02U);
-      // set column start and end address (this sets the column pointer to 0)
-      write_cmd(CMD_COLUMN_ADDR, vertex.x, Screen_Size_X);
-      // set page start and end address (this sets the page pointer to 0)
-      write_cmd(CMD_PAGE_ADDR, vertex.y >> 8U, Screen_Size_Y / 8U);
-      // finish sequence
-      write_end();
-
-      // read data
-      std::uint8 gdd_data;
-      // read one byte
-      read_data(&gdd_data);
-
-      return color::L1_to_color((gdd_data >> (vertex.y & 0x07U)) & 0x01U);
+      set_address(static_cast<std::uint8_t>(vertex.x), static_cast<std::uint8_t>(vertex.x), page, page);
+      read_data(data);
     }
-  }
-
-
-  /**
-   * Draw a horizontal line in the given color, width is one pixel
-   * \param v0 Start vertex, included in line
-   * \param v1 End vertex, included in line, y component is ignored
-   * \param color Line color
-   */
-  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
-  {
+    return color::L1_to_color(static_cast<std::uint8_t>((data >> (vertex.y & 0x07U)) & 0x01U));
   }
 
 
   ///////////////////////////////////////////////////////////////////////////////
   // D I S P L A Y   C O N T R O L
   //
+
+public:
 
   /**
    * Enable/disable the display
@@ -428,121 +457,108 @@ protected:
 private:
 
   /**
-   * Write command, no param
-   * \param cmd Command
+   * Set the GDDRAM address window (horizontal addressing mode) or the page and column (SH1106, page addressing),
+   * the columns are panel columns, the RAM column offset of the panel is added
    */
+  void set_address(std::uint8_t col_start, std::uint8_t col_end, std::uint8_t page_start, std::uint8_t page_end)
+  {
+    write_begin(false);
+    if (SH1106) {
+      (void)col_end; (void)page_end;
+      const std::uint8_t col = static_cast<std::uint8_t>(col_start + Column_Offset);
+      write_cmd(static_cast<std::uint8_t>(CMD_PAGE_START  | (page_start & 0x0FU)));
+      write_cmd(static_cast<std::uint8_t>(CMD_COLUMN_LOW  | (col & 0x0FU)));
+      write_cmd(static_cast<std::uint8_t>(CMD_COLUMN_HIGH | (col >> 4U)));
+    }
+    else {
+      write_cmd(CMD_MEMORY_ADDR_MODE, 0x00U);
+      write_cmd(CMD_COLUMN_ADDR, static_cast<std::uint8_t>(col_start + Column_Offset), static_cast<std::uint8_t>(col_end + Column_Offset));
+      write_cmd(CMD_PAGE_ADDR, page_start, page_end);
+    }
+    write_end();
+  }
+
+
+  /**
+   * Start a command or data sequence
+   * \param data True for data, false for commands
+   */
+  inline void write_begin(bool data)
+  {
+    io_data_       = data;
+    io_buffer_idx_ = 0U;
+    if (Interface_Mode == SSD1306_I2C) {
+      io_buffer_[io_buffer_idx_++] = data ? I2C_CONTROL_DATA_STREAM : I2C_CONTROL_CMD_STREAM;
+    }
+  }
+
+
+  /**
+   * Finish the sequence and send it, the io option is 0 for commands and 1 for data
+   */
+  inline void write_end()
+  {
+    const std::size_t header = (Interface_Mode == SSD1306_I2C) ? 1U : 0U;
+    if (io_buffer_idx_ > header) {
+      io::write(device_handle_, io_data_ ? 1U : 0U, io_buffer_, io_buffer_idx_, nullptr, 0U);
+    }
+    io_buffer_idx_ = 0U;
+  }
+
+
+  // write one byte to the sequence, the sequence is flushed and continued if the buffer is full
   inline void write_cmd(std::uint8_t cmd)
   {
+    if (io_buffer_idx_ >= IO_BUFFER_SIZE) {
+      write_end();
+      write_begin(io_data_);
+    }
     io_buffer_[io_buffer_idx_++] = cmd;
   }
 
-
-  /**
-   * Write command, 1 param
-   * \param cmd Command
-   * \param param1 Data
-   */
   inline void write_cmd(std::uint8_t cmd, std::uint8_t param1)
   {
-    io_buffer_[io_buffer_idx_++] = cmd;
-    io_buffer_[io_buffer_idx_++] = param1;
+    write_cmd(cmd);
+    write_cmd(param1);
   }
 
-
-  /**
-   * Write command, 2 param
-   * \param cmd Command
-   * \param param1 Data
-   * \param param2 Data
-   */
   inline void write_cmd(std::uint8_t cmd, std::uint8_t param1, std::uint8_t param2)
   {
-    io_buffer_[io_buffer_idx_++] = cmd;
-    io_buffer_[io_buffer_idx_++] = param1;
-    io_buffer_[io_buffer_idx_++] = param2;
-  }
-
-
-  // start sequence
-  // \param data_cmd True for data, false for command
-  inline void write_begin(bool data_cmd)
-  {
-    // Interface_Mode is a constant template parameter, so the switch case is optimized away
-    switch (Interface_Mode) {
-      case SSD1306_SPI3 :   // 3-wire SPI
-        break;
-      case SSD1306_SPI4 :   // 4 wire SPI
-        break;
-      case SSD1306_I2C :    // I²C
-        io_buffer_idx_ = 0U;
-        io_buffer_[io_buffer_idx_++] = data_cmd ? I2C_CONTROL_DATA_STREAM : I2C_CONTROL_CMD_STREAM;
-        break;
-      case SSD1306_MEM :    // 8-bit memory
-        break;
-      default :
-        break;
-    }
-  }
-
-
-  inline void write_end(std::uint8_t cmd)
-  {
-    // Interface_Mode is a constant template parameter, so the switch case is optimized away
-    switch (Interface_Mode) {
-      case SSD1306_SPI3 :   // 3-wire SPI
-        break;
-      case SSD1306_SPI4 :   // 4 wire SPI
-        break;
-      case SSD1306_I2C :    // I²C
-        io::write(device_handle_, 1U, io_buffer_, io_buffer_idx_, nullptr, 0U);
-        break;
-      case SSD1306_MEM :    // 8-bit memory
-        break;
-      default :
-    }
+    write_cmd(cmd);
+    write_cmd(param1);
+    write_cmd(param2);
   }
 
 
   /**
-   * Write framebuffer
+   * Write the whole framebuffer as one data block
    */
   inline void write_framebuffer()
   {
-    // Interface_Mode is a constant template parameter, so the switch case is optimized away
-    switch (Interface_Mode) {
-      case SSD1306_SPI3 :   // 3-wire SPI
-        break;
-      case SSD1306_SPI4 :   // 4 wire SPI
-        break;
-      case SSD1306_I2C :    // I²C
-        framebuffer_.ctrl = I2C_CONTROL_DATA_STREAM;
-        io::write(device_handle_, 1U, std::uint_8_t*>(framebuffer_), 1U + (Screen_Size_Y / 8U) * Screen_Size_X, nullptr, 0U);
-        break;
-      case SSD1306_MEM :    // 8-bit memory
-        break;
-      default :
-        break;
+    if (Interface_Mode == SSD1306_I2C) {
+      // control byte and data in one block
+      io::write(device_handle_, 1U, &framebuffer_.ctrl, 1U + FB_SIZE, nullptr, 0U);
+    }
+    else {
+      io::write(device_handle_, 1U, framebuffer_.data, FB_SIZE, nullptr, 0U);
     }
   }
 
 
-  inline bool read_data(std::uint8_t* data)
+  /**
+   * Read one data byte from the GDDRAM at the actual address
+   * \param data Receives the byte, unchanged if the interface can't read
+   * \return True if successful
+   */
+  inline bool read_data(std::uint8_t& data)
   {
     std::size_t length = 1U;
-    // Interface_Mode is a constant template parameter, so the switch case is optimized away
-    switch (Interface_Mode) {
-      case SSD1306_SPI3 :   // 3-wire SPI
-        break;
-      case SSD1306_SPI4 :   // 4 wire SPI
-        break;
-      case SSD1306_I2C :    // I²C
-        io::read(device_handle_, 1U, data, length, 0U);
-        break;
-      case SSD1306_MEM :    // 8-bit memory
-        break;
-      default :
-        break;
+    std::uint8_t byte = 0U;
+    if (io::read(device_handle_, 1U, &byte, length, 0U) && (length == 1U)) {
+      data = byte;
+      return true;
     }
+    return false;
   }
 
 };
@@ -550,4 +566,4 @@ private:
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_SSD1306_H_
+#endif  // _VIC_HEAD_SSD1306_H_

@@ -55,12 +55,12 @@ public:
    * Init vars
    */
   txr()
-    : font_(nullptr)
+    : color_(color::white)
+    , font_(nullptr)
     , x_set_(0)
     , x_act_(0)
     , y_act_(0)
     , inverse_(false)
-    , color_(color::white)
   { }
 
 
@@ -74,7 +74,7 @@ public:
    */
   inline void set_font(const font::font_type& font)
   {
-    font_ = &font.get_info();
+    font_ = &font.info();
   }
 
 
@@ -84,14 +84,32 @@ public:
    */
   std::uint8_t char_width() const
   {
-    if ((font_->attr & font::TYPE_MASK) == font::TYPE_PROP) {
-      // prop font
-      const font::prop_type* font_prop = font_->family.prop;
-      return font_prop->char_info[(char)'A' - font_prop->first].xdist;
+    if (!font_) {
+      return 0U;
+    }
+    if ((font_->attr & font::TYPE_MASK) != font::TYPE_PROP) {
+      // mono font
+      return font_->family.mono->xsize;
+    }
+    if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
+      // extended (UNICODE) prop font, take 'A' or the first available char
+      const font::prop_ext_type* first = font_->family.prop_ext;
+      for (const font::prop_ext_type* p = first; !!p; p = p->next) {
+        if (('A' >= p->first) && ('A' <= p->last)) {
+          return p->char_info_ext['A' - p->first].xdist;
+        }
+      }
+      return first ? first->char_info_ext[0].xdist : 0U;
     }
     else {
-      // mono font
-      return ((font::mono_type*)font_->family.mono)->xsize;
+      // prop font, take 'A' or the first available char
+      const font::prop_type* first = font_->family.prop;
+      for (const font::prop_type* p = first; !!p; p = p->next) {
+        if (('A' >= p->first) && ('A' <= p->last)) {
+          return p->char_info['A' - p->first].xdist;
+        }
+      }
+      return first ? first->char_info[0].xdist : 0U;
     }
   }
 
@@ -102,7 +120,7 @@ public:
    */
   inline std::uint8_t char_height() const
   {
-    return font_->ysize;
+    return font_ ? font_->ysize : 0U;
   }
 
 
@@ -144,14 +162,21 @@ public:
    */
   void out(std::uint16_t ch)
   {
-    const std::uint8_t color_depth = (font_->attr & font::AA_MASK);
-    const std::uint8_t color_mask  = (1U << color_depth) - 1U;
-    const std::uint8_t color_shift = 8U - color_depth;
-
-    if (ch < 0x20U) {
-      // ignore non characters
+    if (!font_ || (ch < 0x20U)) {
+      // no font selected or non character
       return;
     }
+
+    // font color depth: 1, 2, 4 or 8 bit per pixel
+    const std::uint8_t color_depth = (font_->attr & font::AA_MASK);
+    const std::uint8_t color_mask  = static_cast<std::uint8_t>((1U << color_depth) - 1U);
+    const std::uint8_t color_shift = static_cast<std::uint8_t>(8U - color_depth);
+    // alpha of the pen color, the pixel intensity of anti aliased fonts is multiplied with it
+    const std::uint16_t color_alpha = color::get_alpha(color_);
+
+    // The intensity of a pixel is extracted with:  (data[d + ((x * color_depth) >> 3)] >> ((8 - (x + 1) * color_depth) % 8)) & color_mask
+    // The shift expression relies on unsigned wrap around for x > 8 / color_depth, e.g. 2 bpp, x = 4: (8 - 10) mod 2^32 % 8 = 6
+    // The intensity is expanded to 8 bit with: ((intensity + 1) << color_shift) - 1, so the max intensity is always 255
 
     if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
       // extended (UNICODE) font
@@ -165,13 +190,13 @@ public:
             for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
               std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
-                intensity = ((intensity + 1U) << color_shift) - 1U;
+                intensity = static_cast<std::uint16_t>(((intensity + 1U) << color_shift) - 1U);
                 pixel_set({ static_cast<std::int16_t>(x_act_ + info->xpos + (std::int16_t)x), static_cast<std::int16_t>(y_act_ + info->ypos + (std::int16_t)y) },
-                          color::set_alpha(color_, static_cast<std::uint8_t>((std::uint16_t)color::get_alpha(color_) * (255U - intensity) / 255U)));
+                          color::set_alpha(color_, static_cast<std::uint8_t>(color_alpha * intensity / 255U)));
               }
             }
           }
-          x_act_ += info->xdist;
+          x_act_ = static_cast<std::int16_t>(x_act_ + info->xdist);
           return;
         }
         font_prop_ext = font_prop_ext->next;
@@ -193,13 +218,13 @@ public:
               for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
                 std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {
-                  intensity = ((intensity + 1U) << color_shift) - 1U;
+                  intensity = static_cast<std::uint16_t>(((intensity + 1U) << color_shift) - 1U);
                   pixel_set({ static_cast<std::int16_t>(x_act_ + (std::int16_t)x), static_cast<std::int16_t>(y_act_ + (std::int16_t)y) },
-                            color::set_alpha(color_, 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_)) * intensity / 255U)));
+                            color::set_alpha(color_, static_cast<std::uint8_t>(color_alpha * intensity / 255U)));
                 }
               }
             }
-            x_act_ += info->xdist;
+            x_act_ = static_cast<std::int16_t>(x_act_ + info->xdist);
             return;
           }
           font_prop = font_prop->next;
@@ -216,13 +241,13 @@ public:
             for (std::uint_fast8_t x = 0U; x < font_mono->xsize; ++x) {
               std::uint16_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
-                intensity = ((intensity + 1U) << color_shift) - 1U;
+                intensity = static_cast<std::uint16_t>(((intensity + 1U) << color_shift) - 1U);
                 pixel_set({ static_cast<std::int16_t>(x_act_ + (std::int16_t)x), static_cast<std::int16_t>(y_act_ + (std::int16_t)y) },
-                          color::set_alpha(color_, 255U - static_cast<std::uint8_t>((255U - color::get_alpha(color_)) * intensity / 255U)));
+                          color::set_alpha(color_, static_cast<std::uint8_t>(color_alpha * intensity / 255U)));
               }
             }
           }
-          x_act_ += font_mono->xsize;
+          x_act_ = static_cast<std::int16_t>(x_act_ + font_mono->xsize);
           return;
         }
       }
@@ -237,44 +262,27 @@ public:
    */
   virtual std::uint16_t out(const std::uint8_t* string)
   {
-    std::uint16_t ch, cnt = 0U;
-    while (*string) {
-      if ((*string & 0x80U) == 0x00U) {
-        // 1 byte sequence (ASCII char)
-        ch = (std::uint16_t)(*string++ & 0x7FU);
-      }
-      else if ((*string & 0xE0U) == 0xC0U) {
-        // 2 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
-        string += 2U;
-      }
-      else if ((*string & 0xF0U) == 0xE0U) {
-        // 3 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x000FU) << 12U) | (((std::uint16_t)*(string + 1U) & 0x003FU) << 6U) | ((std::uint16_t)*(string + 2U) & 0x003FU);
-        string += 3U;
-      }
-      else {
-        // unknown sequence
-        string++;
-        continue;
-      }
-
+    std::uint16_t cnt = 0U;
+    for (std::uint16_t ch = util::utf8_decode(string); ch != 0U; ch = util::utf8_decode(string)) {
       // handling of special chars
-      if ((char)ch == '\n') {
+      if (ch == 0x0AU) {
         // LF: X = 0, Y = next line
         x_act_ = x_set_;
-        y_act_ = y_act_ + font_->ysize;
+        y_act_ = static_cast<std::int16_t>(y_act_ + (font_ ? font_->ysize : 0U));
       }
-      else if ((char)ch == '\r') {
+      else if (ch == 0x0DU) {
         // CR: X = 0
         x_act_ = x_set_;
       }
-      else if ((char)ch == '\a') {
+      else if (ch == 0x07U) {
         // handling of color control: \aRRGGBB
-        const std::uint8_t r = hex2byte(string); string += 2U;
-        const std::uint8_t g = hex2byte(string); string += 2U;
-        const std::uint8_t b = hex2byte(string); string += 2U;
-        set_color(color::argb(r, g, b));
+        // the color is only changed if all six hex digits are present
+        std::uint8_t r, g, b;
+        const std::uint8_t* p = string;
+        if (hex2byte(p, r) && hex2byte(p, g) && hex2byte(p, b)) {
+          set_color(color::argb(r, g, b));
+          string = p;
+        }
       }
       else {
         out(ch);
@@ -299,24 +307,6 @@ public:
 
 
   /**
-   * Output a rotated string
-   * \param pos Position in pixel on graphic displays, position in chars on text displays
-   * \param angle Angle in degree, 0� is horizontal right, counting anticlockwise
-   * \param string Output string in ASCII/UTF-8 format, zero terminated
-   * \return Number of written characters, not bytes (as a character may consist out of two bytes)
-   */
-#if 0
-  std::uint16_t out_rotate(vertex_type pos, std::uint16_t angle, const std::uint8_t* string)
-  {
-    set_pos(pos);
-//  TBD
-    (void)angle; (void)string;
-    return 0U;
-  }
-#endif
-
-
-  /**
    * Returns the width and height the rendered string would take.
    * The string is not rendered on screen
    * \param rect Width and height that the rendered string would take
@@ -325,29 +315,24 @@ public:
    */
   std::uint16_t get_extend(rect_type& rect, const std::uint8_t* string) const
   {
-    std::uint16_t ch, cnt = 0U;
+    std::uint16_t cnt = 0U;
     rect.clear();
-    while (*string) {
-      if ((*string & 0x80U) == 0x00U) {
-        // 1 byte sequence (ASCII char)
-        ch = (std::uint16_t)(*string++ & 0x7FU);
-      }
-      else if ((*string & 0xE0U) == 0xC0U) {
-        // 2 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
-        string += 2U;
-      }
-      else if ((*string & 0xF0U) == 0xE0U) {
-        // 3 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x000FU) << 12U) | (((std::uint16_t)*(string + 1U) & 0x003FU) << 6U) | ((std::uint16_t)*(string + 2U) & 0x003FU);
-        string += 3U;
-      }
-      else {
-        // unknown sequence
-        string++;
+    if (!font_) {
+      // no font selected
+      return 0U;
+    }
+    for (std::uint16_t ch = util::utf8_decode(string); ch != 0U; ch = util::utf8_decode(string)) {
+      if (ch == '\a') {
+        // inline color escape \aRRGGBB: not rendered, skip the 6 hex digits (NUL safe)
+        for (std::uint_fast8_t n = 0U; (n < 6U) && (*string != 0U); ++n) {
+          ++string;
+        }
         continue;
       }
-
+      if ((ch == '\n') || (ch == '\r')) {
+        // control chars have no extent
+        continue;
+      }
       if ((font_->attr & font::ENCODING_MASK) == font::ENCODING_UNICODE) {
         // extended (UNICODE) font
         const font::prop_ext_type* font_prop_ext = font_->family.prop_ext;
@@ -413,24 +398,34 @@ private:
   { return rhs; }
 
 
-  // fast hex to byte conversion helper
-  std::uint8_t hex2byte(const std::uint8_t* string) const
+  /**
+   * Hex to byte conversion helper, parses exactly two hex digits
+   * \param string Reference to the string pointer, advanced by two chars on success, unchanged on failure
+   * \param bin The parsed byte
+   * \return True on success, false if the string ends or contains a non hex char
+   */
+  static bool hex2byte(const std::uint8_t*& string, std::uint8_t& bin)
   {
-    std::uint8_t bin = 0U;
+    std::uint8_t val = 0U;
     for (std::uint_fast8_t n = 0U; n < 2U; n++) {
-      const char ch = *string;
+      const std::uint8_t ch = string[n];
       if (ch >= '0' && ch <= '9') {
-        bin = (bin << 4U) + (ch - '0');
+        val = static_cast<std::uint8_t>((val << 4U) + (ch - '0'));
       }
       else if (ch >= 'A' && ch <= 'F') {
-        bin = (bin << 4U) + (ch - 'A' + 10U);
+        val = static_cast<std::uint8_t>((val << 4U) + (ch - 'A' + 10U));
       }
       else if (ch >= 'a' && ch <= 'f') {
-        bin = (bin << 4U) + (ch - 'a' + 10U);
+        val = static_cast<std::uint8_t>((val << 4U) + (ch - 'a' + 10U));
       }
-      ++string;
+      else {
+        // NUL or no hex digit
+        return false;
+      }
     }
-    return bin;
+    string += 2U;
+    bin = val;
+    return true;
   }
 
 };

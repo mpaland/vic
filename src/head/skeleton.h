@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2018, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,8 +23,8 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Skeleton driver, use this as an easy start for own head drivers
-//        Change 'Skeleton' to the new drivers head name
+// \brief Skeleton head, use this as a template for your own head/display driver
+// Copy this file, rename the class and implement the functions your display supports.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -35,7 +35,7 @@
 
 
 // defines the heads name and version
-#define VIC_HEAD_SKELETON_VERSION   "Skeleton head 1.00"
+#define VIC_HEAD_SKELETON_VERSION   "Skeleton head 1.01"
 
 namespace vic {
 namespace head {
@@ -47,29 +47,34 @@ namespace head {
  * \param Screen_Size_Y Screen (buffer) height
  * \param Viewport_Size_X Viewport (window / physical display) width
  * \param Viewport_Size_Y Viewport (window / physical display) height
+ * \param Orientation Orientation of the display
  */
 template<std::uint16_t Screen_Size_X,   std::uint16_t Screen_Size_Y,    // Screen (buffer) size in pixel on graphic displays or chars on text displays, must match the orientation
-         std::uint16_t Viewport_Size_X, std::uint16_t Viewport_Size_Y,  // Viewport (physical) size in pixel on graphic displays or chars on text displays
+         std::uint16_t Viewport_Size_X = Screen_Size_X,                 // Viewport (physical) size in pixel on graphic displays or chars on text displays
+         std::uint16_t Viewport_Size_Y = Screen_Size_Y,
          drv::orientation_type Orientation = drv::orientation_0         // Orientation of the display
 >
 class skeleton : public drv
 {
+  // vars
+  const io::handle_type device_handle_;   // logical device handle of the display interface
+
 // ctor(), dtor(), init(), shutdown(), version() and is_graphic() are the only public functions
 public:
 
   /**
    * ctor
-   * \param xsize Screen width
-   * \param ysize Screen height
-   * \param xoffset X offset of the screen, relative to top/left corner
-   * \param yoffset Y offset of the screen, relative to top/left corner
+   * \param device_handle Logical device handle of the display interface (SPI, I²C, UART ...)
+   * \param viewport_x X offset of the viewport, relative to top/left corner of the screen
+   * \param viewport_y Y offset of the viewport, relative to top/left corner of the screen
    */
-  skeleton(device_handle_type device_handle,
-           std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
+  skeleton(io::handle_type device_handle,
+           std::int16_t viewport_x = 0, std::int16_t viewport_y = 0)
     : drv(Screen_Size_X,   Screen_Size_Y,
-          Viewport_Size_Y, Viewport_Size_Y,
+          Viewport_Size_X, Viewport_Size_Y,
           viewport_x,      viewport_y,
           Orientation)
+    , device_handle_(device_handle)
   {
     // init of memory structures, normally empty
   }
@@ -91,13 +96,13 @@ public:
 
   // Implement all functions in this section, they are mandatory for any display
 
-   /**
+  /**
    * Driver init
    */
   virtual void init()
   {
-    // init the driver and hardware here
-    // this is called from public init()
+    // init the driver and hardware here, e.g.
+    // io::init(device_handle_);
   }
 
 
@@ -107,8 +112,7 @@ public:
   virtual void shutdown()
   {
     // shutdown the driver and hardware here
-    // or enter speep / powersave mode
-    // this is called from public shutdown()
+    // or enter sleep / powersave mode
   }
 
 
@@ -119,7 +123,7 @@ public:
   virtual inline const char* version() const
   {
     // return the driver version, like
-    return (const char*)VIC_DRV_SKELETON_VERSION;
+    return (const char*)VIC_HEAD_SKELETON_VERSION;
   }
 
 
@@ -145,10 +149,11 @@ protected:
    * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
    * \param bg_color Backgound/erase color, defines normally the default color of the display
    */
-  virtual void cls()
+  virtual void cls(color::value_type bg_color = color::none)
   {
     // clear the entire screen / buffer
     // implement if available
+    (void)bg_color;
   }
 
 
@@ -185,6 +190,7 @@ protected:
     }
 
     // set the pixel in the display buffer
+    (void)color;
   }
 
 
@@ -214,7 +220,8 @@ protected:
    */
   virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    // implement native horizontal line drawing
+    // implement native horizontal line drawing or remove this function to use the fallback
+    drv::line_horz(v0, v1, color);
   }
 
 
@@ -226,31 +233,46 @@ protected:
    */
   virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    // implement native vertical line drawing
+    // implement native vertical line drawing or remove this function to use the fallback
+    drv::line_vert(v0, v1, color);
   }
 
 
   /**
    * Draw a box (filled rectangle) in given color
-   * \param rect Box bounding, included in box
+   * \param rect Box bounding, left/top is inside, right/bottom is outside the box
    * \param color Box color
    */
-  virtual void box(rect_type rect, color::value_type color)
+  virtual void box(const rect_type& rect, color::value_type color)
   {
-    // implement a native filled rectangle drawing function
+    // implement a native filled rectangle drawing function or remove this function to use the fallback
+    drv::box(rect, color);
   }
 
 
   /**
    * Move display area
-   * \param source Source top/left vertex
+   * \param source Source rect
    * \param destination Destination top/left vertex
-   * \param width Width of the area
-   * \param height Height of the area
    */
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  virtual void move(const rect_type& source, vertex_type destination)
   {
-    // implement a native move area function
+    // implement a native move area function or remove this function to use the fallback
+    drv::move(source, destination);
+  }
+
+
+  /**
+   * Write a block of pixels (bit block transfer), used by the framebuffer head and for bitmaps
+   * \param rect Destination rect, right and bottom are outside the rect
+   * \param pixels Pixel block in ARGB format, row major
+   * \param stride Distance between two rows in pixels
+   */
+  virtual void blit(const rect_type& rect, const color::value_type* pixels, std::size_t stride)
+  {
+    // if the controller has an autoincrementing GRAM window: clip the rect to the screen, set the
+    // window once and stream the converted pixels. Or remove this function to use the per pixel fallback
+    drv::blit(rect, pixels, stride);
   }
 
 
@@ -270,6 +292,7 @@ protected:
   virtual void text_out(std::uint16_t ch)
   {
     // implement the text output function which writes the character to the display
+    (void)ch;
   }
 
 
@@ -280,6 +303,7 @@ protected:
   virtual void text_set_pos(vertex_type pos)
   {
     // implement a cursor set position function
+    (void)pos;
   }
 
 
@@ -290,6 +314,7 @@ protected:
   virtual void text_set_inverse(bool inverse)
   {
     // implement a set inverse text function
+    (void)inverse;
   }
 
 
@@ -303,11 +328,11 @@ protected:
 
 
   /**
-   * Clear actual line from start to cursor pos (TBD)
+   * Clear actual line from start to cursor pos
    */
   virtual void text_clear_sol()
   {
-    // implement a clear the actual line from start to cursor pos (TBD) function
+    // implement a clear the actual line from start to cursor pos function
   }
 
 
@@ -332,8 +357,9 @@ public:
    * \param enable True to switch the display on, false to switch it off (standby, powersave)
    */
   virtual void display_enable(bool enable = true)
-  { 
+  {
     // implement a display enable/disable function
+    (void)enable;
   }
 
 
@@ -344,6 +370,7 @@ public:
   virtual void display_brightness(std::uint8_t level)
   {
     // implement a function to set the display brightness
+    (void)level;
   }
 
 
@@ -354,6 +381,7 @@ public:
   virtual void display_contrast(std::uint8_t level)
   {
     // implement a function to set the display contrast
+    (void)level;
   }
 
 };

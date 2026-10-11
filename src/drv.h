@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -39,6 +39,8 @@ namespace vic {
 
 namespace sprite { class base; }
 namespace shader { class output; }
+namespace head   { template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y, std::size_t Head_Count>  class multihead;
+                   template<std::uint16_t Screen_Size_X, std::uint16_t Screen_Size_Y, std::size_t Plane_Count, color::format_type Format> class framebuffer; }
 
 
 class drv
@@ -48,6 +50,8 @@ class drv
   friend class tc;
   friend class shader::output;
   friend class sprite::base;
+  template<std::uint16_t, std::uint16_t, std::size_t> friend class head::multihead;
+  template<std::uint16_t, std::uint16_t, std::size_t, color::format_type> friend class head::framebuffer;
 
 public:
 
@@ -176,13 +180,57 @@ protected:
 
   /**
    * Return the color of the pixel
+   * A head which can't read its pixels back returns color::none ("unknown"), the drawing context
+   * then blends against its background color. Put the framebuffer head in front of such a head
+   * if the real pixels are needed (anti aliasing on non uniform backgrounds, sprites, fill).
    * \param vertex Vertex of the pixel
-   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
+   * \return Color of pixel in ARGB format with opaque alpha, color::none if the head can't read
    */
   virtual color::value_type pixel_get(vertex_type vertex)
   {
     (void)vertex;
     return color::none;
+  }
+
+
+  /**
+   * Write a block of pixels (bit block transfer)
+   * This is the one shot transfer of a rectangular pixel block, e.g. the flush of a framebuffer or the
+   * output of a bitmap. Heads with an autoincrementing GRAM window should override it and stream the
+   * block with one address setup.
+   * This is a slow fallback implementation which clips the block to the screen and sets every pixel
+   * \param rect Destination rect on the screen, right and bottom are outside the rect
+   * \param pixels Pixel block in ARGB format, row major, first pixel is the left/top pixel of rect
+   * \param stride Distance between two rows in pixels, normally rect.width()
+   */
+  virtual void blit(const rect_type& rect, const color::value_type* pixels, std::size_t stride)
+  {
+    rect_type r = rect;
+    std::size_t skip_x = 0U, skip_y = 0U;
+    if (r.left < 0) {
+      skip_x = static_cast<std::size_t>(-r.left);
+      r.left = 0;
+    }
+    if (r.top < 0) {
+      skip_y = static_cast<std::size_t>(-r.top);
+      r.top = 0;
+    }
+    if (r.right > static_cast<std::int16_t>(screen_width())) {
+      r.right = static_cast<std::int16_t>(screen_width());
+    }
+    if (r.bottom > static_cast<std::int16_t>(screen_height())) {
+      r.bottom = static_cast<std::int16_t>(screen_height());
+    }
+    if ((r.left >= r.right) || (r.top >= r.bottom)) {
+      return;
+    }
+    const color::value_type* row = pixels + skip_y * stride + skip_x;
+    for (std::int16_t y = r.top; y < r.bottom; ++y, row += stride) {
+      const color::value_type* p = row;
+      for (std::int16_t x = r.left; x < r.right; ++x) {
+        pixel_set({ x, y }, *p++);
+      }
+    }
   }
 
 
@@ -195,7 +243,7 @@ protected:
    */
   virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    v0.min_x(v1);   // set v0 to min x
+    util::min_max_swap(v0.x, v1.x);   // set v0 to min x, keep the y of v0
     for (; v0.x <= v1.x; ++v0.x) {
       pixel_set(v0, color);
     }
@@ -211,7 +259,7 @@ protected:
    */
   virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
   {
-    v0.min_y(v1);   // set v0 to min y
+    util::min_max_swap(v0.y, v1.y);   // set v0 to min y, keep the x of v0
     for (; v0.y <= v1.y; ++v0.y) {
       pixel_set(v0, color);
     }
@@ -226,8 +274,13 @@ protected:
    */
   virtual void box(const rect_type& rect, color::value_type color)
   {
+    if (rect.right <= rect.left) {
+      // empty or not normalized rect
+      return;
+    }
+    // right and bottom are outside the rect, line_horz includes its end vertex
     for (std::int_fast16_t y = rect.top; y < rect.bottom; ++y) {
-      line_horz({ rect.left, static_cast<std::int16_t>(y) }, { rect.right, static_cast<std::int16_t>(y) }, color);
+      line_horz({ rect.left, static_cast<std::int16_t>(y) }, { static_cast<std::int16_t>(rect.right - 1), static_cast<std::int16_t>(y) }, color);
     }
   }
 
@@ -298,33 +351,13 @@ protected:
    */
   virtual std::uint16_t text_out(const std::uint8_t* string)
   {
-    std::uint16_t ch, cnt = 0U;
-    while (*string) {
-      if ((*string & 0x80U) == 0x00U) {
-        // 1 byte sequence (ASCII char)
-        ch = (std::uint16_t)(*string++ & 0x7FU);
-      }
-      else if ((*string & 0xE0U) == 0xC0U) {
-        // 2 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
-        string += 2U;
-      }
-      else if ((*string & 0xF0U) == 0xE0U) {
-        // 3 byte UTF-8 sequence
-        ch = (((std::uint16_t)*string & 0x000FU) << 12U) | (((std::uint16_t)*(string + 1U) & 0x003FU) << 6U) | ((std::uint16_t)*(string + 2U) & 0x003FU);
-        string += 3U;
-      }
-      else {
-        // unknown sequence
-        string++;
-        continue;
-      }
-
+    std::uint16_t cnt = 0U;
+    for (std::uint16_t ch = util::utf8_decode(string); ch != 0U; ch = util::utf8_decode(string)) {
       // handling of special chars
-      if ((char)ch == '\n') {
+      if (ch == 0x0AU) {
         // LF: X = 0, Y = next line
       }
-      else if ((char)ch == '\r') {
+      else if (ch == 0x0DU) {
         // CR: X = 0
       }
       else {

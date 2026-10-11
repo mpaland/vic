@@ -35,10 +35,10 @@
 #include "decom/dev/dev_generic.h"
 
 // BA63 driver
-#include "../src/drv/BA6x.h"
+#include "../src/head/BA6x.h"
 
 // multihead driver
-#include "../src/drv/multihead.h"
+#include "../src/head/multihead.h"
 
 
 

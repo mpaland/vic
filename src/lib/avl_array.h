@@ -54,6 +54,8 @@
 template<typename Key, typename T, typename size_type, const size_type Size, const bool Fast = true>
 class avl_array
 {
+  static_assert(Size > 0, "avl_array capacity must be positive");
+
   // child index pointer class
   typedef struct tag_child_type {
     size_type left;
@@ -95,7 +97,7 @@ class avl_array
     }
 
     inline bool operator==(const tag_avl_array_iterator& rhs) const
-    { return idx_ == rhs.idx_; }
+    { return instance_ == rhs.instance_ && idx_ == rhs.idx_; }
 
     inline bool operator!=(const tag_avl_array_iterator& rhs) const
     { return !(*this == rhs); }
@@ -109,7 +111,7 @@ class avl_array
     { return instance_->val_[idx_]; }
 
     // access key
-    inline Key& key() const
+    inline const Key& key() const
     { return instance_->key_[idx_]; }
 
     // preincrement
@@ -169,7 +171,7 @@ public:
   // ctor
   avl_array()
     : size_(0U)
-    , root_(Size)
+    , root_(INVALID_IDX)
   { }
 
 
@@ -227,7 +229,7 @@ public:
       return true;
     }
 
-    for (size_type i = root_; i != INVALID_IDX; i = (key < key_[i]) ? child_[i].left : child_[i].right) {
+    for (size_type i = root_; i != INVALID_IDX;) {
       if (key < key_[i]) {
         if (child_[i].left == INVALID_IDX) {
           if (size_ >= max_size()) {
@@ -243,6 +245,7 @@ public:
           insert_balance(i, 1);
           return true;
         }
+        i = child_[i].left;
       }
       else if (key_[i] == key) {
         // found same key, update node
@@ -264,6 +267,7 @@ public:
           insert_balance(i, -1);
           return true;
         }
+        i = child_[i].right;
       }
     }
     // node doesn't fit (should not happen) - discard it anyway
@@ -352,7 +356,8 @@ public:
    */
   bool erase(iterator position)
   {
-    if (empty() || (position == end())) {
+    if ((position.instance_ != this) ||
+        (static_cast<std::uintmax_t>(position.idx_) >= static_cast<std::uintmax_t>(size_))) {
       return false;
     }
 
@@ -542,7 +547,7 @@ private:
       return parent_[node];
     }
     else {
-      const Key key_node = key_[node];
+      const Key& key_node = key_[node];
       for (size_type i = root_; i != INVALID_IDX; i = (key_node < key_[i]) ? child_[i].left : child_[i].right) {
         if ((child_[i].left == node) || (child_[i].right == node)) {
           // found parent

@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2018, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,24 +23,24 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief MAX7219/21 matrix LED driver
-// Create a SPI device with the following characteristics
-// mode = 0                 data captured on rising edge, clock base value is zero
+// \brief MAX7219/MAX7221 head, 8 x 8 LED matrix driver
+//
+// Create a SPI device with the following characteristics to drive the MAX7219:
+// mode = 0                 SCK idle low, data captured on rising edge
 // lsb  = false             MSB is transmitted first
 // tx_idle_value = 0xFF     output data value during data read (normally 0xFF)
 // clock_speed = 10000000   clock speed of the bus in [Hz] (10 MHz maximum for MAX7219)
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_MAX7219_H_
-#define _VIC_DRV_MAX7219_H_
+#ifndef _VIC_HEAD_MAX7219_H_
+#define _VIC_HEAD_MAX7219_H_
 
 #include "../drv.h"
-#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
-// defines the driver name and version
-#define VIC_DRV_MAX7219_VERSION   "MAX7219/21 driver 2.00"
+// defines the head name and version
+#define VIC_HEAD_MAX7219_VERSION   "MAX7219/21 head 2.10"
 
 namespace vic {
 namespace head {
@@ -50,28 +50,24 @@ namespace head {
  * MAX7219 head is a monochrome LED / 7-segment driver, using 1 bit color depth
  * \param Screen_Size_X Screen (buffer) width, should be normally 8
  * \param Screen_Size_Y Screen (buffer) height, should be normally 8
+ * \param Orientation Hardware orientation of the display
  */
 template<std::uint16_t Screen_Size_X = 8U, std::uint16_t Screen_Size_Y = 8U,    // X, Y size, must match the orientation
          drv::orientation_type Orientation = drv::orientation_0                 // hardware orientation of the display
 >
 class MAX7219 final : public drv
 {
+public:
   // register address map
   static const std::uint8_t REG_NOOP       = 0x00U;
   static const std::uint8_t REG_DIGIT0     = 0x01U;
-  static const std::uint8_t REG_DIGIT1     = 0x02U;
-  static const std::uint8_t REG_DIGIT2     = 0x03U;
-  static const std::uint8_t REG_DIGIT3     = 0x04U;
-  static const std::uint8_t REG_DIGIT4     = 0x05U;
-  static const std::uint8_t REG_DIGIT5     = 0x06U;
-  static const std::uint8_t REG_DIGIT6     = 0x07U;
-  static const std::uint8_t REG_DIGIT7     = 0x08U;
   static const std::uint8_t REG_DECODE     = 0x09U;
   static const std::uint8_t REG_INTENSITY  = 0x0AU;
   static const std::uint8_t REG_SCANLIMIT  = 0x0BU;
   static const std::uint8_t REG_SHUTDOWN   = 0x0CU;
   static const std::uint8_t REG_TEST       = 0x0FU;
 
+private:
   // vars
   const io::handle_type  device_handle_;           // (SPI) device handle
   std::uint8_t           digit_[Screen_Size_Y];    // display buffer, cause MAX7219 doesn't support reading data back
@@ -81,16 +77,19 @@ public:
 
   /**
    * ctor
-   * \param orientation Screen orientation
-   * \param spi_device_id Logical SPI bus device ID
+   * \param device_handle Logical SPI bus device handle
    */
-  MAX7219(io::dev::handle_type device_handle)
+  MAX7219(io::handle_type device_handle)
     : drv(Screen_Size_X, Screen_Size_Y,
           Screen_Size_X, Screen_Size_Y,     // no viewport support (screen = viewport)
           0, 0,                             // no viewport support
           Orientation)
     , device_handle_(device_handle)
-  { }
+  {
+    for (std::uint16_t i = 0U; i < Screen_Size_Y; ++i) {
+      digit_[i] = 0U;
+    }
+  }
 
 
   /**
@@ -107,10 +106,10 @@ public:
   // M A N D A T O R Y   D R I V E R   F U N C T I O N S
   //
 
-protected:
-
   virtual void init()
   {
+    io::init(device_handle_);
+
     // set scan limit according to width or height
     write(REG_SCANLIMIT, (orientation_ == orientation_0)  || (orientation_ == orientation_180) ||
                          (orientation_ == orientation_0m) || (orientation_ == orientation_180m) ?
@@ -129,7 +128,7 @@ protected:
     cls();
 
     // full brightness
-    brightness_set(255U);
+    display_brightness(255U);
   }
 
 
@@ -145,7 +144,7 @@ protected:
 
   inline virtual const char* version() const
   {
-    return (const char*)VIC_DRV_MAX7219_VERSION;
+    return (const char*)VIC_HEAD_MAX7219_VERSION;
   }
 
 
@@ -162,8 +161,9 @@ protected:
 
 protected:
 
-  virtual void cls(color::value_type bk_color)
+  virtual void cls(color::value_type bg_color = color::none)
   {
+    (void)bg_color;
     // clear display
     for (std::uint_fast8_t i = 0U; i < screen_height(); ++i) {
       digit_[i] = 0U;
@@ -178,63 +178,63 @@ protected:
     // copy memory bitmap to screen
     switch (Orientation) {
       case orientation_0 :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
-          write(REG_DIGIT0 + y, digit_[viewport_get().y + y]);
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), digit_[viewport_get().y + y]);
         }
         break;
       case orientation_90 :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
           std::uint8_t data = 0U;
-          for (std::int16_t x = 0; x < viewport_width(); ++x) {
-            data >>= 1U;
+          for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
+            data = static_cast<std::uint8_t>(data >> 1U);
             data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x80U : 0x00U;
           }
-          write(REG_DIGIT0 + y, data);
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
         break;
       case orientation_180 :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
-          write(REG_DIGIT0 + y, util::byte_reverse(digit_[viewport_get().y + viewport_height() - y - 1]));
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), util::byte_reverse(digit_[viewport_get().y + viewport_height() - y - 1]));
         }
         break;
       case orientation_270 :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
           std::uint8_t data = 0U;
-          for (std::int16_t x = 0; x < viewport_width(); ++x) {
-            data <<= 1U;
+          for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
+            data = static_cast<std::uint8_t>(data << 1U);
             data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x01U : 0x00U;
           }
-          write(REG_DIGIT0 + y, data);
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
         break;
       case orientation_0m :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
-          write(REG_DIGIT0 + y, digit_[viewport_get().y + viewport_height() - y - 1]);
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), digit_[viewport_get().y + viewport_height() - y - 1]);
         }
         break;
       case orientation_90m :
-        for (std::int16_t y = 0U; y < viewport_height(); ++y) {
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
           std::uint8_t data = 0U;
-          for (std::int16_t x = 0; x < viewport_width(); ++x) {
-            data >>= 1U;
+          for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
+            data = static_cast<std::uint8_t>(data >> 1U);
             data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x80U : 0x00U;
           }
-          write(REG_DIGIT0 + y, data);
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
         break;
       case orientation_180m :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
-          write(REG_DIGIT0 + y, util::byte_reverse(digit_[viewport_get().y + y]));
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), util::byte_reverse(digit_[viewport_get().y + y]));
         }
         break;
       case orientation_270m :
-        for (std::int16_t y = 0; y < viewport_height(); ++y) {
+        for (std::int16_t y = 0; y < static_cast<std::int16_t>(viewport_height()); ++y) {
           std::uint8_t data = 0U;
-          for (std::int16_t x = 0; x < viewport_width(); ++x) {
-            data <<= 1U;
+          for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
+            data = static_cast<std::uint8_t>(data << 1U);
             data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x01U : 0x00U;
           }
-          write(REG_DIGIT0 + y, data);
+          write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
         break;
       default:
@@ -270,15 +270,27 @@ protected:
     // check limits
     if (!screen_is_inside(vertex)) {
       // out of bounds
-      return color::color_from_L1(0U);
+      return color::none;
     }
-    return color::color_from_L1(static_cast<std::uint8_t>(digit_[vertex.y] >> vertex.x) & 0x01U);
+    return color::L1_to_color(static_cast<std::uint8_t>((digit_[vertex.y] >> (vertex.x & 0x07U)) & 0x01U));
   }
 
 
   ///////////////////////////////////////////////////////////////////////////////
   // D I S P L A Y   C O N T R O L
   //
+
+public:
+
+  /**
+   * Enable/disable the display
+   * \param enable True to switch the display on, false to switch it off (shutdown mode)
+   */
+  virtual void display_enable(bool enable = true)
+  {
+    write(REG_SHUTDOWN, enable ? 0x01U : 0x00U);
+  }
+
 
   /**
    * Set display or backlight brightness
@@ -310,4 +322,4 @@ private:
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_MAX7219_H_
+#endif  // _VIC_HEAD_MAX7219_H_

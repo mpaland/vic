@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -40,7 +40,7 @@
 // - origin is always the left/top corner of the widget
 // - x_size is always the complete size in x-direction
 // - y_size is always the complete size in y-direction
-// - if border color is set, the border is x-size * y-size
+// - if border color is set, the border is one pixel wide and part of x_size * y_size
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -74,8 +74,8 @@ public:
     std::int16_t      range_lower;    // initial lower range, e.g. 0
     std::int16_t      range_upper;    // initial upper range, e.g. 100
     color::value_type color_bar;      // bar color
-    color::value_type color_bg;       // background color
-    color::value_type color_border;   // border color
+    color::value_type color_bg;       // background color, color::none to leave the background untouched
+    color::value_type color_border;   // border color, color::none for no border
   } config_type;
 
 private:
@@ -101,13 +101,10 @@ public:
 
 
   /**
-   * Init
+   * Init: draw the widget
    */
   virtual void init() final
   {
-    // reduce the size by one, because rectangle() and box() always include the end vertex
-    config_.x_size -= 1U;
-    config_.y_size -= 1U;
     redraw();
   }
 
@@ -142,13 +139,11 @@ public:
 
   /**
    * Set the new position of the progress bar control and render it
-   * \param pos New position - must be within the valid range
+   * \param pos New position, clamped to the valid range
    */
   void set_pos(std::int16_t pos)
   {
-    if (pos >= config_.range_lower && pos <= config_.range_upper) {
-      render(pos);
-    }
+    render(clamp(pos));
   }
 
 
@@ -187,16 +182,7 @@ public:
    */
   void step_it()
   {
-    std::int16_t pos = pos_ + step_;
-    if (pos < config_.range_lower) {
-      pos = config_.range_lower;
-    }
-    else if (pos > config_.range_upper) {
-      pos = config_.range_upper;
-    }
-
-    // reflect the new position
-    render(pos);
+    render(clamp(static_cast<std::int16_t>(pos_ + step_)));
   }
 
 
@@ -205,13 +191,15 @@ public:
    */
   void redraw()
   {
+    dc_.present_lock();
     // render the border
     if (config_.color_border != color::none) {
       dc_.set_color(config_.color_border);
-      dc_.rectangle(config_.origin, { static_cast<std::int16_t>(config_.origin.x + config_.x_size), static_cast<std::int16_t>(config_.origin.y + config_.y_size) });
+      dc_.rectangle(outer_rect());
     }
     // render the bar
     render(pos_, true);
+    dc_.present_lock(false);
   }
 
 
@@ -223,11 +211,83 @@ protected:
    * \return true if vertex is inside
    */
   virtual bool is_inside(vertex_type vertex) const final
-  { return config_.origin.x <= vertex.x && vertex.x <= config_.origin.x + config_.x_size &&
-           config_.origin.y <= vertex.y && vertex.y <= config_.origin.y + config_.y_size; }
+  {
+    return outer_rect().contain(vertex);
+  }
 
 
 private:
+
+  // the complete widget rect
+  inline rect_type outer_rect() const
+  {
+    return { config_.origin.x, config_.origin.y,
+             static_cast<std::int16_t>(config_.origin.x + config_.x_size), static_cast<std::int16_t>(config_.origin.y + config_.y_size) };
+  }
+
+
+  // the bar rect (inside the border)
+  inline rect_type inner_rect() const
+  {
+    rect_type r = outer_rect();
+    if (config_.color_border != color::none) {
+      r.left++; r.top++; r.right--; r.bottom--;
+      if (r.right < r.left) { r.right = r.left; }
+      if (r.bottom < r.top) { r.bottom = r.top; }
+    }
+    return r;
+  }
+
+
+  inline bool horizontal() const
+  {
+    return (config_.orientation == left_to_right) || (config_.orientation == right_to_left);
+  }
+
+
+  // clamp a position to the valid range
+  inline std::int16_t clamp(std::int16_t pos) const
+  {
+    return pos < config_.range_lower ? config_.range_lower : (pos > config_.range_upper ? config_.range_upper : pos);
+  }
+
+
+  /**
+   * Calculate the bar length in pixel for a position
+   * \param pos Position within the range
+   * \param length Length of the complete bar in pixel
+   * \return Bar length in pixel, 0 to length
+   */
+  std::int16_t bar_length(std::int16_t pos, std::int16_t length) const
+  {
+    const std::int32_t range = static_cast<std::int32_t>(config_.range_upper) - config_.range_lower;
+    if (range <= 0) {
+      return 0;
+    }
+    std::int32_t bar = (static_cast<std::int32_t>(length) * (pos - config_.range_lower) + range / 2) / range;
+    bar = bar < 0 ? 0 : (bar > length ? length : bar);
+    return static_cast<std::int16_t>(bar);
+  }
+
+
+  /**
+   * Get the rect of the bar part between two bar lengths (exclusive right/bottom)
+   * \param from Start length in pixel (smaller)
+   * \param to End length in pixel (bigger)
+   * \return The rect
+   */
+  rect_type bar_rect(std::int16_t from, std::int16_t to) const
+  {
+    const rect_type in = inner_rect();
+    switch (config_.orientation) {
+      case left_to_right : return { static_cast<std::int16_t>(in.left + from), in.top, static_cast<std::int16_t>(in.left + to), in.bottom };
+      case right_to_left : return { static_cast<std::int16_t>(in.right - to), in.top, static_cast<std::int16_t>(in.right - from), in.bottom };
+      case bottom_to_top : return { in.left, static_cast<std::int16_t>(in.bottom - to), in.right, static_cast<std::int16_t>(in.bottom - from) };
+      case top_to_bottom : return { in.left, static_cast<std::int16_t>(in.top + from), in.right, static_cast<std::int16_t>(in.top + to) };
+      default            : return { 0, 0, 0, 0 };
+    }
+  }
+
 
   /**
    * Render the bar for the new position
@@ -236,95 +296,34 @@ private:
    */
   void render(std::int16_t pos, bool refresh = false)
   {
-    rect_type rect_bar;
-    rect_type rect_bkg;
+    const rect_type    in     = inner_rect();
+    const std::int16_t length = horizontal() ? in.width() : in.height();
+    const std::int16_t bar    = bar_length(pos, length);
 
-    const vertex_type   origin = (config_.color_border == color::none) ? config_.origin : config_.origin + vertex_type({ 1, 1 });
-    const std::uint16_t x_size = (config_.color_border == color::none) ? config_.x_size : config_.x_size - 2U;
-    const std::uint16_t y_size = (config_.color_border == color::none) ? config_.y_size : config_.y_size - 2U;
-
-    // calculate the bar sizes in screen units
-    std::uint16_t bar_size = static_cast<std::uint16_t>(util::div_round_closest(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? x_size + 1U : y_size + 1U) * (pos - config_.range_lower),
-                                                                                (config_.range_upper - config_.range_lower)));
-    std::uint16_t bkg_size = static_cast<std::uint16_t>(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? x_size + 1U : y_size + 1U) - bar_size);
-    if (bar_size) {
-      bar_size--;
-    }
-    if (bkg_size) {
-      bkg_size--;
-    }
-
+    dc_.present_lock();
     if (refresh) {
-      // complete redraw
-      switch (config_.orientation) {
-        case left_to_right :
-          rect_bar = { origin.x,                     origin.y, origin.x + bar_size, origin.y + y_size };
-          rect_bkg = { origin.x + x_size - bkg_size, origin.y, origin.x + x_size,   origin.y + y_size };
-          break;
-        case right_to_left :
-          rect_bar = { origin.x + x_size - bar_size, origin.y, origin.x + x_size,   origin.y + y_size };
-          rect_bkg = { origin.x,                     origin.y, origin.x + bkg_size, origin.y + y_size };
-          break;
-        case bottom_to_top :
-          rect_bar = { origin.x, origin.y + y_size - bar_size, origin.x + x_size, origin.y + y_size };
-          rect_bkg = { origin.x, origin.y,                     origin.x + x_size, origin.y + bkg_size };
-          break;
-        case top_to_bottom :
-          rect_bar = { origin.x, origin.y,                     origin.x + x_size, origin.y + bar_size };
-          rect_bkg = { origin.x, origin.y + y_size - bkg_size, origin.x + x_size, origin.y + y_size };
-          break;
-        default:
-          rect_bar.clear();
-          rect_bkg.clear();
-          break;
-      }
-      // draw bar and background
-      if (pos != config_.range_upper) {
+      // complete redraw: background and bar
+      if (config_.color_bg != color::none) {
         dc_.set_color(config_.color_bg);
-        dc_.box(rect_bkg);
+        dc_.box(bar_rect(bar, length));
       }
-      if (pos - config_.range_lower) {
-        dc_.set_color(config_.color_bar);
-        dc_.box(rect_bar);
-      }
+      dc_.set_color(config_.color_bar);
+      dc_.box(bar_rect(0, bar));
     }
-    else {
+    else if (pos != pos_) {
       // delta redraw, only the changed area
-      if (pos == pos_) {
-        // no change, nothing to do
-        return;
+      const std::int16_t bar_old = bar_length(pos_, length);
+      if (bar > bar_old) {
+        dc_.set_color(config_.color_bar);
+        dc_.box(bar_rect(bar_old, bar));
       }
-
-      // calculate the last bar size in screen units
-      std::uint16_t bar_size_old = static_cast<std::uint16_t>(util::div_round_closest(((config_.orientation == left_to_right || config_.orientation == right_to_left) ? x_size + 1U : y_size + 1U) * (pos_ - config_.range_lower),
-                                                                                      (config_.range_upper - config_.range_lower)));
-      if (bar_size_old) {
-        bar_size_old--;
+      else if ((bar < bar_old) && (config_.color_bg != color::none)) {
+        dc_.set_color(config_.color_bg);
+        dc_.box(bar_rect(bar, bar_old));
       }
-      // make sure, that bar_size is smaller than bar_size_old
-      util::min_max_swap(bar_size, bar_size_old);
-
-      switch (config_.orientation) {
-        case left_to_right :
-          rect_bar = { origin.x + bar_size, origin.y, origin.x + bar_size_old, origin.y + y_size };
-          break;
-        case right_to_left :
-          rect_bar = { origin.x + x_size - bar_size_old, origin.y, origin.x + x_size - bar_size, origin.y + y_size };
-          break;
-        case bottom_to_top :
-          rect_bar = { origin.x, origin.y + y_size - bar_size_old, origin.x + x_size, origin.y + y_size - bar_size };
-          break;
-        case top_to_bottom :
-          rect_bar = { origin.x, origin.y + bar_size, origin.x + x_size, origin.y + bar_size_old };
-          break;
-        default:
-          rect_bar.clear();
-          break;
-      }
-      // draw delta rect
-      dc_.set_color((pos > pos_)  ? config_.color_bar : config_.color_bg);
-      dc_.box(rect_bar);
     }
+    dc_.present_lock(false);
+
     // set new position
     pos_ = pos;
   }

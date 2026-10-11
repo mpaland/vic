@@ -1,0 +1,37 @@
+{
+  "version": 3,
+  "cmakeMinimumRequired": { "major": 3, "minor": 20, "patch": 0 },
+  "configurePresets": [
+    {
+      "name": "ninja-debug",
+      "displayName": "Ninja Debug",
+      "description": "Single config Ninja build (run inside a vcvars64 shell on Windows)",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug" }
+    },
+    {
+      "name": "ninja-release",
+      "inherits": "ninja-debug",
+      "displayName": "Ninja Release",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Release" }
+    },
+    {
+      "name": "ninja-asan",
+      "inherits": "ninja-debug",
+      "displayName": "Ninja Debug with sanitizers",
+      "binaryDir": "${sourceDir}/build-asan",
+      "cacheVariables": { "CMAKE_BUILD_TYPE": "Debug", "VIC_TEST_ASAN": "ON" }
+    }
+  ],
+  "buildPresets": [
+    { "name": "ninja-debug",   "configurePreset": "ninja-debug" },
+    { "name": "ninja-release", "configurePreset": "ninja-release" },
+    { "name": "ninja-asan",    "configurePreset": "ninja-asan" }
+  ],
+  "testPresets": [
+    { "name": "ninja-debug",   "configurePreset": "ninja-debug",   "output": { "outputOnFailure": true } },
+    { "name": "ninja-release", "configurePreset": "ninja-release", "output": { "outputOnFailure": true } },
+    { "name": "ninja-asan",    "configurePreset": "ninja-asan",    "output": { "outputOnFailure": true } }
+  ]
+}

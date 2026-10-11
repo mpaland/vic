@@ -139,7 +139,7 @@ public:
    */
   inline std::uint16_t screen_width() const
   {
-    return head_->screen_width();
+    return !!dc_ ? dc_->screen_width() : head_->screen_width();
   }
 
 
@@ -149,7 +149,7 @@ public:
    */
   inline std::uint16_t screen_height() const
   {
-    return head_->screen_height();
+    return !!dc_ ? dc_->screen_height() : head_->screen_height();
   }
 
 
@@ -257,33 +257,14 @@ public:
       return txr::get_extend(rect, string);
     }
     else {
-      // alpha numeric head
+      // alpha numeric head, every character takes one cell
       rect.clear();
-      std::uint16_t ch, cnt = 0U;
-      while (*string) {
-        if ((*string & 0x80U) == 0x00U) {
-          // 1 byte sequence (ASCII char)
-          ch = (std::uint16_t)(*string++ & 0x7FU);
-        }
-        else if ((*string & 0xE0U) == 0xC0U) {
-          // 2 byte UTF-8 sequence
-          ch = (((std::uint16_t)*string & 0x001FU) << 6U) | ((std::uint16_t)*(string + 1U) & 0x003FU);
-          string += 2U;
-        }
-        else if ((*string & 0xF0U) == 0xE0U) {
-          // 3 byte UTF-8 sequence
-          ch = (((std::uint16_t)*string & 0x000FU) << 12U) | (((std::uint16_t)*(string + 1U) & 0x003FU) << 6U) | ((std::uint16_t)*(string + 2U) & 0x003FU);
-          string += 3U;
-        }
-        else {
-          // unknown sequence
-          string++;
-          continue;
-        }
+      std::uint16_t cnt = 0U;
+      while (util::utf8_decode(string) != 0U) {
         cnt++;
       }
-      rect.right  = cnt;
-      rect.bottom = 1U;
+      rect.right  = static_cast<std::int16_t>(cnt);
+      rect.bottom = 1;
       return cnt;
     }
   }

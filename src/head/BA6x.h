@@ -113,7 +113,9 @@ public:
     // clear rx buffer
     std::uint8_t dummy[16];
     std::size_t  dummy_len = 16U;
-    while (io::read(device_handle_, 0U, dummy, dummy_len, 0U));
+    while (io::read(device_handle_, 0U, dummy, dummy_len, 0U)) {
+      dummy_len = 16U;
+    }
 
     // clear display
     cls();
@@ -149,8 +151,9 @@ public:
 
 protected:
 
-  inline virtual void cls(color::value_type)
+  inline virtual void cls(color::value_type bg_color = color::none)
   {
+    (void)bg_color;
     // send 1B 5B 32 4A
     static const std::uint8_t cmd[4] = { ESC, 0x5BU, 0x32U, 0x4AU };
 
@@ -177,8 +180,9 @@ protected:
 
     // check limits
     if (screen_is_inside(cur_pos_)) {
-      // send command
-      write_command(reinterpret_cast<std::uint8_t*>(&ch), 1U);
+      // send command, the display takes 8 bit chars
+      const std::uint8_t data = static_cast<std::uint8_t>(ch);
+      write_command(&data, 1U);
     }
 
     // inc x and reposition cursor if an implicit CR occured at end of the line 
@@ -198,30 +202,31 @@ protected:
     // the base class function might be used, but the char by char write command overhead is too big,
     // so assemble the data here and pass it directly
     // CAUTION: No Unicode conversion is done, data must be in display format!
-    std::uint16_t len = (std::uint16_t)strlen(reinterpret_cast<const char*>(string));
-    std::uint16_t off = 0U;
+    std::int32_t len = static_cast<std::int32_t>(strlen(reinterpret_cast<const char*>(string)));
+    std::int32_t off = 0;
 
     // check if string is (partly) in screen
-    if ((cur_pos_.x + len >= 0) && (cur_pos_.x < screen_width()) &&
-        (cur_pos_.y >= 0) && (cur_pos_.y < screen_height())) {
-      // calc offset
+    if ((cur_pos_.x + len >= 0) && (cur_pos_.x < static_cast<std::int32_t>(screen_width())) &&
+        (cur_pos_.y >= 0) && (cur_pos_.y < static_cast<std::int32_t>(screen_height()))) {
+      // calc offset and visible len
       if (cur_pos_.x < 0) {
-        off = 0 - cur_pos_.x;
-      }
-      // calc visible len
-      if (cur_pos_.x < 0) {
+        off = -cur_pos_.x;
         len = cur_pos_.x + len;
       }
-      else if (cur_pos_.x + len > screen_width()) {
-        len = screen_width() - cur_pos_.x;  // limit string to screen size
+      else if (cur_pos_.x + len > static_cast<std::int32_t>(screen_width())) {
+        len = static_cast<std::int32_t>(screen_width()) - cur_pos_.x;  // limit string to screen size
       }
-      if (len > screen_width()) {
-        len = screen_width();
+      if (len > static_cast<std::int32_t>(screen_width())) {
+        len = static_cast<std::int32_t>(screen_width());
+      }
+      if (len <= 0) {
+        return 0U;
       }
 
       // send command
-      write_command(string + off, len);
-      return len;
+      write_command(string + off, static_cast<std::uint16_t>(len));
+      cur_pos_.x = static_cast<std::int16_t>(cur_pos_.x + off + len);
+      return static_cast<std::uint16_t>(len);
     }
     return 0U;
   }
@@ -254,16 +259,16 @@ protected:
 
     // y
     if (pos.y >= 10) {
-      cmd[len++] = 0x30U + static_cast<std::uint8_t>(pos.y / 10U);
+      cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.y / 10);
     }
-    cmd[len++] = 0x30U + static_cast<std::uint8_t>(pos.y % 10U);
+    cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.y % 10);
     cmd[len++] = 0x3BU;
-  
+
     // x
     if (pos.x >= 10) {
-      cmd[len++] = 0x30U + static_cast<std::uint8_t>(pos.x / 10U);
+      cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.x / 10);
     }
-    cmd[len++] = 0x30U + static_cast<std::uint8_t>(pos.x % 10U);
+    cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.x % 10);
     cmd[len++] = 0x48U;
 
     // send command
@@ -394,7 +399,7 @@ private:
     std::uint8_t  msg[BA6X_MAX_CMD_LENGTH];
 
     do {
-      const std::uint16_t blk_size = data_count - offset > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : data_count - offset;
+      const std::uint16_t blk_size = static_cast<std::uint16_t>(data_count - offset > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : data_count - offset);
 
       msg[0] = 0x02U;
       msg[1] = 0x00U;
@@ -402,7 +407,7 @@ private:
       memcpy(&msg[3], &data[offset], blk_size);
 
       // send data to display
-      const bool res = io::write(device_handle_, 0U, msg, blk_size + 3U, nullptr, 0U);
+      const bool res = io::write(device_handle_, 0U, msg, static_cast<std::size_t>(blk_size) + 3U, nullptr, 0U);
       std::uint8_t response[4];
       std::size_t  len = 4U;
       if (!(res && (read_response(response, len)) && (len == 4U) && (response[0] == 0x04U) && (!(response[1] & 0xA0U)))) {
@@ -427,7 +432,7 @@ private:
     std::size_t count    = max_size;
 
     while (io::read(device_handle_, 0U, &data[offset], count, timeout)) {
-      offset += (std::int16_t)count;
+      offset += count;
       count = max_size - offset;
       if (offset >= data_count) {
         data_count = offset;

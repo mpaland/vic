@@ -39,7 +39,7 @@ namespace font {
 
 class LCD_8x8 final : public font_type
 {
-  virtual const info_type& get_info() const
+  virtual const info_type& info() const
   {
     static const std::uint8_t LCD_8x8_data[] = {
       0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,

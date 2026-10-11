@@ -38,7 +38,7 @@ namespace font {
 
 class Arial_num_16x24_aa4 final : public font_type
 {
-  virtual const info_type& get_info() const
+  virtual const info_type& info() const
   {
     static const std::uint8_t Arial_num_16x24_aa4_0021[] = { /* code 0021 */
       0x00, 0x00, 0x00, 0x00,

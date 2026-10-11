@@ -185,7 +185,7 @@ namespace color {
 
   // color is dimmed to 75%
   inline value_type dim_75(value_type color)
-  { return (dim_25(color) + dim_50(color)); }
+  { return ((color & 0xFF000000UL) | ((dim_25(color) + dim_50(color)) & 0x00FFFFFFUL)); }
 
   /**
    * Dim the given color, alpha channel is unaffected
@@ -198,22 +198,22 @@ namespace color {
                                      ((((color & 0x0000FF00UL) * (static_cast<std::uint16_t>(lum) + 1U)) >> 8U) & 0x0000FF00UL) |
                                      ((((color & 0x000000FFUL) * (static_cast<std::uint16_t>(lum) + 1U)) >> 8U) & 0x000000FFUL)); }
 
-  // generic color mixing, alpha channel is unaffected
+  // generic color mixing, the alpha channel of the foreground color is taken
   // color mix: 25% foreground, 75% background
-  inline value_type mix_25(value_type foregound, value_type backgound)
-  { return (dim_25(foregound) + dim_75(backgound)); }
+  inline value_type mix_25(value_type foreground, value_type background)
+  { return ((foreground & 0xFF000000UL) | ((dim_25(foreground) + dim_75(background)) & 0x00FFFFFFUL)); }
 
   // color mix: 50% foreground, 50% background
-  inline value_type mix_50(value_type foregound, value_type backgound)
-  { return (dim_50(foregound) + dim_50(backgound)); }
+  inline value_type mix_50(value_type foreground, value_type background)
+  { return ((foreground & 0xFF000000UL) | ((dim_50(foreground) + dim_50(background)) & 0x00FFFFFFUL)); }
 
   // color mix: 75% foreground, 25% background
-  inline value_type mix_75(value_type foregound, value_type backgound)
-  { return (dim_75(foregound) + dim_25(backgound)); }
+  inline value_type mix_75(value_type foreground, value_type background)
+  { return ((foreground & 0xFF000000UL) | ((dim_75(foreground) + dim_25(background)) & 0x00FFFFFFUL)); }
 
-  // color mix: lum = 255: 100% foreground color, lum = 0: 0% background
-  inline value_type mix(value_type foregound, value_type backgound, std::uint8_t lum)
-  { return (dim(foregound, lum) + dim(backgound, 0xFFU - lum)); }
+  // color mix: lum = 255: 100% foreground color, lum = 0: 100% background color
+  inline value_type mix(value_type foreground, value_type background, std::uint8_t lum)
+  { return ((foreground & 0xFF000000UL) | ((dim(foreground, lum) + dim(background, static_cast<std::uint8_t>(0xFFU - lum))) & 0x00FFFFFFUL)); }
 
   /**
    * Return true if color is opaque
@@ -306,17 +306,21 @@ namespace color {
   inline std::uint8_t color_to_RGB332(value_type color)
   { return static_cast<std::uint8_t>((std::uint8_t)(get_red(color) & 0xE0U) | (std::uint8_t)((get_green(color) & 0xE0U) >> 3U) | (std::uint8_t)((get_blue(color)) >> 6U)); }
 
+  // RGB444: RRRRGGGGBBBB
   inline std::uint16_t color_to_RGB444(value_type color)
-  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF0U) <<  8U) | ((std::uint16_t)(get_green(color) & 0xF0U) << 4U) | (std::uint16_t)(get_blue(color) >> 4U)); }
+  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF0U) << 4U) | (std::uint16_t)(get_green(color) & 0xF0U) | (std::uint16_t)(get_blue(color) >> 4U)); }
 
+  // RGB555: 0RRRRRGGGGGBBBBB
   inline std::uint16_t color_to_RGB555(value_type color)
-  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF8U) << 10U) | ((std::uint16_t)(get_green(color) & 0xF8U) << 5U) | (std::uint16_t)(get_blue(color) >> 3U)); }
+  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF8U) << 7U) | ((std::uint16_t)(get_green(color) & 0xF8U) << 2U) | (std::uint16_t)(get_blue(color) >> 3U)); }
 
+  // RGB565: RRRRRGGGGGGBBBBB
   inline std::uint16_t color_to_RGB565(value_type color)
-  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF8U) << 11U) | ((std::uint16_t)(get_green(color) & 0xFCU) << 5U) | (std::uint16_t)(get_blue(color) >> 3U)); }
+  { return static_cast<std::uint16_t>(((std::uint16_t)(get_red(color) & 0xF8U) << 8U) | ((std::uint16_t)(get_green(color) & 0xFCU) << 3U) | (std::uint16_t)(get_blue(color) >> 3U)); }
 
+  // RGB666: RRRRRRGGGGGGBBBBBB
   inline std::uint32_t color_to_RGB666(value_type color)
-  { return static_cast<std::uint32_t>(((std::uint32_t)(get_red(color) & 0xFCU) << 12U) | ((std::uint32_t)(get_green(color) & 0xFCU) << 6U) | (std::uint32_t)(get_blue(color) >> 2U)); }
+  { return static_cast<std::uint32_t>(((std::uint32_t)(get_red(color) & 0xFCU) << 10U) | ((std::uint32_t)(get_green(color) & 0xFCU) << 4U) | (std::uint32_t)(get_blue(color) >> 2U)); }
 
   inline std::uint32_t color_to_RGB888(value_type color)
   { return static_cast<std::uint32_t>(color & 0x00FFFFFFUL); }
@@ -331,10 +335,10 @@ namespace color {
   { return head_color ? 0xFFFFFFFFUL : 0xFF000000UL; }
 
   inline value_type L2_to_color(std::uint8_t head_color)
-  { return dim(0xFFFFFFFFUL, 255U / ( 3U * (head_color & 0x03U))); }
+  { return dim(0xFFFFFFFFUL, static_cast<std::uint8_t>((head_color & 0x03U) * 85U)); }
 
   inline value_type L4_to_color(std::uint8_t head_color)
-  { return dim(0xFFFFFFFFUL, 255U / (15U * (head_color & 0x0FU))); }
+  { return dim(0xFFFFFFFFUL, static_cast<std::uint8_t>((head_color & 0x0FU) * 17U)); }
 
   inline value_type L8_to_color(std::uint8_t head_color)
   { return dim(0xFFFFFFFFUL, head_color); }

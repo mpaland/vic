@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -82,14 +82,16 @@ public:
  */
 class output : public base
 {
-  drv& head_;             // actual head instance
-  bool alpha_blending_;   // alpha blending active (default)
+  drv&              head_;             // actual head instance
+  bool              alpha_blending_;   // alpha blending active (default)
+  color::value_type bg_color_;         // background color, used when the head can't read a pixel
 
 public:
 
   output(drv& head)
     : head_(head)
     , alpha_blending_(true)
+    , bg_color_(color::none)
   { }
 
 
@@ -104,24 +106,67 @@ public:
 
 
   /**
+   * Returns true if alpha blending is enabled
+   */
+  inline bool alpha_blending_is_enabled() const
+  {
+    return alpha_blending_;
+  }
+
+
+  /**
+   * Set the background color
+   * Heads which can't read their pixels back return color::none from pixel_get(). If a background
+   * color is set, alpha pixels are blended against it instead (exact on uniform backgrounds).
+   * Default is color::none, which leaves the blending unchanged.
+   * \param bg_color Background color, color::none to disable the fallback
+   */
+  inline void set_bg_color(color::value_type bg_color)
+  {
+    bg_color_ = bg_color;
+  }
+
+
+  /**
+   * Get the background color
+   * \return Background color
+   */
+  inline color::value_type get_bg_color() const
+  {
+    return bg_color_;
+  }
+
+
+  /**
    * Set pixel in given color
    * \param vertex Pixel coordinates
    * \param color Color of pixel in ARGB format
    */
   inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
-    head_.pixel_set(vertex, alpha_blending_ ? color::alpha_blend(color, head_.pixel_get(vertex)) : color);
+    // only read the background pixel if blending is enabled and the color is not opaque,
+    // on serial bus heads a pixel_get may be an expensive bus transfer
+    head_.pixel_set(vertex, (alpha_blending_ && !color::is_opaque(color)) ? color::alpha_blend(color, background(vertex)) : color);
   }
 
 
   /**
    * Return the color of the pixel
    * \param point Vertex of the pixel
-   * \return Color of pixel in ARGB format
+   * \return Color of pixel in ARGB format, color::none if the head can't read the pixel
    */
   inline virtual color::value_type pixel_get(vertex_type vertex) final
   {
     return head_.pixel_get(vertex);
+  }
+
+
+private:
+  // the pixel color to blend against: the head pixel, or the background color if the head can't read it
+  inline color::value_type background(vertex_type vertex) const
+  {
+    const color::value_type c = head_.pixel_get(vertex);
+    return ((c == color::none) && (bg_color_ != color::none)) ? bg_color_ : c;
   }
 };
 
@@ -177,9 +222,9 @@ public:
    * \param inside True if the clipping region is INSIDE the given box, so all pixels INSIDE the clipping region are drawn. This is the default.
    */
   clipping(const rect_type& region, bool inside = true)
-  {
-    set(region, inside);
-  }
+    : region_(region)
+    , inside_(inside)
+  { }
 
 
   /**
@@ -368,6 +413,8 @@ public:
   flip()
     : enable_h_(false)
     , enable_v_(false)
+    , axis_h_({ 0, 0 })
+    , axis_v_({ 0, 0 })
   { }
 
 
@@ -402,8 +449,7 @@ public:
    */
   inline virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
-    next_->pixel_set({ enable_h_ ? 2 * axis_h_.x - vertex.x : vertex.x,
-                       enable_v_ ? 2 * axis_v_.y - vertex.y : vertex.y }, color);
+    next_->pixel_set(flip_vertex(vertex), color);
   }
 
 
@@ -414,8 +460,65 @@ public:
   */
   inline virtual color::value_type pixel_get(vertex_type vertex)
   {
-    return next_->pixel_get({ enable_h_ ? 2 * axis_h_.x - vertex.x : vertex.x,
-                              enable_v_ ? 2 * axis_v_.y - vertex.y : vertex.y });
+    return next_->pixel_get(flip_vertex(vertex));
+  }
+
+
+private:
+  // mirror the vertex on the enabled axes
+  inline vertex_type flip_vertex(vertex_type vertex) const
+  {
+    return { enable_h_ ? static_cast<std::int16_t>(2 * axis_h_.x - vertex.x) : vertex.x,
+             enable_v_ ? static_cast<std::int16_t>(2 * axis_v_.y - vertex.y) : vertex.y };
+  }
+};
+
+
+
+/**
+ * Tint shader
+ * Mixes the RGB part of every pixel towards the tint color, the alpha channel of the pixel is kept.
+ * Useful to colorize sprites or bitmaps, e.g. a 'hit' flash or a disabled (gray) look.
+ * Register it on a canvas sprite to tint the frames while they are loaded/drawn.
+ */
+class tint final : public base
+{
+  color::value_type tint_;      // tint color (RGB part is used)
+  std::uint8_t      weight_;    // 0 = pixel unchanged, 255 = solid tint color
+
+public:
+
+  /**
+   * ctor
+   * \param color Tint color
+   * \param weight Tint weight, 0 leaves the pixel unchanged, 255 replaces the RGB part by the tint color
+   */
+  tint(color::value_type color, std::uint8_t weight = 128U)
+    : tint_(color)
+    , weight_(weight)
+  { }
+
+
+  /**
+   * Set the tint color and weight
+   * \param color Tint color
+   * \param weight Tint weight, 0 leaves the pixel unchanged, 255 replaces the RGB part by the tint color
+   */
+  void set(color::value_type color, std::uint8_t weight = 128U)
+  {
+    tint_   = color;
+    weight_ = weight;
+  }
+
+
+  /**
+   * Set pixel in the tinted color
+   * \param vertex Pixel coordinates
+   * \param color Color of pixel in ARGB format
+   */
+  inline virtual void pixel_set(vertex_type vertex, color::value_type color)
+  {
+    next_->pixel_set(vertex, color::set_alpha(color::mix(tint_, color, weight_), color::get_alpha(color)));
   }
 };
 

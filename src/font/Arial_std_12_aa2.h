@@ -39,7 +39,7 @@ namespace font {
 
 class Arial_std_12_aa2 final : public font_type
 {
-  virtual const info_type& get_info() const
+  virtual const info_type& info() const
   {
     static const std::uint8_t Arial_std_12_aa2_0020[  1] = { /* code 0020, SPACE */
       0x00

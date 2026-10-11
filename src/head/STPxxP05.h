@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2014, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,11 +23,10 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief SPxxP05 generic matrix LED driver
-// This driver is for the STMicroelectronics LED array drivers
-// In xsize and ysize set the logical LED mapping
-// BYTE_COUNT = 3 (SP24DP05)
-// xsize = 8, ysize = 3
+// \brief STPxxP05 head, LED array driver (STP08xP05, STP16xP05, STP24DP05)
+// The LEDs are organized as a bit array, the pixel (x, y) is LED number
+// y * Screen_Size_X + x. For the typical usage an 8 x 1 LED bar is:
+// xsize = 8, ysize = 1
 //
 // Create a SPI device with the following characteristics to drive the SPxxP05:
 // mode = 3                 SCK idle high, data captured on rising edge, data propagated on falling edge
@@ -37,15 +36,14 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_STPXXP05_H_
-#define _VIC_DRV_STPXXP05_H_
+#ifndef _VIC_HEAD_STPXXP05_H_
+#define _VIC_HEAD_STPXXP05_H_
 
 #include "../drv.h"
-#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
-// defines the driver name and version
-#define VIC_DRV_STPXXP05_VERSION   "STPxxP05 driver 1.02"
+// defines the head name and version
+#define VIC_HEAD_STPXXP05_VERSION   "STPxxP05 head 1.10"
 
 namespace vic {
 namespace head {
@@ -55,20 +53,16 @@ namespace head {
  * STPxxP05 head is a monochrome LED driver, using 1 bit color depth
  * \param Screen_Size_X Screen (buffer) width
  * \param Screen_Size_Y Screen (buffer) height
- * \param Viewport_Size_X Viewport (window) width
- * \param Viewport_Size_Y Viewport (window) height
  * \param Byte_Count Available channels (in byte) of the chip (1 for STP08xP05, 2 for STP16xP05, 3 for STP24DP05)
-*/
-template<std::uint16_t Screen_Size_X   = 8U, std::uint16_t Screen_Size_Y   = 8U,
-         std::uint16_t Viewport_Size_X = 8U, std::uint16_t Viewport_Size_Y = 8U,
-         drv::orientation_type Orientation = drv::orientation_0,                  // hardware orientation of the display
+ */
+template<std::uint16_t Screen_Size_X = 8U, std::uint16_t Screen_Size_Y = 1U,
          std::uint_fast8_t Byte_Count = 1U
 >
 class STPxxP05 : public drv
 {
   // vars
-  const io::dev::handle_type  device_handle_;       // Logical SPI device ID
-  std::uint8_t                buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
+  const io::handle_type device_handle_;       // logical SPI device handle
+  std::uint8_t          buffer_[Byte_Count];  // display buffer, cause reading data isn't supported
 
 public:
 
@@ -77,16 +71,11 @@ public:
 
   /**
    * ctor
-   * \param device_handle Logical SPI device ID
-   * \param xoffset X offset of the screen, relative to top/left corner
-   * \param yoffset Y offset of the screen, relative to top/left corner
+   * \param device_handle Logical SPI device handle
    */
-  STPxxP05(io::dev::handle_type device_handle,   // device handle
-           std::uint16_t viewport_x = 0U, std::uint16_t viewport_y = 0U)
-    : drv(Screen_Size_X,   Screen_Size_Y,
-          Viewport_Size_Y, Viewport_Size_Y,
-          viewport_x,      viewport_y,
-          Orientation)
+  STPxxP05(io::handle_type device_handle)
+    : drv(Screen_Size_X, Screen_Size_Y,
+          Screen_Size_X, Screen_Size_Y)
     , device_handle_(device_handle)
   {
     // clear buffer
@@ -105,20 +94,25 @@ public:
 
   // driver init
   virtual void init()
-  { }
+  {
+    io::init(device_handle_);
+    cls();
+    present();
+  }
 
 
   // driver shutdown
   virtual void shutdown()
   {
     cls();
+    present();
   }
 
 
   // get driver name and version
   virtual const char* version() const
   {
-    return (const char*)VIC_DRV_STPXXP05_VERSION;
+    return (const char*)VIC_HEAD_STPXXP05_VERSION;
   }
 
 
@@ -129,30 +123,41 @@ public:
   }
 
 
+  /**
+   * Access the raw LED buffer
+   * \return Pointer to Byte_Count bytes
+   */
+  inline const std::uint8_t* buffer() const
+  {
+    return buffer_;
+  }
+
+
   ///////////////////////////////////////////////////////////////////////////////
   // C O M M O N  F U N C T I O N S
   //
 
+protected:
+
   /**
-   * Clear screen, set all pixels off, delete all characters or fill screen with background/blank color
+   * Clear screen, set all LEDs off
+   * \param bg_color Unused, LEDs are off
    */
-  virtual void cls(color::value_type)
+  virtual void cls(color::value_type bg_color = color::none)
   {
-    // clear display
-    for (std::uint_fast8_t i = 0; i < BYTE_COUNT; ++i) {
+    (void)bg_color;
+    for (std::uint_fast8_t i = 0U; i < Byte_Count; ++i) {
       buffer_[i] = 0U;
     }
   }
 
 
   /**
-   * Primitive rendering is done. May be overridden by driver to update display,
-   * frame buffer or something else (like copy RAM / rendering buffer to screen)
+   * Primitive rendering is done, write the buffer to the chip
    */
   virtual void present()
   {
-    // write buffer to SPI
-    write();
+    io::write(device_handle_, 0U, buffer_, Byte_Count, nullptr, 0U);
   }
 
 
@@ -160,11 +165,6 @@ public:
   // G R A P H I C   F U N C T I O N S
   //
 
-  /**
-   * Set pixel in given color
-   * \param vertex Pixel coordinates
-   * \param color Color of pixel in ARGB format, alpha channel is/maybe ignored
-   */
   virtual void pixel_set(vertex_type vertex, color::value_type color)
   {
     // check limits
@@ -172,56 +172,37 @@ public:
       // out of bounds
       return;
     }
+    const std::uint32_t led = static_cast<std::uint32_t>(vertex.y) * Screen_Size_X + static_cast<std::uint32_t>(vertex.x);
+    if (led >= Byte_Count * 8U) {
+      // no channel for this pixel
+      return;
+    }
 
-    // set pixel in display buffer
     if (color::color_to_L1(color)) {
-      buffer_[y] |= static_cast<std::uint8_t>(0x01U << (x & 0x07U));    // set pixel
+      buffer_[led >> 3U] |= static_cast<std::uint8_t>(0x01U << (led & 0x07U));    // LED on
     }
     else {
-      buffer_[y] &= static_cast<std::uint8_t>(~(0x01U << (x & 0x07U))); // clear pixel
+      buffer_[led >> 3U] &= static_cast<std::uint8_t>(~(0x01U << (led & 0x07U))); // LED off
     }
   }
 
 
-  /**
-   * Return the color of the pixel
-   * \param vertex Vertex of the pixel
-   * \return Color of pixel in ARGB format, alpha channel must be set to opaque if unsupported (default)
-   */
   virtual color::value_type pixel_get(vertex_type vertex)
   {
     // check limits
     if (!screen_is_inside(vertex)) {
       // out of bounds
-      return color::L1_to_color(0U);
+      return color::none;
     }
-
-    return color::L1_to_color((buffer_[y] >> (x & 0x07U)) & 0x01U);
-  }
-
-
-  ///////////////////////////////////////////////////////////////////////////////
-
-private:
-  /**
-   * Write data to SPI
-   * \return True if successful
-   */
-  bool write()
-  {
-    // copy memory bitmap to screen
-    switch (orientation_) {
-      case orientation_0 :
-        return io::dev_set(spi_device_id_, buffer_, Byte_Count, nullptr, 0U);
-      // TBD: all other orientations
-      default :
-        break;
+    const std::uint32_t led = static_cast<std::uint32_t>(vertex.y) * Screen_Size_X + static_cast<std::uint32_t>(vertex.x);
+    if (led >= Byte_Count * 8U) {
+      return color::none;
     }
+    return color::L1_to_color(static_cast<std::uint8_t>((buffer_[led >> 3U] >> (led & 0x07U)) & 0x01U));
   }
-
 };
 
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_STPXXP05_H_
+#endif  // _VIC_HEAD_STPXXP05_H_

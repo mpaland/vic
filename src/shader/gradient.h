@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2018, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,7 +23,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Shader of the pixel shader pipeline
+// \brief Color gradient shaders
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -68,6 +68,7 @@ public:
    * \param gradient_pixels Array of exact Max_Pixel pixels
    */
   gradient_base(const pixel_type* gradient_pixels)
+    : size_(0U)
   {
     set(gradient_pixels, Max_Pixel);
   }
@@ -98,12 +99,48 @@ public:
   /**
    * Set pixel in given color
    * \param vertex Pixel coordinates
-   * \param color Color of pixel in ARGB format
+   * \param color Color of pixel in ARGB format, only the alpha channel is used and multiplied with the gradient alpha
    */
   inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
     const color::value_type gc = mix(vertex);
-    next_->pixel_set(vertex, color::set_alpha(gc, color::get_alpha(color) * color::get_alpha(gc) / 255U));
+    next_->pixel_set(vertex, color::set_alpha(gc, static_cast<std::uint8_t>(static_cast<std::uint16_t>(color::get_alpha(color)) * color::get_alpha(gc) / 255U)));
+  }
+
+
+protected:
+
+  /**
+   * Inverse distance weighting of all gradient colors
+   * \param dist Array of the inverse (squared) distances to the gradient points, size_ elements
+   * \return The weighted color
+   */
+  color::value_type weighted_color(const std::uint32_t* dist) const
+  {
+    // sum of all inverse distances
+    std::uint32_t sd_sum = 0U;
+    for (std::size_t n = 0U; n < size_; ++n) {
+      sd_sum += dist[n];
+    }
+    if (sd_sum == 0U) {
+      return color::none;
+    }
+
+    // accumulate the channels separately, the weights are scaled to 0 - 255 and
+    // sum up to exactly 255 (the last point gets the rounding remainder), so no
+    // channel can overflow or carry into its neighbor
+    std::uint32_t a = 0U, r = 0U, g = 0U, b = 0U;
+    std::uint32_t lum_sum = 0U;
+    for (std::size_t n = 0U; n < size_; ++n) {
+      const std::uint32_t lum = (n + 1U < size_) ? (255U * dist[n] / sd_sum) : (255U - lum_sum);
+      lum_sum += lum;
+      const color::value_type c = gradient_color_[n].color;
+      a += color::get_alpha(c) * lum;
+      r += color::get_red(c)   * lum;
+      g += color::get_green(c) * lum;
+      b += color::get_blue(c)  * lum;
+    }
+    return color::argb(static_cast<std::uint8_t>(r / 255U), static_cast<std::uint8_t>(g / 255U), static_cast<std::uint8_t>(b / 255U), static_cast<std::uint8_t>(a / 255U));
   }
 };
 
@@ -113,7 +150,7 @@ public:
  * Color gradient shader
  * The gradient shader sets the pixel color to an interpolated color for a given vertex
  * Construct a gradient with 4 pixels like:
- * vic::shader::gradient_horizontal<4> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown }, { 300, 80, vic::color::green } };
+ * vic::shader::gradient<4> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown }, { 300, 80, vic::color::green } };
  * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
@@ -125,7 +162,7 @@ public:
    * \param il Initializer list of N pixels
    */
   gradient(const std::initializer_list<pixel_type>& il)
-    : gradient_base(il)
+    : gradient_base<Max_Pixel>(il)
   { }
 
 
@@ -134,7 +171,7 @@ public:
    * \param gradient_pixels Array of exact Max_Pixel pixels
    */
   gradient(const pixel_type* gradient_pixels)
-    : gradient_base(gradient_pixels)
+    : gradient_base<Max_Pixel>(gradient_pixels)
   { }
 
 
@@ -145,22 +182,14 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist_[Max_Pixel];           // distance calculation
+    std::uint32_t dist[Max_Pixel];            // distance calculation
 
-    // calculate the sum of all inverse squared distances from pos to all points
+    // calculate the inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
-    std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
-      dist_[n] = factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex));
-      sd_sum += dist_[n];
+    for (std::size_t n = 0U; n < this->size_; ++n) {
+      dist[n] = factor / (1U + util::distance_squared(pos, this->gradient_color_[n].vertex));
     }
-    // assemble the mixed color at given pos
-    color::value_type c = color::none;
-    for (std::size_t n = 0U; n < size_; ++n) {
-      c += (color::dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * dist_[n] / sd_sum)) & 0x00FFFFFF) |            // RGB
-                       ((static_cast<color::value_type>(color::get_alpha(gradient_color_[n].color)) * dist_[n] / sd_sum) << 24U);   // alpha
-    }
-    return c;
+    return this->weighted_color(dist);
   }
 };
 
@@ -181,7 +210,7 @@ public:
    * \param il Initializer list of N pixels
    */
   gradient_horizontal(const std::initializer_list<pixel_type>& il)
-    : gradient_base(il)
+    : gradient_base<Max_Pixel>(il)
   { }
 
 
@@ -190,7 +219,7 @@ public:
    * \param gradient_pixels Array of exact Max_Pixel pixels
    */
   gradient_horizontal(const pixel_type* gradient_pixels)
-    : gradient_base(gradient_pixels)
+    : gradient_base<Max_Pixel>(gradient_pixels)
   { }
 
 
@@ -201,24 +230,15 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist_[Max_Pixel];           // distance calculation
+    std::uint32_t dist[Max_Pixel];            // distance calculation
 
-    // calculate the sum of all inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
-    std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; n++) {
+    for (std::size_t n = 0U; n < this->size_; n++) {
       // ignore y
-      const std::int16_t dx = gradient_color_[n].vertex.x - pos.x;
-      dist_[n] = factor / (1U + dx * dx);
-      sd_sum += dist_[n];
+      const std::int32_t dx = this->gradient_color_[n].vertex.x - pos.x;
+      dist[n] = factor / (1U + static_cast<std::uint32_t>(dx * dx));
     }
-    // assemble the mixed color at given pos
-    color::value_type c = color::none;
-    for (std::size_t n = 0U; n < size_; n++) {
-      c += (color::dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * dist_[n] / sd_sum)) & 0x00FFFFFF) |            // RGB
-                       ((static_cast<color::value_type>(color::get_alpha(gradient_color_[n].color)) * dist_[n] / sd_sum) << 24U);   // alpha
-    }
-    return c;
+    return this->weighted_color(dist);
   }
 };
 
@@ -227,7 +247,7 @@ public:
 /**
  * The gradient_vertical shader sets the pixel color to an interpolated color for a given vertex, x is ignored
  * Construct a gradient with 3 pixels like:
- * vic::shader::gradient_horizontal<3> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown } };
+ * vic::shader::gradient_vertical<3> gr = { { 0, 0, vic::color::darkred }, { 100, 20, vic::color::darkorange }, { 250, 50, vic::color::brown } };
  * dc_.shader_register(&gr);
  */
 template<std::size_t Max_Pixel>
@@ -239,7 +259,7 @@ public:
    * \param il Initializer list of N pixels
    */
   gradient_vertical(const std::initializer_list<pixel_type>& il)
-    : gradient_base(il)
+    : gradient_base<Max_Pixel>(il)
   { }
 
 
@@ -248,7 +268,7 @@ public:
    * \param gradient_pixels Array of exact Max_Pixel pixels
    */
   gradient_vertical(const pixel_type* gradient_pixels)
-    : gradient_base(gradient_pixels)
+    : gradient_base<Max_Pixel>(gradient_pixels)
   { }
 
 
@@ -259,24 +279,15 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist_[Max_Pixel];           // distance calculation
+    std::uint32_t dist[Max_Pixel];            // distance calculation
 
-    // calculate the sum of all inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
-    std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; n++) {
+    for (std::size_t n = 0U; n < this->size_; n++) {
       // ignore x
-      const std::int16_t dy = gradient_color_[n].vertex.y - pos.y;
-      dist_[n] = factor / (1U + dy * dy);
-      sd_sum += dist_[n];
+      const std::int32_t dy = this->gradient_color_[n].vertex.y - pos.y;
+      dist[n] = factor / (1U + static_cast<std::uint32_t>(dy * dy));
     }
-    // assemble the mixed color at given pos
-    color::value_type c = color::none;
-    for (std::size_t n = 0U; n < size_; n++) {
-      c += (color::dim(gradient_color_[n].color, static_cast<std::uint8_t>(0x100UL * dist_[n] / sd_sum)) & 0x00FFFFFF) |            // RGB
-                       ((static_cast<color::value_type>(color::get_alpha(gradient_color_[n].color)) * dist_[n] / sd_sum) << 24U);   // alpha
-    }
-    return c;
+    return this->weighted_color(dist);
   }
 };
 
@@ -297,7 +308,7 @@ public:
    * \param il Initializer list of N pixels
    */
   gradient_solid(const std::initializer_list<pixel_type>& il)
-    : gradient_base(il)
+    : gradient_base<Max_Pixel>(il)
   { }
 
 
@@ -306,7 +317,7 @@ public:
    * \param gradient_pixels Array of exact Max_Pixel pixels
    */
   gradient_solid(const pixel_type* gradient_pixels)
-    : gradient_base(gradient_pixels)
+    : gradient_base<Max_Pixel>(gradient_pixels)
   { }
 
 
@@ -317,27 +328,17 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist_[Max_Pixel];           // distance calculation
-
-    // calculate the sum of all inverse squared distances from pos to all points
-    const std::uint32_t factor = 10000000UL;  // use 10M as factor
-    std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
-      dist_[n] = factor / (1U + util::distance_squared(pos, gradient_color_[n].vertex));
-      sd_sum += dist_[n];
-    }
-
-    // get the solid color at given pos
-    std::uint32_t lum_max = 0U;
-    std::size_t   n_max   = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
-      const std::uint32_t lum = 0x100UL * dist_[n] / sd_sum;
-      if (lum > lum_max) {
-        lum_max = lum;
-        n_max   = n;
+    // get the nearest point, the first one wins on equal distance
+    std::uint32_t d_min = 0xFFFFFFFFUL;
+    std::size_t   n_min = 0U;
+    for (std::size_t n = 0U; n < this->size_; ++n) {
+      const std::uint32_t d = util::distance_squared(pos, this->gradient_color_[n].vertex);
+      if (d < d_min) {
+        d_min = d;
+        n_min = n;
       }
     }
-    return gradient_color_[n_max].color;
+    return this->size_ ? this->gradient_color_[n_min].color : color::none;
   }
 };
 

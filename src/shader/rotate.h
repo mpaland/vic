@@ -79,12 +79,15 @@ public:
   {
     // get the destination pixel
     const vertex_type d = util::vertex_rotate(vertex, center_, angle_);
-    // reverse iterate to match all pixels of the source vertex
+    // reverse iterate to match all pixels of the source vertex, so that the
+    // destination has no holes
     for (std::int16_t x = -1; x < 2; x++) {
       for (std::int16_t y = -1; y < 2; y++) {
-        if (util::vertex_rotate({ d.x + x, d.y + y}, center_, -angle_) == vertex) {
-          if (x != y || (x == 0 && y == 0))
-            next_->pixel_set({ d.x + x, d.y + y}, color);
+        const vertex_type p = { static_cast<std::int16_t>(d.x + x), static_cast<std::int16_t>(d.y + y) };
+        if (util::vertex_rotate(p, center_, static_cast<std::int16_t>(-angle_)) == vertex) {
+          if (x != y || (x == 0 && y == 0)) {
+            next_->pixel_set(p, color);
+          }
         }
       }
     }

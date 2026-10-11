@@ -151,13 +151,15 @@ typedef struct tag_rect_type {
 
   // set rect and normalize input
   // Both vertices will be inside the box
+  // Right and bottom are clamped to the int16 maximum, so a vertex at 32767 is NOT inside
   void normalize(const vertex_type& v1, const vertex_type& v2)
   {
-    *this = { v1.x < v2.x ? v1.x     : v2.x,      // left
-              v1.y < v2.y ? v1.y     : v2.y,      // top
-              v2.x < v1.x ? v1.x + 1 : v2.x + 1,  // right
-              v2.y < v1.y ? v1.y + 1 : v2.y + 1   // bottom
-            };
+    const std::int32_t max_x = (v2.x < v1.x ? v1.x : v2.x) + 1;
+    const std::int32_t max_y = (v2.y < v1.y ? v1.y : v2.y) + 1;
+    left   = v1.x < v2.x ? v1.x : v2.x;
+    top    = v1.y < v2.y ? v1.y : v2.y;
+    right  = static_cast<std::int16_t>(max_x > 32767 ? 32767 : max_x);
+    bottom = static_cast<std::int16_t>(max_y > 32767 ? 32767 : max_y);
   }
 
   inline vertex_type& top_left()
@@ -290,6 +292,84 @@ inline T abs(T val)
 
 
 /**
+ * Decode one UTF-8 sequence (1 to 3 bytes, BMP range) and advance the string pointer
+ * The function never reads past a terminating NUL, the continuation bytes are checked one by one.
+ * Invalid lead bytes, stray continuation bytes and 4 byte sequences are skipped byte wise.
+ * \param string Reference to the string pointer, advanced past the decoded sequence. Stays on the NUL at the end of the string
+ * \return The decoded code point in 16 bit UNICODE format, 0 at the end of the string
+ */
+inline std::uint16_t utf8_decode(const std::uint8_t*& string)
+{
+  for (;;) {
+    const std::uint8_t b0 = *string;
+    if (b0 == 0x00U) {
+      // end of string, don't advance
+      return 0U;
+    }
+    if (b0 < 0x80U) {
+      // 1 byte sequence (ASCII char)
+      ++string;
+      return b0;
+    }
+    if ((b0 & 0xE0U) == 0xC0U) {
+      // 2 byte sequence
+      const std::uint8_t b1 = string[1];
+      if ((b1 & 0xC0U) != 0x80U) {
+        // truncated or invalid sequence, skip the lead byte only
+        ++string;
+        continue;
+      }
+      string += 2U;
+      return static_cast<std::uint16_t>((static_cast<std::uint16_t>(b0 & 0x1FU) << 6U) | (b1 & 0x3FU));
+    }
+    if ((b0 & 0xF0U) == 0xE0U) {
+      // 3 byte sequence
+      const std::uint8_t b1 = string[1];
+      if ((b1 & 0xC0U) != 0x80U) {
+        ++string;
+        continue;
+      }
+      const std::uint8_t b2 = string[2];   // only read after b1 is proven to be no NUL
+      if ((b2 & 0xC0U) != 0x80U) {
+        string += 2U;
+        continue;
+      }
+      string += 3U;
+      return static_cast<std::uint16_t>((static_cast<std::uint16_t>(b0 & 0x0FU) << 12U) | (static_cast<std::uint16_t>(b1 & 0x3FU) << 6U) | (b2 & 0x3FU));
+    }
+    // 4 byte sequence lead byte or stray continuation byte, skip it
+    ++string;
+  }
+}
+
+
+/**
+ * Integer square root
+ * \param value Input value
+ * \return floor(sqrt(value))
+ */
+inline std::uint32_t isqrt(std::uint32_t value)
+{
+  std::uint32_t result = 0U;
+  std::uint32_t bit = 1UL << 30U;    // the highest power of four <= value
+  while (bit > value) {
+    bit >>= 2U;
+  }
+  while (bit != 0U) {
+    if (value >= result + bit) {
+      value  -= result + bit;
+      result  = (result >> 1U) + bit;
+    }
+    else {
+      result >>= 1U;
+    }
+    bit >>= 2U;
+  }
+  return result;
+}
+
+
+/**
  * Helper function for fast byte reverse (e.g. 0x80 to 0x01, 0x40 to 0x02)
  * \param data Input byte
  * \return Reversed byte
@@ -370,10 +450,11 @@ inline std::int16_t sin(std::int16_t angle)
     16135, 16182, 16225, 16262, 16294, 16322, 16344, 16362, 16374, 16382
   };
 
+  // use 32 bit math, abs(-32768) doesn't fit into int16
   bool invers = angle < 0;
-  angle = abs<std::int16_t>(angle) % 360;
+  angle = static_cast<std::int16_t>(abs<std::int32_t>(angle) % 360);
   invers = (angle <= 180) ? invers : !invers;
-  angle = angle % 180;
+  angle = static_cast<std::int16_t>(angle % 180);
 
   if (angle == 90) {
     return invers ? -16384 : 16384;
@@ -397,6 +478,27 @@ inline std::int16_t cos(std::int16_t angle)
 
 
 /**
+ * Helper function to rotate a vertex around a given center with precomputed sine and cosine
+ * Use this variant if many vertices are rotated by the same angle
+ * \param point Vertex to rotate
+ * \param center Rotation center
+ * \param sin_value sin(angle) normalized to 16384, see util::sin()
+ * \param cos_value cos(angle) normalized to 16384, see util::cos()
+ * \return Rotated vertex
+ */
+inline vertex_type vertex_rotate(const vertex_type& point, const vertex_type& center, std::int32_t sin_value, std::int32_t cos_value)
+{
+  // translate point to center
+  const vertex_type p = point - center;
+
+  // rotate point and translate back
+  return { static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(p.x) * cos_value - static_cast<std::int32_t>(p.y) * sin_value), 16384) + center.x),
+           static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(p.x) * sin_value + static_cast<std::int32_t>(p.y) * cos_value), 16384) + center.y)
+         };
+}
+
+
+/**
  * Helper function to rotate a vertex of a given angle in respect to given center
  * \param point Vertex to rotate
  * \param center Rotation center
@@ -405,16 +507,7 @@ inline std::int16_t cos(std::int16_t angle)
  */
 inline vertex_type vertex_rotate(const vertex_type& point, const vertex_type& center, std::int16_t angle)
 {
-  const std::int32_t s = sin(angle);  // normalized to 16384
-  const std::int32_t c = cos(angle);  // normalized to 16384
-
-  // translate point to center
-  const vertex_type p = point - center;
-
-  // rotate point and translate back
-  return { static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(p.x) * c - static_cast<std::int32_t>(p.y) * s), 16384) + center.x),
-           static_cast<std::int16_t>(div_round_closest((static_cast<std::int32_t>(p.x) * s + static_cast<std::int32_t>(p.y) * c), 16384) + center.y)
-         };
+  return vertex_rotate(point, center, sin(angle), cos(angle));
 }
 
 

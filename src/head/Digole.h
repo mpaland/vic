@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \author (c) Marco Paland (info@paland.com)
-//             2014-2017, PALANDesign Hannover, Germany
+//             2014-2020, PALANDesign Hannover, Germany
 //
 // \license The MIT License (MIT)
 //
@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -23,19 +23,21 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 //
-// \brief Digole LCD driver for Digole (OLED) graphic displays
+// \brief Digole head, serial graphic display adapters (SPI, I²C or UART)
+// The display has native line, box and move commands, so most primitives are
+// rendered by the display firmware. Coordinates are 8 bit, so the display must
+// not be bigger than 256 x 256 pixel.
 //
 ///////////////////////////////////////////////////////////////////////////////
 
-#ifndef _VIC_DRV_DIGOLE_H_
-#define _VIC_DRV_DIGOLE_H_
+#ifndef _VIC_HEAD_DIGOLE_H_
+#define _VIC_HEAD_DIGOLE_H_
 
 #include "../drv.h"
-#include "../dc.h"    // include drawing context for alpha numeric driver
 
 
-// defines the driver name and version
-#define VIC_DRV_DIGOLE_VERSION   "Digole driver 2.1.0"
+// defines the head name and version
+#define VIC_HEAD_DIGOLE_VERSION   "Digole head 2.2.0"
 
 namespace vic {
 namespace head {
@@ -55,33 +57,33 @@ typedef enum tag_digole_interface_type {
  * \param Screen_Size_Y Screen (buffer) height
  * \param Viewport_Size_X Viewport (window) width
  * \param Viewport_Size_Y Viewport (window) height
+ * \param Orientation Hardware orientation of the display
+ * \param Interface_Mode Interface type, SPI, I²C or UART are valid
  */
 template<std::uint16_t Screen_Size_X   = 8U, std::uint16_t Screen_Size_Y   = 8U,
-         std::uint16_t Viewport_Size_X = 8U, std::uint16_t Viewport_Size_Y = 8U,
+         std::uint16_t Viewport_Size_X = Screen_Size_X, std::uint16_t Viewport_Size_Y = Screen_Size_Y,
          drv::orientation_type Orientation = drv::orientation_0,
-         digole_interface_type Interface_Mode = digole_uart
+         digole_interface_type Interface_Mode = DIGOLE_UART
 >
 class digole final : public drv
 {
-  io::handle_type         device_handle_;   // device handle
+  io::handle_type         device_handle_;   // device handle, SPI: device id, I²C: address, UART: port
   std::uint32_t           uart_baudrate_;   // baudrate for UART interface mode
-  color::value_type       color_;           // actual pixel color
+  color::value_type       color_;           // actual pixel color of the display
 
 public:
 
   /**
    * ctor
-   * \param orientation Screen orientation
    * \param device_handle SPI: device id, I²C: address, UART: port_id
-   * \param iface Interface type, SPI, I²C or UART are valid
    * \param uart_baudrate Baudrate of the UART interface, unused for SPI or I²C mode
    */
   digole(io::handle_type device_handle,
          std::uint32_t uart_baudrate = 9600U)
     : drv(Screen_Size_X,   Screen_Size_Y,
           Viewport_Size_X, Viewport_Size_Y,
-          0U, 0U)
-    , orientation_(Orientation)
+          0, 0,
+          Orientation)
     , device_handle_(device_handle)
     , uart_baudrate_(uart_baudrate)
     , color_(color::none)
@@ -106,10 +108,12 @@ public:
   {
     std::uint8_t cmd[8];
 
+    io::init(device_handle_);
+
     if (Interface_Mode == DIGOLE_I2C) {
-      // set I²C address
-      const std::uint8_t i2c_adr = static_cast<std::uint8_t>(device_handle_);
-      device_handle_ = static_cast<io::dev::handle_type>(0x27U);    // use default I²C address ($27) for init
+      // set the I²C address: the display listens on the default address ($27) first
+      const std::uint8_t i2c_adr = static_cast<std::uint8_t>(reinterpret_cast<std::uintptr_t>(device_handle_));
+      device_handle_ = reinterpret_cast<io::handle_type>(static_cast<std::uintptr_t>(0x27U));
       cmd[0] = 'S';
       cmd[1] = 'I';
       cmd[2] = '2';
@@ -117,7 +121,7 @@ public:
       cmd[4] = 'A';
       cmd[5] = i2c_adr;
       write(cmd, 6U);
-      device_handle_ = static_cast<io::dev::handle_type>(i2c_adr);  // use new address now
+      device_handle_ = reinterpret_cast<io::handle_type>(static_cast<std::uintptr_t>(i2c_adr));  // use the new address now
     }
 
     // set orientation
@@ -129,7 +133,7 @@ public:
     // cursor off
     cmd[0] = 'C';
     cmd[1] = 'S';
-    cmd[2] = 0U
+    cmd[2] = 0U;
     write(cmd, 3U);
 
     // clear screen
@@ -157,7 +161,9 @@ public:
         case 115200U : cmd[2] = '1'; cmd[3] = '1'; cmd[4] = '5'; cmd[5] = '2'; cmd[6] = '0'; cmd[7] = '0'; len = 8U; break;
         default: break;
       }
-      write(cmd, len);
+      if (len) {
+        write(cmd, len);
+      }
     }
   }
 
@@ -165,14 +171,14 @@ public:
   virtual void shutdown()
   {
     cls();
-    diplay_enable(false);     // display off
+    display_enable(false);    // display off
     display_brightness(0U);   // backlight off
   }
 
 
-  inline const char* version() const
+  inline virtual const char* version() const
   {
-    return (const char*)VIC_DRV_DIGOLE_VERSION;
+    return (const char*)VIC_HEAD_DIGOLE_VERSION;
   }
 
 
@@ -189,8 +195,9 @@ public:
 
 protected:
 
-  virtual void cls(color::value_type)
+  virtual void cls(color::value_type bg_color = color::none)
   {
+    (void)bg_color;
     const std::uint8_t cmd[2] = { 'C', 'L' };
     write(cmd, 2U);
   }
@@ -200,141 +207,81 @@ protected:
   // G R A P H I C   F U N C T I O N S
   //
 
-  /**
-   * Set pixel in given color, the color doesn't change the actual drawing color
-   * \param x X value
-   * \param y Y value
-   * \param color Color of pixel in ARGB format
-   */
   virtual void pixel_set(vertex_type vertex, color::value_type color)
-  { 
-    std::uint8_t cmd[10];
-
+  {
     // check limits and clipping
     if (!screen_is_inside(vertex)) {
       // out of bounds
       return;
     }
 
-    if (color != color_) {
-      color_ = color;
-      // use enhanced color setup
-      cmd[0] = 'E';
-      cmd[1] = 'S';
-      cmd[2] = 'C';
-      cmd[3] = color::get_red(color);
-      cmd[4] = color::get_green(color);
-      cmd[5] = color::get_blue(color);
-      // set pixel
-      cmd[6] = 'D';
-      cmd[7] = 'P';
-      cmd[8] = static_cast<std::uint8_t>(vertex.x);
-      cmd[9] = static_cast<std::uint8_t>(vertex.y);
-      write(cmd, 10U);
-    }
-    else {
-      // no color change, just set pixel
-      cmd[0] = 'D';
-      cmd[1] = 'P';
-      cmd[2] = static_cast<std::uint8_t>(vertex.x);
-      cmd[3] = static_cast<std::uint8_t>(vertex.y);
-      write(cmd, 4U);
-    }
+    std::uint8_t cmd[10];
+    std::uint8_t len = set_color(cmd, color);
+    cmd[len++] = 'D';
+    cmd[len++] = 'P';
+    cmd[len++] = static_cast<std::uint8_t>(vertex.x);
+    cmd[len++] = static_cast<std::uint8_t>(vertex.y);
+    write(cmd, len);
   }
 
 
   virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
   {
     std::uint8_t cmd[12];
-
-    if (color != color_) {
-      color_ = color;
-      // use enhanced color setup
-      cmd[ 0] = 'E';
-      cmd[ 1] = 'S';
-      cmd[ 2] = 'C';
-      cmd[ 3] = color::get_red(color);
-      cmd[ 4] = color::get_green(color);
-      cmd[ 5] = color::get_blue(color);
-      // draw horz line
-      cmd[ 6] = 'L';
-      cmd[ 7] = 'N';
-      cmd[ 8] = static_cast<std::uint8_t>(v0.x);
-      cmd[ 9] = static_cast<std::uint8_t>(v0.y);
-      cmd[10] = static_cast<std::uint8_t>(v1.x);
-      cmd[11] = static_cast<std::uint8_t>(v1.y);
-      write(cmd, 12U);
-    }
-    else {
-      // no color change, draw horz line
-      cmd[ 0] = 'L';
-      cmd[ 1] = 'N';
-      cmd[ 2] = static_cast<std::uint8_t>(v0.x);
-      cmd[ 3] = static_cast<std::uint8_t>(v0.y);
-      cmd[ 4] = static_cast<std::uint8_t>(v1.x);
-      cmd[ 5] = static_cast<std::uint8_t>(v1.y);
-      write(cmd, 6U);
-    }
+    std::uint8_t len = set_color(cmd, color);
+    cmd[len++] = 'L';
+    cmd[len++] = 'N';
+    cmd[len++] = static_cast<std::uint8_t>(v0.x);
+    cmd[len++] = static_cast<std::uint8_t>(v0.y);
+    cmd[len++] = static_cast<std::uint8_t>(v1.x);
+    cmd[len++] = static_cast<std::uint8_t>(v0.y);     // the y of v1 is ignored
+    write(cmd, len);
   }
 
 
-  inline virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
-  {
-    // vertical and horizontal line are same commands on Digole
-    line_horz(v0, v1, color);
-  }
-
-
-  virtual void box(rect_type rect, color::value_type color)
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
   {
     std::uint8_t cmd[12];
-
-    // ensure that v0 is top left
-    util::vertex_top_left(v0, v1);
-
-    if (color != color_) {
-      color_ = color;
-      // use enhanced color setup
-      cmd[ 0] = 'E';
-      cmd[ 1] = 'S';
-      cmd[ 2] = 'C';
-      cmd[ 3] = color::get_red(color);
-      cmd[ 4] = color::get_green(color);
-      cmd[ 5] = color::get_blue(color);
-      // draw filled rectangle
-      cmd[ 6] = 'F';
-      cmd[ 7] = 'R';
-      cmd[ 8] = static_cast<std::uint8_t>(rect.left);
-      cmd[ 9] = static_cast<std::uint8_t>(rect.top);
-      cmd[10] = static_cast<std::uint8_t>(rect.right);
-      cmd[11] = static_cast<std::uint8_t>(rect.bottom);
-      write(cmd, 12U);
-    }
-    else {
-      // no color change, draw filled rectangle
-      cmd_[0] = 'F';
-      cmd_[1] = 'R';
-      cmd_[2] = static_cast<std::uint8_t>(rect.left);
-      cmd_[3] = static_cast<std::uint8_t>(rect.top);
-      cmd_[4] = static_cast<std::uint8_t>(rect.right);
-      cmd_[5] = static_cast<std::uint8_t>(rect.bottom);
-      write(cmd, 6U);
-    }
+    std::uint8_t len = set_color(cmd, color);
+    cmd[len++] = 'L';
+    cmd[len++] = 'N';
+    cmd[len++] = static_cast<std::uint8_t>(v0.x);
+    cmd[len++] = static_cast<std::uint8_t>(v0.y);
+    cmd[len++] = static_cast<std::uint8_t>(v0.x);     // the x of v1 is ignored
+    cmd[len++] = static_cast<std::uint8_t>(v1.y);
+    write(cmd, len);
   }
 
 
-  virtual void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
+  virtual void box(const rect_type& rect, color::value_type color)
   {
-    std::uint8_t cmd[8];
+    if ((rect.right <= rect.left) || (rect.bottom <= rect.top)) {
+      return;
+    }
+    // the FR command takes the inclusive corners
+    std::uint8_t cmd[12];
+    std::uint8_t len = set_color(cmd, color);
+    cmd[len++] = 'F';
+    cmd[len++] = 'R';
+    cmd[len++] = static_cast<std::uint8_t>(rect.left);
+    cmd[len++] = static_cast<std::uint8_t>(rect.top);
+    cmd[len++] = static_cast<std::uint8_t>(rect.right - 1);
+    cmd[len++] = static_cast<std::uint8_t>(rect.bottom - 1);
+    write(cmd, len);
+  }
 
-    cmd[0] = 'M';
-    cmd[1] = 'A';
-    cmd[2] = static_cast<std::uint8_t>(source.x);                   // left
-    cmd[3] = static_cast<std::uint8_t>(source.y);                   // top
-    cmd[4] = static_cast<std::uint8_t>(width);                      // width
-    cmd[5] = static_cast<std::uint8_t>(height);                     // height
-    cmd[6] = static_cast<std::int8_t>(destination.x - source.x);    // x offset
-    cmd[7] = static_cast<std::int8_t>(destination.y - source.y);    // y offset
+
+  virtual void move(const rect_type& source, vertex_type destination)
+  {
+    const std::uint8_t cmd[8] = {
+      'M', 'A',
+      static_cast<std::uint8_t>(source.left),                    // left
+      static_cast<std::uint8_t>(source.top),                     // top
+      static_cast<std::uint8_t>(source.width()),                 // width
+      static_cast<std::uint8_t>(source.height()),                // height
+      static_cast<std::uint8_t>(destination.x - source.left),    // x offset
+      static_cast<std::uint8_t>(destination.y - source.top)      // y offset
+    };
     write(cmd, 8U);
   }
 
@@ -351,12 +298,7 @@ public:
    */
   virtual void display_enable(bool enable = true)
   {
-    std::uint8_t cmd[4];
-
-    cmd[0] = 'S';
-    cmd[1] = 'O';
-    cmd[2] = 'O';
-    cmd[3] = enable ? 1U : 0U;
+    const std::uint8_t cmd[4] = { 'S', 'O', 'O', static_cast<std::uint8_t>(enable ? 1U : 0U) };
     write(cmd, 4U);
   }
 
@@ -367,16 +309,35 @@ public:
    */
   virtual void display_brightness(std::uint8_t level)
   {
-    std::uint8_t cmd[3];
-
-    cmd[0] = 'B';
-    cmd[1] = 'L';
-    cmd[2] = level == 0U ? 0U : 1U;
+    const std::uint8_t cmd[3] = { 'B', 'L', static_cast<std::uint8_t>(level == 0U ? 0U : 1U) };
     write(cmd, 3U);
   }
 
 
 private:
+
+  /**
+   * Put the color set command in front of a drawing command if the color changed
+   * \param cmd Command buffer
+   * \param color New drawing color
+   * \return Number of bytes written to cmd (0 or 6)
+   */
+  inline std::uint8_t set_color(std::uint8_t* cmd, color::value_type color)
+  {
+    if (color == color_) {
+      return 0U;
+    }
+    color_ = color;
+    // use enhanced color setup
+    cmd[0] = 'E';
+    cmd[1] = 'S';
+    cmd[2] = 'C';
+    cmd[3] = color::get_red(color);
+    cmd[4] = color::get_green(color);
+    cmd[5] = color::get_blue(color);
+    return 6U;
+  }
+
 
   inline void write(const std::uint8_t* buffer, std::uint8_t length)
   {
@@ -388,4 +349,4 @@ private:
 } // namespace head
 } // namespace vic
 
-#endif  // _VIC_DRV_DIGOLE_H_
+#endif  // _VIC_HEAD_DIGOLE_H_

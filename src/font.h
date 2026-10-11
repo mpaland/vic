@@ -85,7 +85,7 @@ typedef struct tag_info_type {
   std::uint8_t attr;              // font attributes
   std::uint8_t ysize;             // y-size to render in pixel
   std::uint8_t ydist;             // y-distance (cursor movement for \n)
-  std::uint8_t baseline;          // reserved
+  std::uint8_t baseline;          // baseline (ascent) in pixel from the top of the line
   union tag_family {
     const mono_type*     mono;
     const prop_type*     prop;
@@ -98,11 +98,11 @@ typedef struct tag_info_type {
 } info_type;
 
 
-// abstract font type base class
+// abstract font type base class, a font returns its info structure
 class font_type
 {
 public:
-  virtual const info_type& get_info(void) const = 0;
+  virtual const info_type& info(void) const = 0;
 };
 
 

@@ -11,10 +11,10 @@
 // to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
 // copies of the Software, and to permit persons to whom the Software is
 // furnished to do so, subject to the following conditions:
-// 
+//
 // The above copyright notice and this permission notice shall be included in
 // all copies or substantial portions of the Software.
-// 
+//
 // THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
 // IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
 // FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -141,8 +141,31 @@ public:
    * \param bg_color Backgound/erase color, defines normally the default color of the display
    */
   inline void cls(color::value_type bg_color = color::none)
-  { 
+  {
     head_.cls(bg_color);
+  }
+
+
+  /**
+   * Set the background color of the context for heads which can't read their pixels back
+   * Such heads return color::none from pixel_get(). With a background color set, alpha blending and
+   * anti aliasing blend against this color instead (exact on uniform backgrounds, needs no RAM).
+   * Sprites use it to restore their background. Default is color::none (no fallback).
+   * \param bg_color Background color, color::none disables the fallback
+   */
+  inline void set_bg_color(color::value_type bg_color)
+  {
+    shader_output_.set_bg_color(bg_color);
+  }
+
+
+  /**
+   * Get the background color of the context
+   * \return Background color
+   */
+  inline color::value_type get_bg_color() const
+  {
+    return shader_output_.get_bg_color();
   }
 
 
@@ -215,17 +238,29 @@ public:
 
   ///////////////////////////////////////////////////////////////////////////////
 
+  // make the gpr overloads (box with border radius) visible, they would be hidden by the overrides below
+  using gpr::box;
+
 
   /**
    * Draw a horizontal line, width is one pixel
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, y component is ignored
    */
-  void line_horz(vertex_type v0, vertex_type v1)
+  virtual void line_horz(vertex_type v0, vertex_type v1) override
   {
     if (!shader_is_active() && (color::is_opaque(get_color()))) {
-      // no active shaders, opaque color: let the driver draw the line
-      head_.line_horz(v0, v1, get_color());
+      // no active shaders, opaque color: let the driver draw the line, clipped to the screen
+      util::min_max_swap(v0.x, v1.x);
+      if ((v0.y >= 0) && (v0.y < static_cast<std::int16_t>(screen_height())) && (v1.x >= 0) && (v0.x < static_cast<std::int16_t>(screen_width()))) {
+        if (v0.x < 0) {
+          v0.x = 0;
+        }
+        if (v1.x >= static_cast<std::int16_t>(screen_width())) {
+          v1.x = static_cast<std::int16_t>(screen_width() - 1U);
+        }
+        head_.line_horz(v0, v1, get_color());
+      }
       present();
     }
     else {
@@ -240,11 +275,20 @@ public:
    * \param v0 Start vertex, included in line
    * \param v1 End vertex, included in line, x component is ignored
    */
-  void line_vert(vertex_type v0, vertex_type v1)
+  virtual void line_vert(vertex_type v0, vertex_type v1) override
   {
     if (!shader_is_active() && (color::is_opaque(get_color()))) {
-      // no active shaders, opaque color: let the driver draw the line
-      head_.line_vert(v0, v1, get_color());
+      // no active shaders, opaque color: let the driver draw the line, clipped to the screen
+      util::min_max_swap(v0.y, v1.y);
+      if ((v0.x >= 0) && (v0.x < static_cast<std::int16_t>(screen_width())) && (v1.y >= 0) && (v0.y < static_cast<std::int16_t>(screen_height()))) {
+        if (v0.y < 0) {
+          v0.y = 0;
+        }
+        if (v1.y >= static_cast<std::int16_t>(screen_height())) {
+          v1.y = static_cast<std::int16_t>(screen_height() - 1U);
+        }
+        head_.line_vert(v0, v1, get_color());
+      }
       present();
     }
     else {
@@ -258,11 +302,26 @@ public:
    * Draw a box (filled rectangle)
    * \param rect Box bounding
    */
-  void box(const rect_type& rect)
+  virtual void box(const rect_type& rect) override
   {
     if ((!shader_is_active()) && (color::is_opaque(get_color()))) {
-      // no active shaders, opaque color: let the driver draw the box
-      head_.box(rect, get_color());
+      // no active shaders, opaque color: let the driver draw the box, clipped to the screen
+      rect_type r = rect;
+      if (r.left < 0) {
+        r.left = 0;
+      }
+      if (r.top < 0) {
+        r.top = 0;
+      }
+      if (r.right > static_cast<std::int16_t>(screen_width())) {
+        r.right = static_cast<std::int16_t>(screen_width());
+      }
+      if (r.bottom > static_cast<std::int16_t>(screen_height())) {
+        r.bottom = static_cast<std::int16_t>(screen_height());
+      }
+      if ((r.left < r.right) && (r.top < r.bottom)) {
+        head_.box(r, get_color());
+      }
       present();
     }
     else {
@@ -286,12 +345,57 @@ public:
 
 
   /**
+   * Write a block of pixels (bit block transfer), e.g. a bitmap
+   * Without an active shader and without translucent pixels (or alpha blending disabled) the block is
+   * handed to the head in one piece, otherwise every pixel takes the shader pipe
+   * \param rect Destination rect, right and bottom are outside the rect
+   * \param pixels Pixel block in ARGB format, row major, first pixel is the left/top pixel of rect
+   * \param stride Distance between two rows in pixels, normally rect.width()
+   */
+  void blit(const rect_type& rect, const color::value_type* pixels, std::size_t stride)
+  {
+    if ((rect.right <= rect.left) || (rect.bottom <= rect.top)) {
+      return;
+    }
+    bool native = !shader_is_active();
+    if (native && shader_output_.alpha_blending_is_enabled()) {
+      // the head can't blend, so all pixels have to be opaque
+      const color::value_type* row = pixels;
+      for (std::int16_t y = rect.top; native && (y < rect.bottom); ++y, row += stride) {
+        for (std::size_t x = 0U; x < static_cast<std::size_t>(rect.width()); ++x) {
+          if (!color::is_opaque(row[x])) {
+            native = false;
+            break;
+          }
+        }
+      }
+    }
+    if (native) {
+      head_.blit(rect, pixels, stride);
+    }
+    else {
+      shader::base* const pipe = shader_pipe();
+      const color::value_type* row = pixels;
+      for (std::int16_t y = rect.top; y < rect.bottom; ++y, row += stride) {
+        const color::value_type* p = row;
+        for (std::int16_t x = rect.left; x < rect.right; ++x) {
+          pipe->pixel_set({ x, y }, *p++);
+        }
+      }
+    }
+    present();
+  }
+
+
+  /**
    * Move display area
    * \param source Source rect
    * \param destination Destination top/left vertex
    */
-  inline void move(const rect_type& source, vertex_type destination) {
+  inline void move(const rect_type& source, vertex_type destination)
+  {
     head_.move(source, destination);
+    present();
   }
 
 
@@ -304,11 +408,8 @@ public:
    */
   inline void move(vertex_type source, vertex_type destination, std::uint16_t width, std::uint16_t height)
   {
-    rect_type src;
-    src.top_left()     = source;
-    src.bottom_right() = { source.x + width, source.y + height };
+    const rect_type src = { source.x, source.y, static_cast<std::int16_t>(source.x + width), static_cast<std::int16_t>(source.y + height) };
     move(src, destination);
-    present();
   }
 
 };
