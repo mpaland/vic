@@ -564,7 +564,7 @@ public:
    * Inverse display (GS0 <-> GS63), the RAM content is not changed
    * \param inverse True for inverse display
    */
-  virtual void display_inverse(bool inverse)
+  void display_inverse(bool inverse)
   {
     const std::uint8_t cmd = inverse ? CMD_DISPLAY_INVERSE : CMD_DISPLAY_NORMAL;
     write_cmd(&cmd, 1U);
@@ -642,7 +642,7 @@ private:
   {
     const std::uint8_t ca = static_cast<std::uint8_t>((pixel >> 10U) & 0x3EU);   // color C, bits 5:1
     const std::uint8_t cb = static_cast<std::uint8_t>((pixel >>  5U) & 0x3FU);   // color B, bits 5:0
-    const std::uint8_t cc = static_cast<std::uint8_t>((pixel <<  1U) & 0x3EU);   // color A, bits 5:1
+    const std::uint8_t cc = static_cast<std::uint8_t>((static_cast<unsigned>(pixel) <<  1U) & 0x3EU);   // color A, bits 5:1
     const std::uint8_t cmd[] = { CMD_DRAW_RECT, c0, r0, c1, r1, ca, cb, cc, ca, cb, cc };   // outline and fill color
     write_cmd(cmd, sizeof(cmd));
     gac_done();

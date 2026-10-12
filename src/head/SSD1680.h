@@ -269,7 +269,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     const std::size_t  idx  = static_cast<std::size_t>(p.y) * BYTES_X + static_cast<std::size_t>(p.x >> 3U);
-    const std::uint8_t mask = static_cast<std::uint8_t>(0x80U >> (p.x & 0x07U));
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x80U >> (static_cast<unsigned>(p.x) & 0x07U));
     const bool red = Tri_Color && is_red(color);
     const bool ink = is_ink(color) && !red;
     bw_[idx] = static_cast<std::uint8_t>(ink ? (bw_[idx] & ~mask) : (bw_[idx] | mask));
@@ -287,7 +287,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     const std::size_t  idx  = static_cast<std::size_t>(p.y) * BYTES_X + static_cast<std::size_t>(p.x >> 3U);
-    const std::uint8_t mask = static_cast<std::uint8_t>(0x80U >> (p.x & 0x07U));
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x80U >> (static_cast<unsigned>(p.x) & 0x07U));
     if (Tri_Color && (red_[idx] & mask)) {
       return color::red;
     }

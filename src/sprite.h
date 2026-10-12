@@ -860,7 +860,7 @@ public:
       // frame invalid or pixel is out of sheet frame
       return false;
     }
-    pixel.color = pixel_color(frame, static_cast<std::uint32_t>(pixel.vertex.y) * sheet_info_->sprite_width + pixel.vertex.x);
+    pixel.color = pixel_color(frame, static_cast<std::uint32_t>(pixel.vertex.y) * sheet_info_->sprite_width + static_cast<std::uint32_t>(pixel.vertex.x));
     return pixel.color != sheet_info_->bg_color;
   }
 

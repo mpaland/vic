@@ -311,8 +311,8 @@ public:
    */
   inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
   {
-    for (std::int_fast16_t y = vertex.y * y_level_, ye = y + y_level_; y < ye; y++) {
-      for (std::int_fast16_t x = vertex.x * x_level_, xe = x + x_level_; x < xe; x++) {
+    for (std::int_fast16_t y = static_cast<std::int_fast16_t>(vertex.y * y_level_), ye = static_cast<std::int_fast16_t>(y + y_level_); y < ye; y++) {
+      for (std::int_fast16_t x = static_cast<std::int_fast16_t>(vertex.x * x_level_), xe = static_cast<std::int_fast16_t>(x + x_level_); x < xe; x++) {
         next_->pixel_set({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }, color);
       }
     }

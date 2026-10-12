@@ -237,7 +237,7 @@ public:
         const font::mono_type* font_mono = font_->family.mono;
         if (ch >= font_mono->first && ch <= font_mono->last) {
           for (std::uint_fast8_t y = 0U; y < font_->ysize; ++y) {
-            std::uint16_t d = (ch - font_mono->first) * font_->ysize * font_mono->bytes_per_line + (std::int16_t)y * font_mono->bytes_per_line;
+            std::uint16_t d = static_cast<std::uint16_t>((ch - font_mono->first) * font_->ysize * font_mono->bytes_per_line + y * font_mono->bytes_per_line);
             for (std::uint_fast8_t x = 0U; x < font_mono->xsize; ++x) {
               std::uint16_t intensity = (font_mono->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
@@ -268,7 +268,7 @@ public:
       if (ch == 0x0AU) {
         // LF: X = 0, Y = next line
         x_act_ = x_set_;
-        y_act_ = static_cast<std::int16_t>(y_act_ + (font_ ? font_->ysize : 0U));
+        y_act_ = static_cast<std::int16_t>(y_act_ + (font_ ? static_cast<std::int16_t>(font_->ysize) : 0));
       }
       else if (ch == 0x0DU) {
         // CR: X = 0
@@ -413,10 +413,10 @@ private:
         val = static_cast<std::uint8_t>((val << 4U) + (ch - '0'));
       }
       else if (ch >= 'A' && ch <= 'F') {
-        val = static_cast<std::uint8_t>((val << 4U) + (ch - 'A' + 10U));
+        val = static_cast<std::uint8_t>((static_cast<unsigned>(val) << 4U) + static_cast<unsigned>(ch - 'A' + 10));
       }
       else if (ch >= 'a' && ch <= 'f') {
-        val = static_cast<std::uint8_t>((val << 4U) + (ch - 'a' + 10U));
+        val = static_cast<std::uint8_t>((static_cast<unsigned>(val) << 4U) + static_cast<unsigned>(ch - 'a' + 10));
       }
       else {
         // NUL or no hex digit

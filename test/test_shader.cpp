@@ -273,7 +273,7 @@ TEST_CASE(shader_gradient_two_points)
   dc d(h);
   d.alpha_blending_enable(false);
   d.set_color(color::white);
-  shader::gradient<2> gr = { { 0, 1, color::red }, { 10, 1, color::blue } };
+  shader::gradient<2> gr = { { { 0, 1 }, color::red }, { { 10, 1 }, color::blue } };
   d.shader_register(&gr);
   d.line_horz({ 0, 1 }, { 10, 1 });
 
@@ -308,7 +308,7 @@ TEST_CASE(shader_gradient_same_colors)
   dc d(h);
   d.alpha_blending_enable(false);
   d.set_color(color::white);
-  shader::gradient<2> gr = { { 0, 1, color::white }, { 10, 1, color::white } };
+  shader::gradient<2> gr = { { { 0, 1 }, color::white }, { { 10, 1 }, color::white } };
   d.shader_register(&gr);
   d.box({ 0, 0, 11, 3 });
   CHECK_EQ(vic_test::count_pixels(h, color::white), 33U);
@@ -318,7 +318,7 @@ TEST_CASE(shader_gradient_same_colors)
   dc ds(s);
   ds.alpha_blending_enable(false);
   ds.set_color(color::white);
-  shader::gradient<1> g1 = { { 5, 1, 0xFF123456UL } };
+  shader::gradient<1> g1 = { { { 5, 1 }, 0xFF123456UL } };
   ds.shader_register(&g1);
   ds.box({ 0, 0, 11, 3 });
   CHECK_EQ(vic_test::count_pixels(s, 0xFF123456UL), 33U);
@@ -328,7 +328,7 @@ TEST_CASE(shader_gradient_same_colors)
   dc df(f);
   df.alpha_blending_enable(false);
   df.set_color(color::white);
-  shader::gradient<4> g4 = { { 0, 0, color::darkred }, { 10, 0, color::darkred }, { 0, 2, color::darkred }, { 10, 2, color::darkred } };
+  shader::gradient<4> g4 = { { { 0, 0 }, color::darkred }, { { 10, 0 }, color::darkred }, { { 0, 2 }, color::darkred }, { { 10, 2 }, color::darkred } };
   df.shader_register(&g4);
   df.box({ 0, 0, 11, 3 });
   CHECK_EQ(vic_test::count_pixels(f, color::darkred), 33U);
@@ -341,7 +341,7 @@ TEST_CASE(shader_gradient_alpha)
   head::memory<11, 3> h;
   dc d(h);
   d.alpha_blending_enable(false);
-  shader::gradient<2> gr = { { 0, 1, color::white }, { 10, 1, color::white } };
+  shader::gradient<2> gr = { { { 0, 1 }, color::white }, { { 10, 1 }, color::white } };
   d.shader_register(&gr);
   d.set_color(0x80000000UL);     // the pen color itself is ignored, only its alpha counts
   d.plot({ 5, 1 });
@@ -350,7 +350,7 @@ TEST_CASE(shader_gradient_alpha)
   d.plot({ 6, 1 });
   CHECK_EQ(h.pixel({ 6, 1 }), color::white);
   // transparent gradient points give transparent pixels
-  shader::gradient<2> gt = { { 0, 1, 0x00FFFFFFUL }, { 10, 1, 0x00FFFFFFUL } };
+  shader::gradient<2> gt = { { { 0, 1 }, 0x00FFFFFFUL }, { { 10, 1 }, 0x00FFFFFFUL } };
   d.shader_remove(&gr);
   d.shader_register(&gt);
   d.plot({ 7, 1 });
@@ -364,7 +364,7 @@ TEST_CASE(shader_gradient_horizontal_vertical)
   dc d(h);
   d.alpha_blending_enable(false);
   d.set_color(color::white);
-  shader::gradient_horizontal<2> gh = { { 0, 0, color::red }, { 10, 0, color::blue } };
+  shader::gradient_horizontal<2> gh = { { { 0, 0 }, color::red }, { { 10, 0 }, color::blue } };
   d.shader_register(&gh);
   d.box({ 0, 0, 11, 5 });
   // y is ignored: all rows are equal
@@ -377,7 +377,7 @@ TEST_CASE(shader_gradient_horizontal_vertical)
   CHECK(color::get_blue(h.pixel({ 10, 4 })) >= 250U);
   d.shader_remove(&gh);
 
-  shader::gradient_vertical<2> gv = { { 0, 0, color::red }, { 0, 4, color::blue } };
+  shader::gradient_vertical<2> gv = { { { 0, 0 }, color::red }, { { 0, 4 }, color::blue } };
   d.shader_register(&gv);
   d.box({ 0, 0, 11, 5 });
   for (std::int16_t y = 0; y < 5; ++y) {
@@ -400,7 +400,7 @@ TEST_CASE(shader_gradient_solid)
   dc d(h);
   d.alpha_blending_enable(false);
   d.set_color(color::white);
-  shader::gradient_solid<3> gs = { { 0, 1, color::red }, { 5, 1, color::green }, { 10, 1, color::blue } };
+  shader::gradient_solid<3> gs = { { { 0, 1 }, color::red }, { { 5, 1 }, color::green }, { { 10, 1 }, color::blue } };
   d.shader_register(&gs);
   d.line_horz({ 0, 1 }, { 10, 1 });
   CHECK_EQ(h.pixel({ 0, 1 }), color::red);

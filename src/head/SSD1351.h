@@ -407,7 +407,7 @@ public:
   }
 
 
-  virtual void display_inverse(bool inverse)
+  void display_inverse(bool inverse)
   {
     write_cmd(inverse ? CMD_DISPLAY_INVERSE : CMD_DISPLAY_NORMAL, nullptr, 0U);
   }

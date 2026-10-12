@@ -210,7 +210,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     std::uint8_t& data = framebuffer_[static_cast<std::size_t>(p.y) * BYTES_X + static_cast<std::size_t>(p.x >> 3U)];
-    const std::uint8_t mask = static_cast<std::uint8_t>(0x80U >> (p.x & 0x07U));
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x80U >> (static_cast<unsigned>(p.x) & 0x07U));
     data = static_cast<std::uint8_t>(color::color_to_L1(color) ? (data | mask) : (data & ~mask));
   }
 
@@ -222,7 +222,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     const std::uint8_t data = framebuffer_[static_cast<std::size_t>(p.y) * BYTES_X + static_cast<std::size_t>(p.x >> 3U)];
-    return color::L1_to_color(static_cast<std::uint8_t>((data >> (7U - (p.x & 0x07U))) & 0x01U));
+    return color::L1_to_color(static_cast<std::uint8_t>((data >> (7U - (static_cast<unsigned>(p.x) & 0x07U))) & 0x01U));
   }
 
 

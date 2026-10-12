@@ -892,7 +892,7 @@ public:
 
     bool render = false;
     for (std::uint_fast16_t q = qs; q <= qe; ++q) {
-      std::int16_t r = static_cast<std::int16_t>(radius), x = 0, y = -r, err = 2 - r * 2;
+      std::int16_t r = static_cast<std::int16_t>(radius), x = 0, y = static_cast<std::int16_t>(-r), err = static_cast<std::int16_t>(2 - r * 2);
       vertex_type p;
       do {
         switch (q) {

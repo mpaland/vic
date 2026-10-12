@@ -137,9 +137,9 @@ namespace color {
     const std::uint16_t hi  = static_cast<std::uint16_t>(h / 60U);
     const std::uint16_t f   = static_cast<std::uint16_t>(h - static_cast<std::uint16_t>(hi * 60U));
     const std::uint8_t  s_f = static_cast<std::uint8_t>((std::uint16_t)(saturation * f) / 60U);
-    const std::uint16_t p   = ((uint16_t)value * (255U - saturation)) / 255U;
-    const std::uint16_t q   = ((uint16_t)value * (255U - s_f)) / 255U;
-    const std::uint16_t t   = ((uint16_t)value * (255U - saturation + s_f)) / 255U;
+    const std::uint16_t p   = static_cast<std::uint16_t>((static_cast<std::uint32_t>(value) * (255U - saturation)) / 255U);
+    const std::uint16_t q   = static_cast<std::uint16_t>((static_cast<std::uint32_t>(value) * (255U - s_f)) / 255U);
+    const std::uint16_t t   = static_cast<std::uint16_t>((static_cast<std::uint32_t>(value) * (255U - saturation + s_f)) / 255U);
 
     std::uint8_t r, g, b;
     switch (hi) {
@@ -249,8 +249,8 @@ namespace color {
       return back_color;
     }
 
-    const std::uint16_t aFB = aB * (255U - aF) / 255U;
-    const std::uint16_t aS  = aF + aFB;
+    const std::uint16_t aFB = static_cast<std::uint16_t>(aB * (255U - aF) / 255U);
+    const std::uint16_t aS  = static_cast<std::uint16_t>(aF + aFB);
 
     return argb(static_cast<std::uint8_t>((aF * get_red(front_color)   + aFB * get_red(back_color))   / aS),
                 static_cast<std::uint8_t>((aF * get_green(front_color) + aFB * get_green(back_color)) / aS),

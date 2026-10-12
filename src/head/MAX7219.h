@@ -257,10 +257,10 @@ protected:
 
     // set pixel in display buffer
     if (color::color_to_L1(color)) {
-      digit_[vertex.y] |= static_cast<std::uint8_t>(0x01U << (vertex.x & 0x07U));     // set pixel
+      digit_[vertex.y] |= static_cast<std::uint8_t>(0x01U << (static_cast<unsigned>(vertex.x) & 0x07U));     // set pixel
     }
     else {
-      digit_[vertex.y] &= static_cast<std::uint8_t>(~(0x01U << (vertex.x & 0x07U)));  // clear pixel
+      digit_[vertex.y] &= static_cast<std::uint8_t>(~(0x01U << (static_cast<unsigned>(vertex.x) & 0x07U)));  // clear pixel
     }
   }
 
@@ -272,7 +272,7 @@ protected:
       // out of bounds
       return color::none;
     }
-    return color::L1_to_color(static_cast<std::uint8_t>((digit_[vertex.y] >> (vertex.x & 0x07U)) & 0x01U));
+    return color::L1_to_color(static_cast<std::uint8_t>((digit_[vertex.y] >> (static_cast<unsigned>(vertex.x) & 0x07U)) & 0x01U));
   }
 
 

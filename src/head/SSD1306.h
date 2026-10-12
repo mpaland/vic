@@ -381,7 +381,7 @@ protected:
     }
 
     const std::uint8_t page = static_cast<std::uint8_t>(vertex.y >> 3U);
-    const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (vertex.y & 0x07U));
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (static_cast<unsigned>(vertex.y) & 0x07U));
 
     if (Framebuffer) {
       std::uint8_t& data = framebuffer_.data[page * Screen_Size_X + vertex.x];
@@ -418,7 +418,7 @@ protected:
       set_address(static_cast<std::uint8_t>(vertex.x), static_cast<std::uint8_t>(vertex.x), page, page);
       read_data(data);
     }
-    return color::L1_to_color(static_cast<std::uint8_t>((data >> (vertex.y & 0x07U)) & 0x01U));
+    return color::L1_to_color(static_cast<std::uint8_t>((data >> (static_cast<unsigned>(vertex.y) & 0x07U)) & 0x01U));
   }
 
 

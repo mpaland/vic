@@ -259,16 +259,16 @@ protected:
 
     // y
     if (pos.y >= 10) {
-      cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.y / 10);
+      cmd[len++] = static_cast<std::uint8_t>(0x30U + static_cast<unsigned>(pos.y / 10));
     }
-    cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.y % 10);
+    cmd[len++] = static_cast<std::uint8_t>(0x30U + static_cast<unsigned>(pos.y % 10));
     cmd[len++] = 0x3BU;
 
     // x
     if (pos.x >= 10) {
-      cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.x / 10);
+      cmd[len++] = static_cast<std::uint8_t>(0x30U + static_cast<unsigned>(pos.x / 10));
     }
-    cmd[len++] = static_cast<std::uint8_t>(0x30U + pos.x % 10);
+    cmd[len++] = static_cast<std::uint8_t>(0x30U + static_cast<unsigned>(pos.x % 10));
     cmd[len++] = 0x48U;
 
     // send command

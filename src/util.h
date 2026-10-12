@@ -320,7 +320,7 @@ inline std::uint16_t utf8_decode(const std::uint8_t*& string)
         continue;
       }
       string += 2U;
-      return static_cast<std::uint16_t>((static_cast<std::uint16_t>(b0 & 0x1FU) << 6U) | (b1 & 0x3FU));
+      return static_cast<std::uint16_t>((static_cast<std::uint32_t>(b0 & 0x1FU) << 6U) | (b1 & 0x3FU));
     }
     if ((b0 & 0xF0U) == 0xE0U) {
       // 3 byte sequence
@@ -335,7 +335,7 @@ inline std::uint16_t utf8_decode(const std::uint8_t*& string)
         continue;
       }
       string += 3U;
-      return static_cast<std::uint16_t>((static_cast<std::uint16_t>(b0 & 0x0FU) << 12U) | (static_cast<std::uint16_t>(b1 & 0x3FU) << 6U) | (b2 & 0x3FU));
+      return static_cast<std::uint16_t>((static_cast<std::uint32_t>(b0 & 0x0FU) << 12U) | (static_cast<std::uint32_t>(b1 & 0x3FU) << 6U) | (b2 & 0x3FU));
     }
     // 4 byte sequence lead byte or stray continuation byte, skip it
     ++string;
@@ -461,7 +461,7 @@ inline std::int16_t sin(std::int16_t angle)
   }
 
   const std::int16_t val = sin90[angle < 90 ? angle : 180 - angle];
-  return invers ? -val : val;
+  return invers ? static_cast<std::int16_t>(-val) : val;
 }
 
 

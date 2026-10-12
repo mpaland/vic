@@ -70,7 +70,7 @@ public:
   //
 
   // access shader pipeline
-  inline shader::base* shader_pipe() const
+  inline shader::base* shader_pipe() const override
   {
     return shader_pipe_;
   }
@@ -174,7 +174,7 @@ public:
    * Not all devices may support this function, especially not, when there's no separate
    * screen / frame buffer
    */
-  inline virtual void present()
+  inline virtual void present() override
   {
     if (!present_lock_) {
       head_.present();

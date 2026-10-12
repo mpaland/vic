@@ -46,12 +46,14 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          cmake --build build -j 2>&1 | tee build.log
+          cmake --build build -j -- -k 2>&1 | tee build.log
       - name: Report compiler errors
         if: failure()
         shell: bash
         run: |
-          grep -E ': (error|warning): ' build.log | head -30 | sed -E 's/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::error file=\1,line=\2,col=\3::\5/' || true
+          grep -E ': (error|warning): ' build.log | sed -E "s|^$GITHUB_WORKSPACE/||" | sort -u > diag.log || true
+          { echo '### Compiler diagnostics'; echo '```'; cat diag.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          head -10 diag.log | sed -E 's/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::error file=\1,line=\2,col=\3::\5/'
       - name: Test
         run: ctest --test-dir build --output-on-failure
 
@@ -71,11 +73,13 @@ jobs:
         shell: bash
         run: |
           set -o pipefail
-          cmake --build build -j 2>&1 | tee build.log
+          cmake --build build -j -- -k 2>&1 | tee build.log
       - name: Report compiler errors
         if: failure()
         shell: bash
         run: |
-          grep -E ': (error|warning): ' build.log | head -30 | sed -E 's/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::error file=\1,line=\2,col=\3::\5/' || true
+          grep -E ': (error|warning): ' build.log | sed -E "s|^$GITHUB_WORKSPACE/||" | sort -u > diag.log || true
+          { echo '### Compiler diagnostics'; echo '```'; cat diag.log; echo '```'; } >> "$GITHUB_STEP_SUMMARY"
+          head -10 diag.log | sed -E 's/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::error file=\1,line=\2,col=\3::\5/'
       - name: Test
         run: ctest --test-dir build --output-on-failure

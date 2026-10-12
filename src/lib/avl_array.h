@@ -89,6 +89,12 @@ class avl_array
       , idx_(idx)
     { }
 
+    // copy ctor
+    tag_avl_array_iterator(const tag_avl_array_iterator& other)
+      : instance_(other.instance_)
+      , idx_(other.idx_)
+    { }
+
     inline tag_avl_array_iterator& operator=(const tag_avl_array_iterator& other)
     {
       instance_ = other.instance_;
@@ -672,7 +678,7 @@ private:
     }
 
     balance_[right]++;
-    balance_[node] = -balance_[right];
+    balance_[node] = static_cast<std::int8_t>(-balance_[right]);
 
     return right;
   }
@@ -701,7 +707,7 @@ private:
     }
 
     balance_[left]--;
-    balance_[node] = -balance_[left];
+    balance_[node] = static_cast<std::int8_t>(-balance_[left]);
 
     return left;
   }

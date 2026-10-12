@@ -575,7 +575,7 @@ public:
   /**
    * Display inversion (20h / 21h) relative to the Invert default of the panel
    */
-  virtual void display_inverse(bool inverse)
+  void display_inverse(bool inverse)
   {
     write_cmd((inverse != Invert) ? CMD_INVON : CMD_INVOFF, nullptr, 0U);
   }

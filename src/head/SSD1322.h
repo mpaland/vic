@@ -265,7 +265,7 @@ protected:
     const vertex_type p = to_phys(vertex);
     std::uint8_t& data = framebuffer_[static_cast<std::size_t>(p.y) * BYTES_X + static_cast<std::size_t>(p.x >> 1U)];
     const std::uint8_t gs = color::color_to_L4(color);
-    data = static_cast<std::uint8_t>((p.x & 1) ? ((data & 0xF0U) | gs) : ((data & 0x0FU) | (gs << 4U)));
+    data = static_cast<std::uint8_t>((p.x & 1) ? ((data & 0xF0U) | gs) : ((data & 0x0FU) | (static_cast<unsigned>(gs) << 4U)));
   }
 
 
@@ -319,7 +319,7 @@ public:
   /**
    * Inverse display (GS0 <-> GS15)
    */
-  virtual void display_inverse(bool inverse)
+  void display_inverse(bool inverse)
   {
     write_cmd(inverse ? CMD_DISPLAY_INVERSE : CMD_DISPLAY_NORMAL, nullptr, 0U);
   }

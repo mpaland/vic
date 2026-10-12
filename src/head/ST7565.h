@@ -250,7 +250,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     std::uint8_t& data = framebuffer_[static_cast<std::size_t>(p.y >> 3U) * PHYS_X + static_cast<std::size_t>(p.x)];
-    const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (p.y & 0x07U));
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (static_cast<unsigned>(p.y) & 0x07U));
     data = static_cast<std::uint8_t>(color::color_to_L1(color) ? (data | mask) : (data & ~mask));
   }
 
@@ -262,7 +262,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     const std::uint8_t data = framebuffer_[static_cast<std::size_t>(p.y >> 3U) * PHYS_X + static_cast<std::size_t>(p.x)];
-    return color::L1_to_color(static_cast<std::uint8_t>((data >> (p.y & 0x07U)) & 0x01U));
+    return color::L1_to_color(static_cast<std::uint8_t>((data >> (static_cast<unsigned>(p.y) & 0x07U)) & 0x01U));
   }
 
 
@@ -295,7 +295,7 @@ public:
   /**
    * Inverse video
    */
-  virtual void display_inverse(bool inverse)
+  void display_inverse(bool inverse)
   {
     write_cmd(inverse ? CMD_INVERSE : CMD_NORMAL);
   }

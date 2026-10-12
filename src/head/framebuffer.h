@@ -244,12 +244,12 @@ protected:
     rect_type& d = dirty_[plane_display_];
     if (!d.empty()) {
       for (std::int16_t y = d.top; y < d.bottom; ++y) {
-        for (std::int16_t x = d.left; x < d.right; x = static_cast<std::int16_t>(x + LINE_PIXELS)) {
+        for (std::int16_t x = d.left; x < d.right; x = static_cast<std::int16_t>(x + static_cast<std::int16_t>(LINE_PIXELS))) {
           const std::size_t n = static_cast<std::size_t>(d.right - x) < LINE_PIXELS ? static_cast<std::size_t>(d.right - x) : LINE_PIXELS;
           for (std::size_t i = 0U; i < n; ++i) {
             line_[i] = load(plane_display_, static_cast<std::size_t>(y) * Screen_Size_X + static_cast<std::size_t>(x) + i);
           }
-          head_.blit({ x, y, static_cast<std::int16_t>(x + n), static_cast<std::int16_t>(y + 1) }, line_, n);
+          head_.blit({ x, y, static_cast<std::int16_t>(x + static_cast<std::int16_t>(n)), static_cast<std::int16_t>(y + 1) }, line_, n);
         }
       }
       d.clear();
