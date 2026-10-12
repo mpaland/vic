@@ -1,4 +1,16 @@
 # Video Interface Controller library
+
+[![CI](https://github.com/mpaland/vic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mpaland/vic/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![C++11](https://img.shields.io/badge/C%2B%2B-11-blue.svg?logo=cplusplus)](https://en.cppreference.com/w/cpp/11)
+[![Header only](https://img.shields.io/badge/header--only-yes-brightgreen.svg)](#highlights-and-design-goals)
+[![No heap](https://img.shields.io/badge/heap-none-brightgreen.svg)](#highlights-and-design-goals)
+[![Compilers](https://img.shields.io/badge/compilers-MSVC%20%7C%20GCC%20%7C%20Clang-informational.svg)](.github/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/tag/mpaland/vic?label=release&sort=semver)](https://github.com/mpaland/vic/tags)
+[![Last commit](https://img.shields.io/github/last-commit/mpaland/vic.svg)](https://github.com/mpaland/vic/commits/master)
+[![Issues](https://img.shields.io/github/issues/mpaland/vic.svg)](https://github.com/mpaland/vic/issues)
+[![Stars](https://img.shields.io/github/stars/mpaland/vic.svg?style=social)](https://github.com/mpaland/vic/stargazers)
+
 #### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems.
 If you need a robust, universal and embedded library for rendering text and graphics on various displays - VIC is your library!
 
