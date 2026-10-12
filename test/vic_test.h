@@ -20,6 +20,7 @@
 #define _VIC_TEST_H_
 
 #include <cstdio>
+#include <limits>
 #include <cstring>
 #include <cstdint>
 
@@ -90,7 +91,7 @@ template<typename T>
 inline void print_val(const T& v)
 {
   // generic integer fallback
-  if (static_cast<T>(-1) < static_cast<T>(0)) {
+  if (std::numeric_limits<T>::is_signed) {
     print_val(static_cast<long long>(v));
   }
   else {

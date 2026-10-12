@@ -186,7 +186,7 @@ public:
           // found char
           const font::charinfo_ext_type* info = &font_prop_ext->char_info_ext[ch - font_prop_ext->first];
           for (std::uint_fast8_t y = 0U; y < info->ysize; ++y) {
-            std::uint16_t d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
+            std::uint16_t d = static_cast<std::uint16_t>((1U + ((info->xsize - 1U) * color_depth / 8U)) * y);
             for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
               std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
               if (intensity) {
@@ -214,7 +214,7 @@ public:
             // found char
             const font::charinfo_type* info = &font_prop->char_info[ch - font_prop->first];
             for (std::uint_fast8_t y = 0U; y < font_->ysize; ++y) {
-              std::uint16_t d = (1U + ((info->xsize - 1U) * color_depth / 8U)) * y;
+              std::uint16_t d = static_cast<std::uint16_t>((1U + ((info->xsize - 1U) * color_depth / 8U)) * y);
               for (std::uint_fast8_t x = 0U; x < info->xsize; ++x) {
                 std::uint16_t intensity = (info->data[d + ((x * color_depth) >> 3U)] >> ((8U - (x + 1U) * color_depth) % 8U)) & color_mask;
                 if (intensity) {

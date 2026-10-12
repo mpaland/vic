@@ -878,10 +878,10 @@ public:
       return;
     }
 
-    const std::int16_t xs = center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384;
-    const std::int16_t ys = center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384;
-    const std::int16_t xe = center.x + radius * util::cos(static_cast<std::int16_t>(end_angle))   / 16384;
-    const std::int16_t ye = center.y - radius * util::sin(static_cast<std::int16_t>(end_angle))   / 16384;
+    const std::int16_t xs = static_cast<std::int16_t>(center.x + radius * util::cos(static_cast<std::int16_t>(start_angle)) / 16384);
+    const std::int16_t ys = static_cast<std::int16_t>(center.y - radius * util::sin(static_cast<std::int16_t>(start_angle)) / 16384);
+    const std::int16_t xe = static_cast<std::int16_t>(center.x + radius * util::cos(static_cast<std::int16_t>(end_angle))   / 16384);
+    const std::int16_t ye = static_cast<std::int16_t>(center.y - radius * util::sin(static_cast<std::int16_t>(end_angle))   / 16384);
 
     const std::uint_fast16_t qs = (start_angle / 90U);
     const std::uint_fast16_t qe = (end_angle - 1U) / 90U;
@@ -945,9 +945,9 @@ public:
         }
         r = err;
         if (r <= x)
-          err += ++x * 2 + 1;
+          err = static_cast<std::int16_t>(err + ++x * 2 + 1);
         if (r > y || err > x)
-          err += ++y * 2 + 1;
+          err = static_cast<std::int16_t>(err + ++y * 2 + 1);
       } while (y < 0);
     }
     present();

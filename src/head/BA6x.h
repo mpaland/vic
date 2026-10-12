@@ -399,7 +399,7 @@ private:
     std::uint8_t  msg[BA6X_MAX_CMD_LENGTH];
 
     do {
-      const std::uint16_t blk_size = static_cast<std::uint16_t>(data_count - offset > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : data_count - offset);
+      const std::uint16_t blk_size = static_cast<std::uint16_t>(static_cast<unsigned>(data_count - offset) > BA6X_MAX_CMD_LENGTH - 3U ? BA6X_MAX_CMD_LENGTH - 3U : static_cast<unsigned>(data_count - offset));
 
       msg[0] = 0x02U;
       msg[1] = 0x00U;

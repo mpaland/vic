@@ -187,7 +187,7 @@ protected:
           std::uint8_t data = 0U;
           for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
             data = static_cast<std::uint8_t>(data >> 1U);
-            data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x80U : 0x00U;
+            data = static_cast<std::uint8_t>(data | ((digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x80U : 0x00U));
           }
           write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
@@ -202,7 +202,7 @@ protected:
           std::uint8_t data = 0U;
           for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
             data = static_cast<std::uint8_t>(data << 1U);
-            data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x01U : 0x00U;
+            data = static_cast<std::uint8_t>(data | ((digit_[viewport_get().y + x] & (0x01U << y)) ? 0x01U : 0x00U));
           }
           write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
@@ -217,7 +217,7 @@ protected:
           std::uint8_t data = 0U;
           for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
             data = static_cast<std::uint8_t>(data >> 1U);
-            data |= (digit_[viewport_get().y + x] & (0x01U << y)) ? 0x80U : 0x00U;
+            data = static_cast<std::uint8_t>(data | ((digit_[viewport_get().y + x] & (0x01U << y)) ? 0x80U : 0x00U));
           }
           write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }
@@ -232,7 +232,7 @@ protected:
           std::uint8_t data = 0U;
           for (std::int16_t x = 0; x < static_cast<std::int16_t>(viewport_width()); ++x) {
             data = static_cast<std::uint8_t>(data << 1U);
-            data |= (digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x01U : 0x00U;
+            data = static_cast<std::uint8_t>(data | ((digit_[viewport_get().y + x] & (0x80U >> y)) ? 0x01U : 0x00U));
           }
           write(static_cast<std::uint8_t>(REG_DIGIT0 + y), data);
         }

@@ -119,9 +119,9 @@ public:
    * \param width Width of the bitmap
    * \param height Height of the bitmap
    * \param format Data format, L1 (XBM like, LSB first, rows are byte aligned), RGB332, RGB555, RGB565, RGB888 (B G R) and ARGB8888 (B G R A) are supported
-   * \param bitmap Bitmap data in the given raw format
+   * \param data_ptr Bitmap data in the given raw format
    */
-  void render_raw(vertex_type origin, std::uint16_t width, std::uint16_t height, color::format_type format, const std::uint8_t* bitmap)
+  void render_raw(vertex_type origin, std::uint16_t width, std::uint16_t height, color::format_type format, const std::uint8_t* data_ptr)
   {
     bmp_origin_ = origin;
     bmp_width_  = width;
@@ -133,9 +133,9 @@ public:
       color::value_type chunk[32];
       for (std::int16_t y = origin.y, ye = static_cast<std::int16_t>(origin.y + height); y < ye; ++y) {
         for (std::uint16_t x = 0U; x < width; x = static_cast<std::uint16_t>(x + 32U)) {
-          const std::uint16_t n = static_cast<std::uint16_t>((width - x) < 32U ? (width - x) : 32U);
-          for (std::uint16_t i = 0U; i < n; ++i, bitmap += 4U) {
-            chunk[i] = color::argb(bitmap[2], bitmap[1], bitmap[0], bitmap[3]);
+          const std::uint16_t n = static_cast<std::uint16_t>(static_cast<std::uint16_t>(width - x) < 32U ? static_cast<std::uint16_t>(width - x) : 32U);
+          for (std::uint16_t i = 0U; i < n; ++i, data_ptr += 4U) {
+            chunk[i] = color::argb(data_ptr[2], data_ptr[1], data_ptr[0], data_ptr[3]);
           }
           dc_.blit({ static_cast<std::int16_t>(origin.x + x), y, static_cast<std::int16_t>(origin.x + x + n), static_cast<std::int16_t>(y + 1) }, chunk, n);
         }
@@ -151,7 +151,7 @@ public:
           case color::format_L1 :
             // monochrome, LSB first, every row starts with a new byte
             if (((x - origin.x) & 0x07) == 0) {
-              data = *bitmap++;
+              data = *data_ptr++;
             }
             else {
               data = static_cast<std::uint8_t>(data >> 1U);
@@ -161,24 +161,24 @@ public:
             }
             break;
           case color::format_RGB332 :
-            dc_.pixel_set({ x, y }, color::RGB332_to_color(*bitmap));
-            bitmap += 1U;
+            dc_.pixel_set({ x, y }, color::RGB332_to_color(*data_ptr));
+            data_ptr += 1U;
             break;
           case color::format_RGB555 :
-            dc_.pixel_set({ x, y }, color::RGB555_to_color(static_cast<std::uint16_t>(bitmap[0] | (static_cast<std::uint16_t>(bitmap[1]) << 8U))));
-            bitmap += 2U;
+            dc_.pixel_set({ x, y }, color::RGB555_to_color(static_cast<std::uint16_t>(data_ptr[0] | (static_cast<std::uint16_t>(data_ptr[1]) << 8U))));
+            data_ptr += 2U;
             break;
           case color::format_RGB565 :
-            dc_.pixel_set({ x, y }, color::RGB565_to_color(static_cast<std::uint16_t>(bitmap[0] | (static_cast<std::uint16_t>(bitmap[1]) << 8U))));
-            bitmap += 2U;
+            dc_.pixel_set({ x, y }, color::RGB565_to_color(static_cast<std::uint16_t>(data_ptr[0] | (static_cast<std::uint16_t>(data_ptr[1]) << 8U))));
+            data_ptr += 2U;
             break;
           case color::format_RGB888 :
-            dc_.pixel_set({ x, y }, color::argb(bitmap[2], bitmap[1], bitmap[0]));
-            bitmap += 3U;
+            dc_.pixel_set({ x, y }, color::argb(data_ptr[2], data_ptr[1], data_ptr[0]));
+            data_ptr += 3U;
             break;
           case color::format_ARGB8888 :
-            dc_.pixel_set({ x, y }, color::argb(bitmap[2], bitmap[1], bitmap[0], bitmap[3]));
-            bitmap += 4U;
+            dc_.pixel_set({ x, y }, color::argb(data_ptr[2], data_ptr[1], data_ptr[0], data_ptr[3]));
+            data_ptr += 4U;
             break;
           default :
             // unsupported format
