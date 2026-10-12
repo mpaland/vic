@@ -717,6 +717,11 @@ private:
   {
     const size_type left             = child_[node].left;
     const size_type left_right       = child_[left].right;
+    if (left_right >= Size) {
+      // can't happen, a double rotation needs the inner grandchild; the check lets the compiler
+      // prove the index range (GCC -Wstringop-overflow false positive otherwise)
+      return node;
+    }
     const size_type left_right_right = child_[left_right].right;
     const size_type left_right_left  = child_[left_right].left;
     const size_type parent           = get_parent(node);
@@ -763,6 +768,11 @@ private:
   {
     const size_type right            = child_[node].right;
     const size_type right_left       = child_[right].left;
+    if (right_left >= Size) {
+      // can't happen, a double rotation needs the inner grandchild; the check lets the compiler
+      // prove the index range (GCC -Wstringop-overflow false positive otherwise)
+      return node;
+    }
     const size_type right_left_left  = child_[right_left].left;
     const size_type right_left_right = child_[right_left].right;
     const size_type parent           = get_parent(node);
