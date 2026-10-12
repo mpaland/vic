@@ -51,6 +51,9 @@ else()
   target_compile_options(vic_tests PRIVATE
     -Wall -Wextra -Wpedantic -Wshadow -Wconversion -Wsign-conversion
     $<$<BOOL:${VIC_WARNINGS_AS_ERRORS}>:-Werror>
+    # GCC's optimizer reports false positives for the index arrays of avl_array (an index can be the
+    # INVALID_IDX marker in its view), keep them as warnings in optimized builds
+    $<$<CXX_COMPILER_ID:GNU>:-Wno-error=array-bounds -Wno-error=stringop-overflow>
   )
   if(VIC_TEST_ASAN)
     target_compile_options(vic_tests PRIVATE -fsanitize=address,undefined -fno-omit-frame-pointer -g)

@@ -1,38 +1,36 @@
 # Video Interface Controller library
 
+[![Release](https://img.shields.io/github/v/tag/mpaland/vic?label=release&sort=semver)](https://github.com/mpaland/vic/tags)
 [![CI](https://github.com/mpaland/vic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mpaland/vic/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![C++11](https://img.shields.io/badge/C%2B%2B-11-blue.svg?logo=cplusplus)](https://en.cppreference.com/w/cpp/11)
 [![Header only](https://img.shields.io/badge/header--only-yes-brightgreen.svg)](#highlights-and-design-goals)
 [![No heap](https://img.shields.io/badge/heap-none-brightgreen.svg)](#highlights-and-design-goals)
 [![Compilers](https://img.shields.io/badge/compilers-MSVC%20%7C%20GCC%20%7C%20Clang-informational.svg)](.github/workflows/ci.yml)
-[![Release](https://img.shields.io/github/v/tag/mpaland/vic?label=release&sort=semver)](https://github.com/mpaland/vic/tags)
 [![Last commit](https://img.shields.io/github/last-commit/mpaland/vic.svg)](https://github.com/mpaland/vic/commits/master)
 [![Issues](https://img.shields.io/github/issues/mpaland/vic.svg)](https://github.com/mpaland/vic/issues)
 [![Stars](https://img.shields.io/github/stars/mpaland/vic.svg?style=social)](https://github.com/mpaland/vic/stargazers)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-#### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems.
-If you need a robust, universal and embedded library for rendering text and graphics on various displays - VIC is your library!
 
-**The VIC lib is beta and still under heavy development. If you have specific questions, do not hesitate to contact me!**
+### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems
 
 ## Highlights and Design Goals
-- Designed for displays on **slow serial buses** like SPI, I²C or UART: primitives are rendered with a minimum of
+- Designed for displays on **(slow) serial buses** like SPI, I²C or UART: primitives are rendered with a minimum of
   commands sent to the display, no framebuffer transfer is needed (but supported)
 - Blazing fast primitive rendering of lines, circles, triangles, boxes, text etc.
-- Sprite (sheet and dynamic canvas) support for moving objects, with rotation
-- Vertex/pixel shader pipe with dynamic clipping, gradient, brush, zoom, rotate etc. shaders.
+- Sprite Engine (sheet and dynamic canvas) for moving objects with rotation, zoom and collision detection
+- Vertex/pixel shader pipe with dynamic clipping, gradient, brush, zoom, rotate etc. shaders
 - Support of all color formats from monochrome up to 32 bit alpha blending color displays
 - Full transparency and alpha channel blending support out of the box
 - Anti aliasing support for smooth edges of lines, circles, discs, sectors and triangles
 - HEADER ONLY implementation, no module compilation
-- Multiple heads support, as many displays as you may like in one system
-- Multihead driver, combine any number of (different) single displays to one big display
+- Multi display support, as many displays as you may like in one system
+- Multihead driver, combine any number of (different) single displays to one big display screen
 - Platform and CPU independent code, NO dependencies, NO STL, NO new/delete, NO `float` - just clean and pure C++(11)
 - Platform independent low level driver design with I/O abstraction, **the very same low level display driver runs everywhere**
-- Simple widgets like bitmaps (raw and XPM) and progress bars
+- Simple widgets like bitmaps (raw and XPM), gauges, checkboxes, progress bars, etc.
 - Support of different font formats (proportional, monospace), ASCII/UTF-8 support and text/font rendering
-- Framebuffer and viewport support
+- Framebuffer, viewport and blitter support
 - **NO floating point math**, only fast integer operations
 - VERY clean, mature and stable C++ code, LINT and L4 warning free, automotive ready
 - Very easy to use and fast implemention of own/new display drivers
@@ -40,16 +38,23 @@ If you need a robust, universal and embedded library for rendering text and grap
 - Doxygen commented code
 - MIT license
 
-## What is VIC NOT?
-VIC is not meant to be a full bloated window manager, widgets, dialogs, theme rendering framework.
+## What is VIC _not_?
+VIC is not meant to be a fully loaded window manager, widgets, dialogs and theme rendering framework.
 If you need an advanced windowed GUI, there are many other cool libraries around, like LVGL, µC/GUI, StWin etc.
-Such a library can use VIC as its rendering and display driver layer.
+But such a (high level) library may use VIC as its rendering and display driver layer via the `blit()` command.
+  
+**VIC or a GUI framework like LVGL?** VIC is a graphic/widget rendering and display driver layer, not a GUI. If your display is a
+TFT, your controller has RAM for a framebuffer and you need advanced controls, themes, a GUI framework is the right tool. VIC is made
+for the other cases: Write only or serial displays, controllers with their own GRAM and native fill commands,
+monochrome and odd devices (OLEDs, LED matrices, VFD text displays, seven segment), heterogeneous multihead setups and
+MCUs with a few KB of RAM. Both can be combined: a GUI framework's flush callback is exactly a `blit()`, so a VIC head
+can serve as its display driver.
 
 ## Design of VIC
 Most display libraries render into a RAM framebuffer and transfer the complete buffer to the display afterwards.
 This works fine for memory mapped displays, but embedded displays are often connected via SPI, I²C or UART with a
-few MBit/s or even kBit/s. Transferring a complete framebuffer over such a link takes far too long for every update,
-and small microcontrollers don't have the RAM for a framebuffer anyway.
+few MBit/s or even kBit/s. Transferring a complete framebuffer over such a link takes far too long for fast updates,
+and small microcontrollers don't have the RAM for a big framebuffer anyway.
 
 VIC therefore renders **directly to the display** and tries to send as few commands as possible:
 - Every primitive is decomposed into the most powerful commands the display controller understands. If the controller
@@ -61,10 +66,21 @@ VIC therefore renders **directly to the display** and tries to send as few comma
 - If a display or an application really needs a framebuffer, the `framebuffer` and `memory` heads provide one in RAM
   and the display is updated with `present()`.
 
-Basicly every display needs a driver. But unlike as in many other designs, the driver is the highest class of which the head
-(display) is instanciated.
-A graphic driver only needs to implement `pixel_set` and `pixel_get` functions. But most modern
-display controllers can provide more sophisticated functions for native line/box rendering, block moving etc.
+**Displays which can't read their pixels back** (most serial displays) return `color::none` from `pixel_get()`. The
+drawing context then blends alpha and anti aliasing pixels against its background color once one is set with
+`dc::set_bg_color()`, which is exact on uniform backgrounds and needs no RAM. If the real pixels are needed (sprites, fill, anti aliasing on
+images), put the `framebuffer` head between the display driver and the drawing context. It keeps a RAM copy in the
+format you choose (ARGB8888, RGB565, RGB332 or 1 bit L1), remembers the dirty rect and transfers only the changed
+window with `blit()` on `present()`. This is also the "render in RAM, stream the changed window" model modern TFT
+controllers with an autoincrementing GRAM window are made for, and it is the user's decision per display, the device
+drivers themselves keep no buffers.
+
+
+## Class design
+
+![](doc/viclib.svg)
+
+The hardware graphic display driver is called _head_ here and only needs to implement `pixel_set` and `pixel_get` functions. But most modern display controllers can provide more sophisticated functions for native line/box rendering, block moving (blit) etc.
 If a controller can provide such special functions, the according function is implemented in the driver by simply overriding the virtual function of the `drv` base class.
 All graphic functions which the controller/driver can't provide natively are handled by the `gpr`.
 Of cource, native rendering on a specialized LCD controller is always faster and should be prefered.
@@ -76,75 +92,8 @@ and the anti aliasing stays deterministic: the interior of an anti aliased disc 
 runs, only the edge pixels are single alpha pixels. There are no hooks for native diagonal lines or circles on
 purpose, a controller's own algorithm would make the result head dependent.
 
-**Displays which can't read their pixels back** (most serial displays) return `color::none` from `pixel_get()`. The
-drawing context then blends alpha and anti aliasing pixels against its background color once one is set with
-`dc::set_bg_color()`, which is exact on uniform backgrounds and needs no RAM. If the real pixels are needed (sprites, fill, anti aliasing on
-images), put the `framebuffer` head between the display driver and the drawing context. It keeps a RAM copy in the
-format you choose (ARGB8888, RGB565, RGB332 or 1 bit L1), remembers the dirty rect and transfers only the changed
-window with `blit()` on `present()`. This is also the "render in RAM, stream the changed window" model modern TFT
-controllers with an autoincrementing GRAM window are made for, and it is the user's decision per display, the device
-drivers themselves keep no buffers.
-
-**VIC or a GUI framework like LVGL?** VIC is a rendering and display driver layer, not a GUI. If your display is a
-TFT, your controller has RAM for a framebuffer and you need widgets, a GUI framework is the right tool. VIC is made
-for the other cases: write only or serial displays, controllers with their own GRAM and native fill commands,
-monochrome and odd devices (OLEDs, LED matrices, VFD text displays, seven segment), heterogeneous multihead setups and
-MCUs with a few KB of RAM. Both can be combined: a GUI framework's flush callback is exactly a `blit()`, so a VIC head
-can serve as its display driver.
-
-
-## Class design
-The diagram source is `doc/vic_classes.mmd` (Mermaid), GitHub renders it inline:
-
-```mermaid
----
-title: vic class design
----
-classDiagram
-direction TB
-
-class display["display hardware"]
-class io["io (hardware abstraction)"]
-class drv["drv (driver base)"]
-class head["head::xxx (device driver)"]
-class framebuffer["head::framebuffer"]
-class multihead["head::multihead"]
-class gpr["gpr (primitive renderer)"]
-class dc["dc (drawing context)"]
-class pipe["shader pipe"]
-class shaders["clipping, zoom, offset, flip, rotate, brush, gradient, tint, alpha_blend"]
-class output["shader::output"]
-class txr["txr (text renderer)"]
-class tc["tc (text context)"]
-class font["font"]
-class sprite["sprite::canvas, sprite::sheet, sprite::canvas_sheet"]
-class widget["widget::progress, bitmap, label, textbox, groupbox, led, gauge, bargauge, arc, spinner, compass, button, imagebutton, checkbox, toggle, slider, spinbox"]
-
-drv <|-- head
-drv <|-- framebuffer
-drv <|-- multihead
-head --> io
-io --> display
-framebuffer o-- drv : bound head
-multihead o-- drv : heads
-
-gpr <|-- dc
-dc --> pipe
-pipe --> shaders
-pipe --> output
-output --> drv : pixel_set / pixel_get / line / box / blit
-
-txr <|-- tc
-tc --> dc
-tc --> drv : alpha numeric heads
-txr --> font
-
-dc <|-- sprite
-widget --> dc
-```
-
 ### gpr
-The Graphic Primitive Renderer provides fast rendering functions for all basic primitives like lines, circles, discs, pies, pattern fill, etc.
+The Graphic Primitive Renderer provides fast rendering functions for all basic primitives like lines, circles, triangles, discs, pies, pattern fill, etc.
 The `gpr` doesn't use any floating point math, only fast integer operations.
 Furthermore the `gpr` should be a collection of the fastest implementations of the most modern, fast and reliable primitive rendering algorithms.
 So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and contribure!
@@ -197,9 +146,7 @@ Available stock shaders are:
 - rotate
 
 ### tc
-The Text Context is the counterpart of the `dc` for text. It is created over a head or a `dc` (to use the shaders)
-and renders UTF-8 strings with the selected font, including control chars like `\n`, `\r` and the inline color
-escape `\aRRGGBB`.
+The Text Context is the counterpart of the `dc` for text only (Alpha Numeric) displays. It renders UTF-8 strings with the selected font, including control chars like `\n`, `\r` and the inline color escape `\aRRGGBB`.
 
 ### drv
 The base class of the custom head driver which adds some mandatory driver routines.
@@ -217,6 +164,7 @@ for development. `skeleton.h` is the template for new heads. `src/head/doc/` hol
 programming summary (`*.md`) of each one with the register / command tables, the orientation bits and what the head sends.
 
 ### sprite
+I have always been fascinated by hardware sprites that computers like the Commodore 64 or Amiga offered. When designing VIC, I wanted to create a simple but fast and flexible sprite rendering engine with collision detection, rotation and unlimited sprite layers.  
 Sprites are moving objects which restore their background when they move. `sprite::sheet` renders frames out of a
 constant sprite sheet (RGB565, RGB888, ARGB8888, RGBA8888) and needs no RAM for the pattern, `sprite::canvas` is a
 sprite which can be drawn on with the normal `dc` functions and `sprite::canvas_sheet` loads sheet frames into a
@@ -225,8 +173,8 @@ rendered in z-order with alpha blending. Pixel exact collision detection comes f
 (`set_collision_handler()`) on a sprite and it is called once for every other sprite it overlaps with when it is
 rendered, or poll `get_collision()` after `render()`. Without a handler the detection costs nothing.
 
-`demo/demo_sprite.cpp` shows sheet sprites, a canvas sprite (the ball), rotation, alpha blending, z-order and the
-collision detection (the ghosts turn red when they meet), 30 s recording of the demo:
+The `demo/demo_sprite.cpp` is completely rendered by VIC primitives and shows sheet sprites, a canvas sprite (the ball), rotation,
+alpha blending, z-order and the collision detection (the ghosts turn red when they meet):
 
 ![](doc/demo_sprite.gif)
 
@@ -239,10 +187,9 @@ and a needle), `widget::bargauge` (linear band strip with up to two triangle mar
 `widget::textbox` (multi line text with word wrap and line scrolling), `widget::groupbox` (titled frame),
 `widget::led` (round or square indicator), `widget::arc` (ring progress, delta drawn) and `widget::spinner`
 (rotating ring segment as busy indicator). The needle and the markers are canvas sprites, so a value change
-costs only their pixels and the background restores itself.
-
-`widget::compass` is a heading up compass rose with a fixed pointer.
-
+costs only their pixels and the background restores itself. 
+`widget::compass` is a heading up compass rose with a fixed pointer. 
+  
 Input routing is one function: the application calls `widget::base::event({x, y}, widget::event_tap)` from
 its touch, mouse or button driver with the position and the event (`event_down`, `event_up`, `event_tap`,
 `event_long_tap`). The widget under the position reacts first (the one created last wins when widgets
@@ -259,12 +206,12 @@ a simulated touch) on three pages, 30 s recording:
 
 ![](doc/demo_widget.gif)
 
-`demo/demo_gauges.cpp` shows the gauge widgets on an aircraft engine page, 30 s recording of the demo:
+`demo/demo_gauges.cpp` shows the gauge widgets on an aircraft engine page:
 
 ![](doc/demo_gauges.gif)
 
 `demo/demo_input.cpp` is a settings page with checkboxes, a switch, a slider, a spinbox, buttons, a compass and
-a soft key bar, operated by a simulated touch through `widget::base::event()`, 30 s recording of the demo:
+a soft key bar, operated by a simulated touch through `widget::base::event()`:
 
 ![](doc/demo_input.gif)
 
@@ -400,6 +347,191 @@ _dc.shader_remove(&_gradient);
 ```
 
 
+## Command reference
+A compact overview of the public API. All coordinates are `vertex_type { x, y }` (int16), rects are
+`rect_type { left, top, right, bottom }` with exclusive right/bottom, colors are `color::value_type` (ARGB8888).
+Angles of `circle()` / `sector()` are degree, 0° at 3 o'clock, counter clockwise, half open `[start, end)`.
+
+### Drawing context `vic::dc` (`dc.h`, derived from `gpr`)
+```cpp
+dc(drv& head);                                            // drawing context on a head (or a sprite canvas)
+
+// state
+void set_color(color::value_type color);                  // pen color
+color::value_type get_color() const;
+void set_bg_color(color::value_type bg);                  // blend background for write-only heads
+void anti_aliasing_enable(bool enable = true);
+void alpha_blending_enable(bool enable = true);
+
+// pixels and lines
+void pixel_set(vertex_type v);                            // without present()
+void pixel_set(vertex_type v, color::value_type c);
+color::value_type pixel_get(vertex_type v);
+void plot(vertex_type v);                                 // pixel_set() + present()
+void line(vertex_type v0, vertex_type v1);                // both end points included, Wu with AA
+void line_horz(vertex_type v0, vertex_type v1);
+void line_vert(vertex_type v0, vertex_type v1);
+void polyline(const vertex_type* vertices, std::size_t count);
+
+// shapes
+void box(const rect_type& rect);                          // filled rectangle
+void box(const rect_type& rect, std::uint16_t border_radius);
+void box(vertex_type v0, vertex_type v1);
+void rectangle(const rect_type& rect);                    // outline
+void rectangle(const rect_type& rect, std::uint16_t border_radius);
+void triangle(vertex_type v0, vertex_type v1, vertex_type v2);
+void triangle_solid(vertex_type v0, vertex_type v1, vertex_type v2);
+void circle(vertex_type center, std::uint16_t radius, std::uint16_t start_angle = 0, std::uint16_t end_angle = 360);
+void disc(vertex_type center, std::uint16_t radius);
+void disc_sector(vertex_type center, std::uint16_t radius, std::uint8_t quadrant);   // 0 TR, 1 TL, 2 BL, 3 BR
+void sector(vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius,
+            std::uint16_t start_angle, std::uint16_t end_angle);                     // pie or ring segment
+void fill(vertex_type start, color::value_type color, bool use_color_as_bounding = true);   // flood fill
+
+// screen
+void cls(color::value_type bg_color = color::none);
+void move(const rect_type& source, vertex_type destination);
+void blit(const rect_type& rect, const color::value_type* pixels, std::size_t stride);
+void present();                                           // transfer to the display
+void present_lock(bool lock = true);                      // nested, the last unlock calls present()
+std::uint16_t screen_width() const;
+std::uint16_t screen_height() const;
+
+// shader pipe
+void shader_register(shader::base* shader);               // inserted at the front of the pipe
+bool shader_remove(const shader::base* shader);
+void shader_init();                                       // remove all shaders
+bool shader_is_active() const;
+```
+
+### Text context `vic::tc` (`tc.h`, derived from `txr`)
+```cpp
+tc(dc& _dc);                                              // text on a graphic head through a dc
+tc(drv& head);                                            // text on an alpha numeric head
+void set_font(const font::font_type& font);
+void set_color(color::value_type color);
+void set_pos(vertex_type pos);                            // pixel (graphic) or character cell (alpha)
+void set_inverse(bool inverse = true);
+std::uint16_t out(const std::uint8_t* utf8);              // \n, \r and \aRRGGBB color escapes, returns the chars
+std::uint16_t out(vertex_type pos, const std::uint8_t* utf8);
+void out(std::uint16_t ch);                               // one character
+std::uint16_t get_extend(rect_type& rect, const std::uint8_t* utf8) const;   // size of a line without rendering
+std::uint8_t char_width() const;
+std::uint8_t char_height() const;
+void cls(color::value_type bg_color = color::none);
+void clear_eol(); void clear_sol(); void clear_line();    // alpha numeric heads
+void present(); void present_lock(bool lock = true);
+```
+
+### Driver base `vic::drv` (`drv.h`, every head)
+```cpp
+void init();  void shutdown();
+const char* version() const;
+bool is_graphic() const;
+std::uint16_t screen_width() const;  std::uint16_t screen_height() const;
+std::uint16_t viewport_width() const;  std::uint16_t viewport_height() const;
+void viewport_set(vertex_type v);  vertex_type viewport_get() const;
+bool screen_is_inside(vertex_type v) const;  bool viewport_is_inside(vertex_type v) const;
+void display_enable(bool enable = true);
+void display_brightness(std::uint8_t level);
+void display_contrast(std::uint8_t level);
+std::size_t framebuffer_get_count() const;
+bool framebuffer_set_access(std::size_t plane);
+bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0);
+```
+
+### Heads (`head/*.h`)
+| Head | Display |
+|---|---|
+| `BA6x` | Wincor Nixdorf BA60 / BA63 / BA66 customer displays |
+| `Digole` | Digole serial graphic modules |
+| `HD44780` | HD44780 / ST7066 / KS0066 character LCDs, 4 or 8 bit bus |
+| `ILI9325` | ILI9325 TFT controller |
+| `MAX7219` | MAX7219 / MAX7221 8 x 8 LED matrices |
+| `MIPI_DCS` | MIPI DCS TFT controllers (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01 ...) |
+| `PCD8544` | Nokia 5110 / 3310 LCD |
+| `SSD1306` | SSD1306 / SSD1309 / SH1106 monochrome OLEDs |
+| `SSD1322` | SSD1322 4 bit grayscale OLEDs |
+| `SSD1331`, `SSD1351` | 96 x 64 and 128 x 128 RGB565 OLEDs |
+| `SSD1680` | SSD1680 / SSD1681 e-paper |
+| `ST7565` | ST7565 / ST7567 / UC1701 monochrome COG LCDs |
+| `ST7920` | ST7920 monochrome graphic LCD |
+| `STPxxP05` | STP08xP05 / STP16xP05 / STP24DP05 LED array drivers |
+| `seven_segment` | seven segment displays |
+| `framebuffer` | RAM framebuffer between a display head and the drawing context, dirty rect transfer |
+| `multihead` | combines several heads to one screen |
+| `memory`, `dummy`, `windows`, `skeleton` | test head, null head, Windows window, template for new heads |
+
+### Sprites `vic::sprite` (`sprite.h`)
+```cpp
+canvas<Pixel, Frames>(drv& head, std::int16_t z_index = 0);   // dynamic sprite, drawn with the dc functions
+sheet<Width, Height>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // frames from a sprite sheet
+canvas_sheet<Pixel>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // sheet frames, rotatable
+
+void render(vertex_type position, std::uint16_t frame = 0);   // move / show, an invalid frame (0xFFFF) hides
+vertex_type get_position() const;
+std::int16_t get_z_index() const;
+void set_rotation(std::int16_t angle, vertex_type center = { 0, 0 });   // canvas, degree, clockwise
+void select_frame(std::uint16_t frame);                   // canvas: edit frame
+void cls();                                               // canvas: clear the edit frame
+std::uint16_t frame_count() const;  std::uint16_t pixel_count() const;
+void set_collision_handler(collision_handler_type handler, void* arg = nullptr);
+base* get_collision() const;
+```
+
+### Shaders `vic::shader` (`shader/*.h`)
+| Shader | Function |
+|---|---|
+| `clipping(rect, inside = true)` | clip to or out of a rect |
+| `zoom(x_level, y_level)` | integer zoom |
+| `offset(vertex)` | move everything by an offset |
+| `flip()` | mirror horizontally / vertically around an axis |
+| `rotate(center, angle)` | rotation in degree |
+| `tint(color, weight)` | tint every pixel |
+| `alpha_blend()` | blend with the background |
+| `brush()` | pen shapes (solid, dash, dot, dashdot) of 1 to 4 pixel |
+| `gradient<N>`, `gradient_horizontal<N>`, `gradient_vertical<N>`, `gradient_solid<N>` | color gradients from N points |
+
+### Widgets `vic::widget` (`widget/*.h`)
+Every widget takes the head and a `config_type` struct, `init()` draws it.
+| Widget | Main functions |
+|---|---|
+| `progress` | `set_pos()`, `set_range()`, `set_step()`, `step_it()`, `set_color()` |
+| `bitmap` | `render_raw(origin, w, h, format, data)`, `render_xpm(origin, xpm)` |
+| `label` | `set_text()`, `set_value(value, decimals, suffix)`, `set_color()` |
+| `textbox` | `set_text()`, `scroll()`, `set_first_line()`, `get_line_count()` |
+| `groupbox` | `set_title()` |
+| `led` | `set_state()`, `toggle()`, `set_color()` |
+| `gauge<>` | `set_value()`, `set_range()`, `anti_aliasing_enable()` |
+| `bargauge<>` | `set_value(marker, value)`, `set_range()` |
+| `arc` | `set_value()`, `set_range()`, `set_color()`, `anti_aliasing_enable()` |
+| `spinner` | `step()`, `set_pos()`, `anti_aliasing_enable()` |
+| `compass` | `set_heading()`, `anti_aliasing_enable()` |
+| `button`, `imagebutton` | pressed look on down / up, `set_caption()`, `set_active()` (imagebutton) |
+| `checkbox` | `set_checked()`, `toggle()`, toggles on tap |
+| `toggle` (switch) | `set_state()`, `toggle_state()`, toggles on tap |
+| `slider` | `set_value()`, `set_range()`, value follows the tap / down position |
+| `spinbox` | `set_value()`, `set_range()`, `set_step()`, tap / long tap on the minus and plus cells |
+
+Input routing:
+```cpp
+widget::base::event(vertex_type pos, widget::event_type ev);   // event_down, event_up, event_tap, event_long_tap
+void set_event_handler(event_handler_type handler, void* arg = nullptr);   // per widget callback
+void event_enable(bool enable = true);                    // exclude a widget from the routing
+widget::base* find(vertex_type pos);                      // hit test
+```
+
+### Colors and helpers (`color.h`, `util.h`)
+```cpp
+color::argb(r, g, b, a = 255);  color::hsv(hue, saturation, value, alpha = 255);
+color::get_red() / get_green() / get_blue() / get_alpha();  color::set_alpha(color, alpha);
+color::mix(fg, bg, lum);  color::dim(color, lum);  color::alpha_blend(front, back);
+color::black, white, gray, gray01 .. gray15, red, green, blue, yellow, cyan, magenta, orange, ..., none
+util::sin(degree);  util::cos(degree);                    // * 16384, integer
+util::vertex_rotate(point, center, degree);               // clockwise on screen
+util::isqrt(value);  util::distance_squared(v0, v1);  util::abs(value);  util::min2() / max2()
+```
+
 ## Building and testing
 VIC itself is header only and needs no build. The repository contains a CMake project which builds the unit tests
 (`test/`) and, on Windows, the demos (`demo/`): a clock, a sprite demo (`demo_sprite.cpp` with sprite sheets,
@@ -431,7 +563,6 @@ with ASCII art rasters, so new primitives and heads are easy to test.
 
 
 ## Contributing
-
 1. Give this project a :star:
 2. Create an issue and describe your idea
 3. [Fork it](https://github.com/mpaland/vic/fork)
@@ -443,4 +574,4 @@ with ASCII art rasters, so new primitives and heads are easy to test.
 
 
 ## License
-vic is written under the MIT licence.
+VIC is written under the MIT licence.
