@@ -21,6 +21,7 @@
 //   head::MIPI_DCS<head::MIPI_DCS_ILI9488, 320, 480>                                                ili9488_3_5;   // 18 bit pixels on SPI
 //   head::MIPI_DCS<head::MIPI_DCS_ST7796, 320, 480>                                                 st7796_4;
 //   head::MIPI_DCS<head::MIPI_DCS_GC9A01, 240, 240>                                                 gc9a01_round;
+//   head::MIPI_DCS<head::MIPI_DCS_JD9853, 172, 320, drv::orientation_0, false, false, false, 34, 0>  jd9853_1_47;   // 1.47" centred panel
 static vic::head::MIPI_DCS<vic::head::MIPI_DCS_ILI9341, 320, 240, vic::drv::orientation_90> tft(reinterpret_cast<vic::io::handle_type>(0));
 
 

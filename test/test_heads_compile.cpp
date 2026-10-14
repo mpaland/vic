@@ -889,6 +889,25 @@ TEST_CASE(heads_MIPI_DCS)
   io_stub::clear();
   round.init();
   CHECK_EQ(io_stub::written()[0], 0xEFU);
+
+  // JD9853 1.47" 172 x 320 panel: OTP init (reset, sleep out, normal mode, display on), RGB order, no inversion,
+  // the panel is centred on the 240 GRAM columns (offset 34)
+  head::MIPI_DCS<head::MIPI_DCS_JD9853, 172, 320, drv::orientation_0, false, false, false, 34U, 0U> jd(nullptr);
+  io_stub::clear();
+  jd.init();
+  w = io_stub::written();
+  CHECK_EQ(w[0], 0x01U); CHECK_EQ(w[1], 0x11U); CHECK_EQ(w[2], 0x13U); CHECK_EQ(w[3], 0x29U);
+  static const std::uint8_t madctl_jd[5] = { 0x36U, 0x00U, 0x3AU, 0x55U, 0x20U };
+  CHECK(find_bytes(w, 20U, madctl_jd, 5U) >= 0L);
+  CHECK(io_stub::delay_total() >= 145U);
+  dc dj(jd);
+  dj.set_color(color::red);
+  io_stub::clear();
+  dj.plot({ 3, 4 });
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 13U);
+  CHECK_EQ(w[0], 0x2AU); CHECK_EQ(w[1], 0x00U); CHECK_EQ(w[2], 0x25U); CHECK_EQ(w[3], 0x00U); CHECK_EQ(w[4], 0xCDU);
+  CHECK_EQ(w[5], 0x2BU); CHECK_EQ(w[6], 0x00U); CHECK_EQ(w[7], 0x04U); CHECK_EQ(w[8], 0x01U); CHECK_EQ(w[9], 0x3FU);
 }
 
 

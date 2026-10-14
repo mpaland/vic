@@ -24,8 +24,8 @@
 // THE SOFTWARE.
 //
 // \brief Generic MIPI DCS head for the SPI / parallel TFT controllers which share
-// the MIPI Display Command Set: ILI9341, ILI9488, ST7735, ST7789, ST7796 and
-// GC9A01. The controllers differ only in their vendor init sequence, the panel
+// the MIPI Display Command Set: ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01
+// and JD9853. The controllers differ only in their vendor init sequence, the panel
 // size, the GRAM offset of the panel and the pixel format on SPI (the ILI9488
 // takes 18 bit pixels only). The head writes directly into the GRAM through the
 // column / row address window (2Ah / 2Bh / 2Ch) with native auto increment, the
@@ -60,7 +60,8 @@ typedef enum tag_MIPI_DCS_controller_type {
   MIPI_DCS_ST7735,      // 128 x 160 (128 x 128, 80 x 160 with offsets)
   MIPI_DCS_ST7789,      // 240 x 320 (240 x 240, 135 x 240 with offsets)
   MIPI_DCS_ST7796,      // 320 x 480
-  MIPI_DCS_GC9A01       // 240 x 240 round
+  MIPI_DCS_GC9A01,      // 240 x 240 round
+  MIPI_DCS_JD9853       // 240 x 320 (172 x 320 with offset), init from the OTP
 } MIPI_DCS_controller_type;
 
 
@@ -201,6 +202,15 @@ namespace MIPI_DCS_init {
     0x29, 0x80, 20                                  // display on
   };
 
+  // the JD9853 loads its vendor registers from the OTP, the datasheet power on sequence (8.7 option 2) needs
+  // only sleep out and display on; the vendor registers are not documented in the preliminary datasheet
+  static const std::uint8_t JD9853[] = {
+    0x01, 0x80, 5,                                  // software reset
+    0x11, 0x80, 120,                                // sleep out
+    0x13, 0,                                        // normal display mode on
+    0x29, 0x80, 20                                  // display on
+  };
+
 } // namespace MIPI_DCS_init
 
 
@@ -219,7 +229,8 @@ namespace MIPI_DCS_init {
  * \param Color_18bit 18 bit pixels (3 bytes, 3Ah = 66h) instead of RGB565 (3Ah = 55h), mandatory for the ILI9488 on SPI
  * \param Offset_X Column offset of the panel in the GRAM, in the orientation the window commands see (after MADCTL),
  *                 e.g. ST7789 240 x 240: 0 / 0 for orientation_0, 0 / 80 for orientation_0m, 80 / 0 for orientation_90;
- *                 ST7735 128 x 160 "green tab": 2 / 1, 128 x 128: 2 / 3 (TFT_eSPI colstart / rowstart)
+ *                 ST7735 128 x 160 "green tab": 2 / 1, 128 x 128: 2 / 3 (TFT_eSPI colstart / rowstart);
+ *                 JD9853 1.47" 172 x 320: 34 / 0 (the panel is centred on the 240 GRAM columns)
  * \param Offset_Y Row offset of the panel in the GRAM
  */
 template<MIPI_DCS_controller_type Controller,
@@ -596,6 +607,7 @@ private:
       case MIPI_DCS_ST7735  : length = sizeof(MIPI_DCS_init::ST7735);  return MIPI_DCS_init::ST7735;
       case MIPI_DCS_ST7789  : length = sizeof(MIPI_DCS_init::ST7789);  return MIPI_DCS_init::ST7789;
       case MIPI_DCS_ST7796  : length = sizeof(MIPI_DCS_init::ST7796);  return MIPI_DCS_init::ST7796;
+      case MIPI_DCS_JD9853  : length = sizeof(MIPI_DCS_init::JD9853);  return MIPI_DCS_init::JD9853;
       case MIPI_DCS_GC9A01  :
       default               : length = sizeof(MIPI_DCS_init::GC9A01);  return MIPI_DCS_init::GC9A01;
     }

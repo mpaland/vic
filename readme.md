@@ -155,7 +155,7 @@ class is responsible for color reduction. Conversion routines provides the `colo
 
 ### head
 The specific display driver. A display together with its controller is referenced here as `head`. And `head` is the namespace of all specific drivers.
-Available heads: `MIPI_DCS` (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01 TFTs), `ILI9325`, `SSD1331` and `SSD1351` (RGB OLED),
+Available heads: `MIPI_DCS` (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 TFTs), `ILI9325`, `SSD1331` and `SSD1351` (RGB OLED),
 `SSD1306` (SSD1306, SSD1309, SH1106), `SSD1322` (gray scale OLED), `PCD8544`, `ST7565` (ST7565, ST7567, UC1701), `ST7920` (mono LCD),
 `SSD1680` (SSD1680 / SSD1681 e-paper), `HD44780` and `BA6x` (alphanumeric), `Digole`, `MAX7219`, `STPxxP05`, `seven_segment`, the virtual heads
 `framebuffer` (RAM framebuffer with dirty rect transfer in front of any other head), `memory` (pure RAM head with statistics, ideal for unit

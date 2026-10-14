@@ -1,8 +1,9 @@
-# MIPI DCS TFT controllers programming summary (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01)
+# MIPI DCS TFT controllers programming summary (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853)
 
 Sources in this folder: `ILI9341.pdf` (ILI Technology, 240RGBx320, 262K color), `ILI9488.pdf` (ILI Technology,
 320RGBx480, 16.7M color, V100), `ST7735.pdf` (Sitronix ST7735R), `ST7789.pdf` (Sitronix ST7789VW V1.0),
-`ST7796.pdf` (Sitronix ST7796S V1.0), `GC9A01.pdf` (Galaxycore GC9A01A). The six controllers implement the
+`ST7796.pdf` (Sitronix ST7796S V1.0), `GC9A01.pdf` (Galaxycore GC9A01A), `JD9853.pdf` (Jadard JD9853, see
+also `JD9853.md`). The seven controllers implement the
 MIPI DCS (Display Command Set) user commands, so one head drives them all; they differ in their vendor
 ("command 2") registers, the panel size, the GRAM offset of the panel and the pixel formats of the serial
 interface. The last section describes the vic head `src/head/MIPI_DCS.h`.
@@ -17,6 +18,7 @@ interface. The last section describes the vic head `src/head/MIPI_DCS.h`.
 | ST7789 | 240 x 320 x 18 bit | 1.3" / 1.54" 240 x 240, 1.14" 135 x 240, 2" 240 x 320 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB | SPI mode 3 on most modules, display inversion on |
 | ST7796 | 320 x 480 x 18 bit | 3.5" / 4" 320 x 480 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB, DSI | vendor registers behind CSCON (F0h) |
 | GC9A01 | 240 x 240 x 18 bit | 1.28" round 240 x 240 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB | inter register enable (FEh / EFh) before the vendor registers, inversion on |
+| JD9853 | 240 x 320 x 18 bit | 1.47" 172 x 320 (column offset 34), 2" 240 x 320 | 8/9/16/18 bit 8080, 3/4 wire SPI, 2 lane SPI, QSPI, RGB | vendor registers in the OTP, init is SLPOUT + DISPON |
 
 All run on 2.8 .. 3.3 V logic (ILI9341 1.65 .. 3.3 V I/O), the 4 wire SPI is `CS`, `SCL`, `SDA`, `D/C`
 (D/C = 0 command, 1 parameter / pixel data), typical clock 20 .. 80 MHz for writes, much slower for reads.
@@ -39,7 +41,7 @@ Pixel formats (3Ah COLMOD, DBI[2:0] = MCU interface, DPI[2:0] = RGB interface):
 
 | 3Ah | Format | Bytes on SPI | Supported by |
 |---|---|---|---|
-| 55h (DBI = 101) | 16 bit RGB565 | 2 | ILI9341, ST7735, ST7789, ST7796, GC9A01; not on the ILI9488 serial interface |
+| 55h (DBI = 101) | 16 bit RGB565 | 2 | ILI9341, ST7735, ST7789, ST7796, GC9A01, JD9853; not on the ILI9488 serial interface |
 | 66h (DBI = 110) | 18 bit RGB666 | 3 (6 bits left aligned per byte) | all |
 | 77h (DBI = 111) | 24 bit RGB888 | 3 | ILI9488, ST7796 |
 
@@ -83,8 +85,9 @@ VMCTR, interface mode B0h, frame rate B1h, inversion B4h, DFUNCTR B6h, E9h, adju
 `ST7735` (SWRESET, SLPOUT 500 ms, FRMCTR1..3, INVCTR, PWCTR1..5, VMCTR1, gamma, NORON, DISPON), `ST7789`
 (SWRESET, SLPOUT, NORON, DISPON, the module defaults are fine), `ST7796` (SWRESET, SLPOUT, CSCON C3h / 96h to
 unlock, inversion B4h, DFUNCTR B6h, E8h timing, PWCTR2/3, VCOM C5h, gamma, CSCON 3Ch / 69h to lock, DISPON),
-`GC9A01` (inter register enable FEh / EFh and the long vendor register list, TEON, SLPOUT, DISPON). MADCTL,
-COLMOD and the inversion are set by the head after the table.
+`GC9A01` (inter register enable FEh / EFh and the long vendor register list, TEON, SLPOUT, DISPON), `JD9853`
+(SWRESET, SLPOUT, NORON, DISPON, the vendor registers come from the OTP). MADCTL, COLMOD and the inversion are
+set by the head after the table.
 
 ## 6 The vic head `src/head/MIPI_DCS.h`
 
