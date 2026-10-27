@@ -15,10 +15,10 @@ set "TTF=%ROOT%\src\font\ttf\Montserrat-Regular.ttf"
 %GEN% "%TTF%" --size 16 --bpp 4 || exit /b 1
 %GEN% "%TTF%" --size 24 --bpp 4 || exit /b 1
 
-rem Microgramma: ASCII only, the Latin-1 slots of this TTF contain Cyrillic letters
-set "TTF=%ROOT%\src\font\ttf\Microgramma-Regular.ttf"
-%GEN% "%TTF%" --size 10 --bpp 2 --ranges 20-7E || exit /b 1
-%GEN% "%TTF%" --size 12 --bpp 2 --ranges 20-7E || exit /b 1
-%GEN% "%TTF%" --size 16 --bpp 4 --ranges 20-7E || exit /b 1
-%GEN% "%TTF%" --size 24 --bpp 4 --ranges 20-7E || exit /b 1
+rem Michroma: ASCII + Latin-1
+set "TTF=%ROOT%\src\font\ttf\Michroma-Regular.ttf"
+%GEN% "%TTF%" --size 10 --bpp 2 || exit /b 1
+%GEN% "%TTF%" --size 12 --bpp 2 || exit /b 1
+%GEN% "%TTF%" --size 16 --bpp 4 || exit /b 1
+%GEN% "%TTF%" --size 24 --bpp 4 || exit /b 1
 echo done
