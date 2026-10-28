@@ -27,6 +27,19 @@ protected:
   }
 };
 
+// a memory head which records the display control calls
+class control_head : public head_type
+{
+public:
+  control_head() : enable_(false), brightness_(0U), contrast_(0U) { }
+  virtual void display_enable(bool enable = true)     { enable_ = enable; }
+  virtual void display_brightness(std::uint8_t level) { brightness_ = level; }
+  virtual void display_contrast(std::uint8_t level)   { contrast_ = level; }
+  bool         enable_;
+  std::uint8_t brightness_;
+  std::uint8_t contrast_;
+};
+
 } // namespace
 
 
@@ -261,4 +274,23 @@ TEST_CASE(framebuffer_blit_clip)
   CHECK_EQ(m.pixel({ 15, 11 }), color::green);
   CHECK_EQ(vic_test::count_pixels_not(m, color::black), 8U);
   CHECK_EQ(m.oob_count(), 0U);
+}
+
+
+TEST_CASE(framebuffer_display_control)
+{
+  // the framebuffer has no display of its own: enable, brightness and contrast reach the bound head
+  control_head h;
+  head::framebuffer<16, 12> fb(h);
+  drv& d = fb;
+  d.display_enable(true);
+  d.display_brightness(127U);
+  d.display_contrast(200U);
+  CHECK(h.enable_);
+  CHECK_EQ(h.brightness_, 127U);
+  CHECK_EQ(h.contrast_, 200U);
+  d.display_enable(false);
+  d.display_brightness(255U);
+  CHECK(!h.enable_);
+  CHECK_EQ(h.brightness_, 255U);
 }

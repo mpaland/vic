@@ -47,7 +47,7 @@
 
 
 // defines the head name and version
-#define VIC_HEAD_FRAMEBUFFER_VERSION   "Framebuffer head 3.00"
+#define VIC_HEAD_FRAMEBUFFER_VERSION   "Framebuffer head 3.01"
 
 namespace vic {
 namespace head {
@@ -216,6 +216,29 @@ public:
   static inline std::size_t plane_size()
   {
     return PLANE_BYTES;
+  }
+
+
+  ///////////////////////////////////////////////////////////////////////////////
+  // D I S P L A Y   C O N T R O L
+  // The framebuffer has no display of its own: the controls go to the bound head
+  //
+
+  virtual void display_enable(bool enable = true)
+  {
+    head_.display_enable(enable);
+  }
+
+
+  virtual void display_brightness(std::uint8_t level)
+  {
+    head_.display_brightness(level);
+  }
+
+
+  virtual void display_contrast(std::uint8_t level)
+  {
+    head_.display_contrast(level);
   }
 
 
