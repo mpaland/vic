@@ -51,10 +51,10 @@
 #include "font/Montserrat_12_aa2.h"
 #include "font/Montserrat_16_aa4.h"
 #include "font/Montserrat_24_aa4.h"
-#include "font/Microgramma_10_aa2.h"
-#include "font/Microgramma_12_aa2.h"
-#include "font/Microgramma_16_aa4.h"
-#include "font/Microgramma_24_aa4.h"
+#include "font/Michroma_10_aa2.h"
+#include "font/Michroma_12_aa2.h"
+#include "font/Michroma_16_aa4.h"
+#include "font/Michroma_24_aa4.h"
 
 
 // the head is created in main.cpp
@@ -92,10 +92,10 @@ vic::font::Montserrat_10_aa2  montserrat_10;
 vic::font::Montserrat_12_aa2  montserrat_12;
 vic::font::Montserrat_16_aa4  montserrat_16;
 vic::font::Montserrat_24_aa4  montserrat_24;
-vic::font::Microgramma_10_aa2 microgramma_10;
-vic::font::Microgramma_12_aa2 microgramma_12;
-vic::font::Microgramma_16_aa4 microgramma_16;
-vic::font::Microgramma_24_aa4 microgramma_24;
+vic::font::Michroma_10_aa2 michroma_10;
+vic::font::Michroma_12_aa2 michroma_12;
+vic::font::Michroma_16_aa4 michroma_16;
+vic::font::Michroma_24_aa4 michroma_24;
 
 const page_type pages[] = {
   { &lcd_6x8,        "LCD_6x8",            "monospace, 1 bpp, 0x20 - 0xFE",            false },
@@ -105,10 +105,10 @@ const page_type pages[] = {
   { &montserrat_12,  "Montserrat_12_aa2",  "proportional, 2 bpp, ASCII + Latin-1",     true  },
   { &montserrat_16,  "Montserrat_16_aa4",  "proportional, 4 bpp, ASCII + Latin-1",     true  },
   { &montserrat_24,  "Montserrat_24_aa4",  "proportional, 4 bpp, ASCII + Latin-1",     true  },
-  { &microgramma_10, "Microgramma_10_aa2", "proportional, 2 bpp, ASCII, caps only",    false },
-  { &microgramma_12, "Microgramma_12_aa2", "proportional, 2 bpp, ASCII, caps only",    false },
-  { &microgramma_16, "Microgramma_16_aa4", "proportional, 4 bpp, ASCII, caps only",    false },
-  { &microgramma_24, "Microgramma_24_aa4", "proportional, 4 bpp, ASCII, caps only",    false },
+  { &michroma_10, "Michroma_10_aa2", "proportional, 2 bpp, ASCII + Latin-1",     true  },
+  { &michroma_12, "Michroma_12_aa2", "proportional, 2 bpp, ASCII + Latin-1",     true  },
+  { &michroma_16, "Michroma_16_aa4", "proportional, 4 bpp, ASCII + Latin-1",     true  },
+  { &michroma_24, "Michroma_24_aa4", "proportional, 4 bpp, ASCII + Latin-1",     true  },
   { &arial_12,       "Arial_std_12_aa2",   "proportional, 2 bpp, ASCII + Latin-1",     true  },
 };
 const std::size_t page_count = sizeof(pages) / sizeof(pages[0]);

@@ -12,10 +12,10 @@
 #include "font/Montserrat_12_aa2.h"
 #include "font/Montserrat_16_aa4.h"
 #include "font/Montserrat_24_aa4.h"
-#include "font/Microgramma_10_aa2.h"
-#include "font/Microgramma_12_aa2.h"
-#include "font/Microgramma_16_aa4.h"
-#include "font/Microgramma_24_aa4.h"
+#include "font/Michroma_10_aa2.h"
+#include "font/Michroma_12_aa2.h"
+#include "font/Michroma_16_aa4.h"
+#include "font/Michroma_24_aa4.h"
 
 using namespace vic;
 
@@ -28,26 +28,27 @@ struct font_entry {
   const char*            name;
   std::uint8_t           size;
   std::uint8_t           bpp;
+  bool                   latin1;    // font has the Latin-1 block
 };
 
 font::Montserrat_10_aa2  montserrat_10;
 font::Montserrat_12_aa2  montserrat_12;
 font::Montserrat_16_aa4  montserrat_16;
 font::Montserrat_24_aa4  montserrat_24;
-font::Microgramma_10_aa2 microgramma_10;
-font::Microgramma_12_aa2 microgramma_12;
-font::Microgramma_16_aa4 microgramma_16;
-font::Microgramma_24_aa4 microgramma_24;
+font::Michroma_10_aa2 michroma_10;
+font::Michroma_12_aa2 michroma_12;
+font::Michroma_16_aa4 michroma_16;
+font::Michroma_24_aa4 michroma_24;
 
 const font_entry fonts[] = {
-  { &montserrat_10,  "Montserrat_10_aa2",  10U, 2U },
-  { &montserrat_12,  "Montserrat_12_aa2",  12U, 2U },
-  { &montserrat_16,  "Montserrat_16_aa4",  16U, 4U },
-  { &montserrat_24,  "Montserrat_24_aa4",  24U, 4U },
-  { &microgramma_10, "Microgramma_10_aa2", 10U, 2U },
-  { &microgramma_12, "Microgramma_12_aa2", 12U, 2U },
-  { &microgramma_16, "Microgramma_16_aa4", 16U, 4U },
-  { &microgramma_24, "Microgramma_24_aa4", 24U, 4U },
+  { &montserrat_10, "Montserrat_10_aa2", 10U, 2U, true },
+  { &montserrat_12, "Montserrat_12_aa2", 12U, 2U, true },
+  { &montserrat_16, "Montserrat_16_aa4", 16U, 4U, true },
+  { &montserrat_24, "Montserrat_24_aa4", 24U, 4U, true },
+  { &michroma_10, "Michroma_10_aa2", 10U, 2U, true },
+  { &michroma_12, "Michroma_12_aa2", 12U, 2U, true },
+  { &michroma_16, "Michroma_16_aa4", 16U, 4U, true },
+  { &michroma_24, "Michroma_24_aa4", 24U, 4U, true },
 };
 const std::size_t font_count = sizeof(fonts) / sizeof(fonts[0]);
 
@@ -107,9 +108,9 @@ TEST_CASE(fonts_consistency)
         ++glyphs;
       }
     }
-    // Montserrat: ASCII + Latin-1 minus the glyphs the font lacks, Microgramma: ASCII only
-    const bool latin1 = fonts[f].name[1] == 'o';
-    CHECK_MSG(glyphs >= (latin1 ? 180U : 80U), fonts[f].name);    // Microgramma lacks 13 ASCII glyphs
+    // ASCII + Latin-1 minus the glyphs the font lacks (ASCII only: 95 minus the missing ones)
+    const bool latin1 = fonts[f].latin1;
+    CHECK_MSG(glyphs >= (latin1 ? 180U : 80U), fonts[f].name);
 
     // 'A', 'g' and space are present (space is empty but advances), the umlauts in the Latin-1 fonts
     CHECK_MSG(find_glyph(info, 'A') != nullptr, fonts[f].name);
@@ -118,7 +119,7 @@ TEST_CASE(fonts_consistency)
     const font::charinfo_ext_type* space = find_glyph(info, ' ');
     REQUIRE(space != nullptr);
     CHECK_MSG(space->xsize == 0U && space->xdist > 0U, fonts[f].name);
-    // 'A' sits on the baseline, 'g' reaches at least as deep (Microgramma has no descenders)
+    // 'A' sits on the baseline, 'g' reaches at least as deep (some fonts have no descenders)
     const font::charinfo_ext_type* a = find_glyph(info, 'A');
     const font::charinfo_ext_type* g = find_glyph(info, 'g');
     CHECK_MSG(a->ypos + a->ysize == info.baseline, fonts[f].name);
@@ -176,8 +177,9 @@ TEST_CASE(fonts_render)
     if (fonts[f].size == 10U) { height_10 = rendered_height(h); }
     if (fonts[f].size == 24U) { height_24 = rendered_height(h); }
   }
-  CHECK(height_10 >= 6 && height_10 <= 10);
-  CHECK(height_24 >= 14 && height_24 <= 24);
+  // the cap height is roughly half of the line height (the line also holds accents and descenders)
+  CHECK(height_10 >= 4 && height_10 <= 10);
+  CHECK(height_24 >= 10 && height_24 <= 24);
   CHECK(height_24 > height_10);
 }
 

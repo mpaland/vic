@@ -111,8 +111,7 @@ Fonts are header files in `src/font/`, a font is a class with one `info()` metho
 - `LCD_6x8`, `LCD_6x10`, `LCD_8x8`: monospaced 1 bit pixel fonts for small displays
 - `Montserrat_10_aa2`, `Montserrat_12_aa2`, `Montserrat_16_aa4`, `Montserrat_24_aa4`: proportional, anti aliased,
   ASCII + Latin-1, generated from the Montserrat TTF (OFL)
-- `Microgramma_10_aa2`, `Microgramma_12_aa2`, `Microgramma_16_aa4`, `Microgramma_24_aa4`: same for the Microgramma TTF,
-  ASCII only (the TTF has no lowercase and carries Cyrillic letters in its Latin-1 slots)
+- `Michroma_10_aa2`, `Michroma_12_aa2`, `Michroma_16_aa4`, `Michroma_24_aa4`: same for the Michroma TTF (OFL)
 - `Arial_std_12_aa2`, `Arial_num_16x24_AA4`: legacy fonts
 
 New fonts are generated from any TTF/OTF file with `tools/fontgen.py` (Python 3 with `freetype-py`, Pillow for
