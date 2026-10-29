@@ -4,16 +4,26 @@ on:
   push:
     branches: [ master, 'v.*' ]
   pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   msvc:
     name: MSVC (windows-latest)
     runs-on: windows-latest
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         config: [Debug, Release]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: ilammy/msvc-dev-cmd@v1
       - name: Configure
         run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DVIC_BUILD_DEMOS=ON
@@ -25,12 +35,14 @@ jobs:
   gcc-clang:
     name: ${{ matrix.compiler }} C++11 (ubuntu-latest)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     strategy:
+      fail-fast: false
       matrix:
         compiler: [gcc, clang]
         config: [Debug, Release]
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Select compiler
         run: |
           if [ "${{ matrix.compiler }}" = "gcc" ]; then
@@ -60,13 +72,14 @@ jobs:
   sanitizers:
     name: ASan + UBSan (clang, ubuntu-latest)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     env:
       CC: clang
       CXX: clang++
       ASAN_OPTIONS: detect_leaks=1:strict_string_checks=1:check_initialization_order=1
       UBSAN_OPTIONS: print_stacktrace=1:halt_on_error=1
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug -DVIC_TEST_ASAN=ON
       - name: Build
