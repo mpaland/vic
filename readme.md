@@ -75,6 +75,26 @@ window with `blit()` on `present()`. This is also the "render in RAM, stream the
 controllers with an autoincrementing GRAM window are made for, and it is the user's decision per display, the device
 drivers themselves keep no buffers.
 
+A 240 x 320 ST7789 over SPI can't read its GRAM back, so sprites and anti aliasing on a gradient won't blend. A
+`framebuffer` head in front of the display driver fixes that, the drawing code stays the same:
+```c++
+vic::head::MIPI_DCS<vic::head::MIPI_DCS_ST7789, 240, 320> lcd(spi_handle);     // the write only display
+vic::head::framebuffer<240, 320, 1, vic::color::format_RGB565> fb(lcd);         // 150 KB RAM copy, blits the dirty rect to lcd
+vic::dc _dc(fb);                                                                // draw into the framebuffer, not into lcd
+fb.init();                                                                      // initializes the lcd as well
+
+_dc.anti_aliasing_enable();
+_dc.alpha_blending_enable();
+_dc.present_lock();                                   // collect a whole frame, don't transfer after every primitive
+_dc.set_color(vic::color::blue);
+_dc.disc({ 120, 160 }, 50);                           // the edge pixels are blended against the RAM copy
+_dc.set_color(vic::color::argb(0xFF, 0xFF, 0xFF, 0x80));   // white, alpha 128
+_dc.box({ 20, 20, 220, 60 });                         // half transparent box over the disc, needs the pixels below
+_dc.present_lock(false);                              // transfers the dirty rect (one GRAM window) to the display
+```
+Without the `framebuffer` head and a uniform background `_dc.set_bg_color(vic::color::black)` gives the same
+anti aliasing result for the disc without any RAM, only the transparent box can't be blended then.
+
 
 ## Class design
 
@@ -153,13 +173,33 @@ All vic color calculations are done in ARGB 32 bit format. If a display has less
 class is responsible for color reduction. Conversion routines provides the `color` class.
 
 ### head
-The specific display driver. A display together with its controller is referenced here as `head`. And `head` is the namespace of all specific drivers.
-Available heads: `MIPI_DCS` (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 TFTs), `ILI9325`, `SSD1331` and `SSD1351` (RGB OLED),
-`SSD1306` (SSD1306, SSD1309, SH1106), `SSD1322` (gray scale OLED), `PCD8544`, `ST7565` (ST7565, ST7567, UC1701), `ST7920` (mono LCD),
-`SSD1680` (SSD1680 / SSD1681 e-paper), `HD44780` and `BA6x` (alphanumeric), `Digole`, `MAX7219`, `STPxxP05`, `seven_segment`, the virtual heads
-`framebuffer` (RAM framebuffer with dirty rect transfer in front of any other head), `memory` (pure RAM head with statistics, ideal for unit
-tests and off screen rendering), `multihead`, `dummy` and the `windows` head which emulates a display in a window
-for development. `skeleton.h` is the template for new heads. `src/head/doc/` holds the controller datasheets and a
+The specific display driver. A display together with its controller is referenced here as `head`. And `head` is the namespace of all specific drivers. A head driver is platform independent can run on any system.  
+Available heads are:  
+| Head | Display |
+|---|---|
+| `BA6x` | Wincor Nixdorf BA60 / BA63 / BA66 customer displays |
+| `HD44780` | HD44780 / ST7066 / KS0066 Alphanumeric character LCDs, 4 or 8 bit bus |
+| `MAX7219` | MAX7219 / MAX7221 8 x 8 LED matrices |
+| `Digole` | Digole serial graphic modules |
+| `ILI9325` | ILI9325 TFT controller |
+| `MIPI_DCS` | MIPI DCS TFT controllers (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 ...) |
+| `PCD8544` | Nokia 5110 / 3310 LCD |
+| `SSD1306` | SSD1306 / SSD1309 / SH1106 monochrome OLEDs |
+| `SSD1322` | SSD1322 4 bit grayscale OLEDs |
+| `SSD1331`, `SSD1351` | 96 x 64 and 128 x 128 RGB565 OLEDs |
+| `SSD1680` | SSD1680 / SSD1681 e-paper |
+| `ST7565` | ST7565 / ST7567 / UC1701 monochrome COG LCDs |
+| `ST7920` | ST7920 monochrome graphic LCD |
+| `STPxxP05` | STP08xP05 / STP16xP05 / STP24DP05 LED array drivers |
+| `seven_segment` | Seven segment displays |
+| `framebuffer` | RAM framebuffer with dirty rect transfer in front of any other head, dirty rect transfer |
+| `multihead` | Combines several heads to one screen |
+| `memory` | Pure RAM head with statistics, ideal for unit tests and off screen rendering |
+| `dummy` | Null head |
+| `windows` | Emulates a display in a Win32 window |
+| `skeleton` | Template for new heads |
+
+`skeleton.h` is the template for new heads. `src/head/doc/` holds the controller datasheets and a
 programming summary (`*.md`) of each one with the register / command tables, the orientation bits and what the head sends.
 
 ### sprite
@@ -438,28 +478,6 @@ std::size_t framebuffer_get_count() const;
 bool framebuffer_set_access(std::size_t plane);
 bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0);
 ```
-
-### Heads (`head/*.h`)
-| Head | Display |
-|---|---|
-| `BA6x` | Wincor Nixdorf BA60 / BA63 / BA66 customer displays |
-| `Digole` | Digole serial graphic modules |
-| `HD44780` | HD44780 / ST7066 / KS0066 character LCDs, 4 or 8 bit bus |
-| `ILI9325` | ILI9325 TFT controller |
-| `MAX7219` | MAX7219 / MAX7221 8 x 8 LED matrices |
-| `MIPI_DCS` | MIPI DCS TFT controllers (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01 ...) |
-| `PCD8544` | Nokia 5110 / 3310 LCD |
-| `SSD1306` | SSD1306 / SSD1309 / SH1106 monochrome OLEDs |
-| `SSD1322` | SSD1322 4 bit grayscale OLEDs |
-| `SSD1331`, `SSD1351` | 96 x 64 and 128 x 128 RGB565 OLEDs |
-| `SSD1680` | SSD1680 / SSD1681 e-paper |
-| `ST7565` | ST7565 / ST7567 / UC1701 monochrome COG LCDs |
-| `ST7920` | ST7920 monochrome graphic LCD |
-| `STPxxP05` | STP08xP05 / STP16xP05 / STP24DP05 LED array drivers |
-| `seven_segment` | seven segment displays |
-| `framebuffer` | RAM framebuffer between a display head and the drawing context, dirty rect transfer |
-| `multihead` | combines several heads to one screen |
-| `memory`, `dummy`, `windows`, `skeleton` | test head, null head, Windows window, template for new heads |
 
 ### Sprites `vic::sprite` (`sprite.h`)
 ```cpp
