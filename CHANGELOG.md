@@ -1,5 +1,17 @@
 # Changelog
 
+## [2.0.0](https://github.com/mpaland/vic/compare/v1.2.0...v2.0.0) (2026-11-06)
+
+
+### ⚠ BREAKING CHANGES
+
+* **font:** Added support for scaling vector fonts
+
+### Features
+
+* **font:** Added support for scaling vector fonts ([b9e9ca7](https://github.com/mpaland/vic/commit/b9e9ca7af0960c669bf162e2d1c59ab2ea766489))
+* **font:** Added the Google Doto (LED) vector font ([f7681d3](https://github.com/mpaland/vic/commit/f7681d34aa89c927302dde7c40260636180bfe4f))
+
 ## [1.2.0](https://github.com/mpaland/vic/compare/v1.1.0...v1.2.0) (2026-10-29)
 
 
