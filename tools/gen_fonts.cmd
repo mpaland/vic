@@ -21,4 +21,11 @@ set "TTF=%ROOT%\src\font\ttf\Michroma-Regular.ttf"
 %GEN% "%TTF%" --size 12 --bpp 2 || exit /b 1
 %GEN% "%TTF%" --size 16 --bpp 4 || exit /b 1
 %GEN% "%TTF%" --size 24 --bpp 4 || exit /b 1
+
+rem vector (outline) fonts, scalable: one header for all sizes
+set "VEC=python "%ROOT%\tools\vecfontgen.py""
+%VEC% "%ROOT%\src\font\ttf\Montserrat-Regular.ttf" || exit /b 1
+%VEC% "%ROOT%\src\font\ttf\Michroma-Regular.ttf" || exit /b 1
+rem Doto: dot matrix (LED display look), instance of the variable font with round dots
+%VEC% "%ROOT%\src\font\ttf\Doto-Variable.ttf" --axes ROND=100,wght=700 || exit /b 1
 echo done

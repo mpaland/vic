@@ -80,6 +80,31 @@ typedef struct tag_prop_ext_type {
   const struct tag_prop_ext_type* next;
 } prop_ext_type;
 
+// vector (outline) glyph
+typedef struct tag_vector_charinfo_type {
+  std::uint16_t       xdist;      // x-distance (cursor movement) in font units
+  std::uint16_t       size;       // number of int16 words in data
+  const std::int16_t* data;       // y hints, x hints (each: word count, entries, see tools/vecfontgen.py), then the
+                                  // contours: the point count followed by the points as x, y pairs in font units,
+                                  // y up, the LSB of x is the TrueType on-curve flag: x = (x << 1) | on_curve,
+                                  // a negative count -n: n copies of the last full contour, each moved by dx, dy
+} vector_charinfo_type;
+
+// vector (outline) font block, a range of chars (UNICODE)
+typedef struct tag_vector_block_type {
+  std::uint16_t first;
+  std::uint16_t last;
+  const vector_charinfo_type*         char_info;
+  const struct tag_vector_block_type* next;
+} vector_block_type;
+
+// vector (outline) font, quadratic TrueType outlines, scalable to any size
+typedef struct tag_vector_type {
+  std::uint16_t            units;     // line height in font units
+  std::int16_t             ascent;    // top of the line box above the baseline in font units
+  const vector_block_type* block;     // first block
+} vector_type;
+
 // font info
 typedef struct tag_info_type {
   std::uint8_t attr;              // font attributes
@@ -90,10 +115,12 @@ typedef struct tag_info_type {
     const mono_type*     mono;
     const prop_type*     prop;
     const prop_ext_type* prop_ext;
+    const vector_type*   vector;
     tag_family()                       : prop(nullptr) { }
     tag_family(const mono_type* p)     : mono(p) { }
     tag_family(const prop_type* p)     : prop(p) { }
     tag_family(const prop_ext_type* p) : prop_ext(p) { }
+    tag_family(const vector_type* p)   : vector(p) { }
   } family;
 } info_type;
 
@@ -120,6 +147,10 @@ const std::uint8_t ENCODING_UNICODE =  0x10U;   // Character encoding: Unicode
 const std::uint8_t TYPE_MASK        =  0x20U;   // mask
 const std::uint8_t TYPE_MONO        =  0x00U;   // monospaced font
 const std::uint8_t TYPE_PROP        =  0x20U;   // proportional font
+
+const std::uint8_t FORMAT_MASK      =  0x40U;   // mask
+const std::uint8_t FORMAT_BITMAP    =  0x00U;   // bitmap font, fixed size
+const std::uint8_t FORMAT_VECTOR    =  0x40U;   // vector (outline) font, scalable, anti aliased, the AA bits are unused
 
 
 ////////////////////////////////////////////////////////////////

@@ -26,6 +26,7 @@ add_executable(vic_tests
   test_widget.cpp
   test_framebuffer.cpp
   test_fonts.cpp
+  test_vector_font.cpp
 )
 
 target_link_libraries(vic_tests PRIVATE vic::vic)

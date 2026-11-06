@@ -29,6 +29,7 @@
 - Platform and CPU independent code, NO dependencies, NO STL, NO new/delete, NO `float` - just clean and pure C++(11)
 - Platform independent low level driver design with I/O abstraction, **the very same low level display driver runs everywhere**
 - Simple widgets like bitmaps (raw and XPM), gauges, checkboxes, progress bars, etc.
+- Support of scaling vector fonts
 - Support of different font formats (proportional, monospace), ASCII/UTF-8 support and text/font rendering
 - Framebuffer, viewport and blitter support
 - **NO floating point math**, only fast integer operations
@@ -133,6 +134,17 @@ Fonts are header files in `src/font/`, a font is a class with one `info()` metho
   ASCII + Latin-1, generated from the Montserrat TTF (OFL)
 - `Michroma_10_aa2`, `Michroma_12_aa2`, `Michroma_16_aa4`, `Michroma_24_aa4`: same for the Michroma TTF (OFL)
 - `Arial_std_12_aa2`, `Arial_num_16x24_AA4`: legacy fonts
+
+Vector (outline) fonts scale to any size, one header serves all sizes: `set_font(font, size)`, size is the line
+height in pixel. Stems, bars and dot rows are hinted to whole pixels, so they stay crisp at every size:
+- `Montserrat_vec` (27 KB), `Michroma_vec` (32 KB): proportional, ASCII + Latin-1 (OFL)
+- `Doto_vec` (26 KB, the dots are stored as moves of one dot): dot matrix with round dots, the look of an LED display, ASCII + Latin-1
+  (OFL). The dot grid is exactly regular at line heights of multiples of 39 px (39 px: 3 px dots every 4 px)
+
+They are generated with `tools/vecfontgen.py` from TrueType fonts with quadratic outlines, `--axes` selects the
+instance of a variable font (`Doto_vec`: `--axes ROND=100,wght=700`).
+`#define VIC_FONT_VECTOR_ASCII_ONLY 1` in `vic_cfg.h` keeps the ASCII chars only, that is less than half of the
+data: `Montserrat_vec` 11 KB, `Michroma_vec` 13 KB, `Doto_vec` 13 KB.
 
 New fonts are generated from any TTF/OTF file with `tools/fontgen.py` (Python 3 with `freetype-py`, Pillow for
 the optional preview), the number is the line

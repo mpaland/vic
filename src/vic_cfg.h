@@ -36,5 +36,13 @@
 // increase this value
 #define VIC_GPR_FILL_STACK_SIZE   64
 
+// max width in pixel of a rendered vector font glyph, wider glyphs are clipped
+// the text renderer allocates a row buffer of (VIC_TXR_VECTOR_MAX_WIDTH + 1) * 2 byte on the cpu stack
+#define VIC_TXR_VECTOR_MAX_WIDTH  128
+
+// 1 keeps the ASCII chars (20-7E) of the vector fonts (src/font/*_vec.h) only, without the chars beyond ASCII
+// (Latin-1: umlauts, accents, symbols), that is less than half of the font data, e.g. 11 KB instead of 27 KB
+#define VIC_FONT_VECTOR_ASCII_ONLY  0
+
 
 #endif  // _VIC_CFG_H_
