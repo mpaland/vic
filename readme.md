@@ -146,6 +146,11 @@ instance of a variable font (`Doto_vec`: `--axes ROND=100,wght=700`).
 `#define VIC_FONT_VECTOR_ASCII_ONLY 1` in `vic_cfg.h` keeps the ASCII chars only, that is less than half of the
 data: `Montserrat_vec` 11 KB, `Michroma_vec` 13 KB, `Doto_vec` 13 KB.
 
+The `demo/demo_vecfont.cpp` shows `Montserrat_vec` and `Michroma_vec` from 9 to 44 px and zooms a word from 8 to 85 px,
+one pixel size per frame (one cycle of the demo):
+
+![](doc/demo_vecfont.gif)
+
 New fonts are generated from any TTF/OTF file with `tools/fontgen.py` (Python 3 with `freetype-py`, Pillow for
 the optional preview), the number is the line
 height in pixel and `--bpp` the gray levels (1 = mono, 2 or 4 = anti aliased):
