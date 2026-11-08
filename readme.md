@@ -12,7 +12,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 
-### A universal, lightweight, extremly fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems
+### A universal, lightweight, extremely fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems
 
 ## Highlights and Design Goals
 - Designed for displays on **(slow) serial buses** like SPI, I²C or UART: primitives are rendered with a minimum of
@@ -34,7 +34,7 @@
 - Framebuffer, viewport and blitter support
 - **NO floating point math**, only fast integer operations
 - VERY clean, mature and stable C++ code, LINT and L4 warning free, automotive ready
-- Very easy to use and fast implemention of own/new display drivers
+- Very easy to use and fast implementation of own/new display drivers
 - Extensive unit test suite, built and run with MSVC, GCC, Clang and sanitizers on every commit
 - Doxygen commented code
 - MIT license
@@ -104,7 +104,7 @@ anti aliasing result for the disc without any RAM, only the transparent box can'
 The hardware graphic display driver is called _head_ here and only needs to implement `pixel_set` and `pixel_get` functions. But most modern display controllers can provide more sophisticated functions for native line/box rendering, block moving (blit) etc.
 If a controller can provide such special functions, the according function is implemented in the driver by simply overriding the virtual function of the `drv` base class.
 All graphic functions which the controller/driver can't provide natively are handled by the `gpr`.
-Of cource, native rendering on a specialized LCD controller is always faster and should be prefered.
+Of course, native rendering on a specialized LCD controller is always faster and should be preferred.
 
 The native hooks are deliberately limited to primitives which have exactly one correct pixel result: `line_horz`,
 `line_vert`, `box`, `move`, `cls` and `blit` (a block of pixels). Everything else (diagonal lines, circles, discs,
@@ -117,7 +117,7 @@ purpose, a controller's own algorithm would make the result head dependent.
 The Graphic Primitive Renderer provides fast rendering functions for all basic primitives like lines, circles, triangles, discs, pies, pattern fill, etc.
 The `gpr` doesn't use any floating point math, only fast integer operations.
 Furthermore the `gpr` should be a collection of the fastest implementations of the most modern, fast and reliable primitive rendering algorithms.
-So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and contribure!
+So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and contribute!
 
 All rects (`rect_type`) are right/bottom **exclusive**, like `{ left, top, right, bottom }` covers the pixels
 `left <= x < right` and `top <= y < bottom`. Angles are given in degrees, 0° is at 12 o'clock and angles run
@@ -167,7 +167,7 @@ solid pixel column instead of two gray ones (`--darken`, automatic by default).
 ### dc
 To draw anything on the screen, at least one Drawing Context is necessary.
 The `dc` stores information about the pen color, the anti aliasing setting and has an associated pipe of shaders.
-Shaders are extremly fast and modify the rendered pixel (or its position) before it is sent to the head driver.
+Shaders are extremely fast and modify the rendered pixel (or its position) before it is sent to the head driver.
 Several drawing contexts can share one head.
 
 Available stock shaders are:
@@ -221,15 +221,17 @@ Available heads are:
 programming summary (`*.md`) of each one with the register / command tables, the orientation bits and what the head sends.
 
 ### sprite
-I have always been fascinated by hardware sprites that computers like the Commodore 64 or Amiga offered. When designing VIC, I wanted to create a simple but fast and flexible sprite rendering engine with collision detection, rotation and unlimited sprite layers.  
+I have always been fascinated by hardware sprites that computers like the Commodore 64 or Amiga offered. When designing VIC, 
+I wanted to create a simple but fast and flexible sprite rendering engine with collision detection, rotation and unlimited sprite layers.  
 Sprites are moving objects which restore their background when they move. `sprite::sheet` renders frames out of a
 constant sprite sheet (RGB565, RGB888, ARGB8888, RGBA8888) and needs no RAM for the pattern, `sprite::canvas` is a
 sprite which can be drawn on with the normal `dc` functions and `sprite::canvas_sheet` loads sheet frames into a
 canvas. Canvas sprites can be rotated by any angle at zero cost when no rotation is used. Overlapping sprites are
 rendered in z-order with alpha blending. Pixel exact collision detection comes for free: set a collision handler
 (`set_collision_handler()`) on a sprite and it is called once for every other sprite it overlaps with when it is
-rendered, or poll `get_collision()` after `render()`. Without a handler the detection costs nothing.
-
+rendered, or poll `get_collision()` after `render()`. Without a handler the detection costs nothing.  
+For fast background restoration without using an array due to memory constrains, I created an [avl_array](https://github.com/mpaland/avl_array) buffer, 
+which is extremely fast and doesn't consume much memory.  
 The `demo/demo_sprite.cpp` is completely rendered by VIC primitives and shows sheet sprites, a canvas sprite (the ball), rotation,
 alpha blending, z-order and the collision detection (the ghosts turn red when they meet):
 
