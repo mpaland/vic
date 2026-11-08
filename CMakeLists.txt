@@ -17,7 +17,7 @@ if(CMAKE_SOURCE_DIR STREQUAL CMAKE_CURRENT_SOURCE_DIR)
   option(VIC_BUILD_TESTS        "Build the vic unit tests"            ON)
   option(VIC_WARNINGS_AS_ERRORS "Treat compiler warnings as errors"   ON)
   option(VIC_TEST_ASAN          "Build the tests with sanitizers"     OFF)
-  option(VIC_BUILD_DEMOS        "Build the (Windows) demos"           ${WIN32})
+  option(VIC_BUILD_DEMOS        "Build the demos (graphic demos need Windows or X11)" ${WIN32})
 
   if(VIC_BUILD_TESTS)
     include(CTest)

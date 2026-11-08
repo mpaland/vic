@@ -214,6 +214,7 @@ Available heads are:
 | `memory` | Pure RAM head with statistics, ideal for unit tests and off screen rendering |
 | `dummy` | Null head |
 | `windows` | Emulates a display in a Win32 window |
+| `x11` | Emulates a display in an X11 window (Linux, only Xlib needed) |
 | `skeleton` | Template for new heads |
 
 `skeleton.h` is the template for new heads. `src/head/doc/` holds the controller datasheets and a
@@ -331,6 +332,13 @@ E.g. on a Windows (emulation/test) platform this would be:
 // For development convinience a horizontal and vertical zoom factor of 4 is selected
 vic::head::windows<240, 120, 240, 120> _head(0U, 0U, 100U, 100U, 4U, 4U);
 _head.init();  // explicit head init
+```
+On Linux the `x11` head takes the same parameters, it only needs Xlib (link with `-lX11`):
+```c++
+#include "head/X11.h"
+
+vic::head::x11<240, 120, 240, 120> _head(0U, 0U, 100U, 100U, 4U, 4U);
+_head.init();
 ```
 
 Drawing is done with a drawing context (`dc`) and text is written with a text context (`tc`) on the head:
@@ -568,7 +576,7 @@ util::isqrt(value);  util::distance_squared(v0, v1);  util::abs(value);  util::m
 
 ## Building and testing
 VIC itself is header only and needs no build. The repository contains a CMake project which builds the unit tests
-(`test/`) and, on Windows, the demos (`demo/`): a clock, a sprite demo (`demo_sprite.cpp` with sprite sheets,
+(`test/`) and, on Windows and Linux (X11), the demos (`demo/`): a clock, a sprite demo (`demo_sprite.cpp` with sprite sheets,
 rotation and anti aliasing), the anti aliasing comparison (`demo_aa.cpp`), a font demo (`demo_font.cpp`, cycles
 through all fonts with a pangram, digits and Latin-1 samples), the widget demo (`demo_widget.cpp`, every widget
 with its features), the gauge demo (`demo_gauges.cpp`, an aircraft engine page) and the input demo
@@ -585,6 +593,7 @@ cmake --build build
 ctest --test-dir build --output-on-failure
 ```
 On Windows just run `build.cmd [Debug|Release]` from a normal shell, it locates Visual Studio and does the above.
+On Linux the demos need the Xlib headers (`sudo apt install libx11-dev`) and `-DVIC_BUILD_DEMOS=ON`.
 The tests are compiled with `/W4 /WX /permissive-` (MSVC) resp. `-Wall -Wextra -Wpedantic -Wshadow -Werror` in strict
 C++11 mode (GCC, Clang); `-DVIC_TEST_ASAN=ON` builds them with address and undefined behaviour sanitizers.
 The test framework (`test/vic_test.h`) is self contained, the tests render on the `memory` head and compare the result

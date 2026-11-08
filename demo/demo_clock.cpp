@@ -28,6 +28,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 
 #include <ctime>
+#include <cstdio>
 #include <cstdlib>
 
 #include "dc.h"
@@ -61,7 +62,11 @@ void get_time(std::uint8_t& h, std::uint8_t& m, std::uint8_t& s)
 {
   std::time_t t = std::time(nullptr);
   struct tm lc;
+#ifdef _WIN32
   localtime_s(&lc, &t);
+#else
+  localtime_r(&t, &lc);
+#endif
   h = static_cast<std::uint8_t>(lc.tm_hour);
   m = static_cast<std::uint8_t>(lc.tm_min);
   s = static_cast<std::uint8_t>(lc.tm_sec);
@@ -72,7 +77,7 @@ void get_time(std::uint8_t& h, std::uint8_t& m, std::uint8_t& s)
 inline vic::vertex_type get_hand(std::uint16_t radius, std::uint16_t degree)
 {
   return {  static_cast<std::int16_t>(static_cast<std::int32_t>(radius) * vic::util::sin(degree) / 16384U),
-           -static_cast<std::int16_t>(static_cast<std::int32_t>(radius) * vic::util::cos(degree) / 16384U)
+           static_cast<std::int16_t>(-static_cast<std::int16_t>(static_cast<std::int32_t>(radius) * vic::util::cos(degree) / 16384U))
          };
 }
 
@@ -98,10 +103,10 @@ void render_face(const vic::vertex_type& center)
   _dc.circle(center, radius);
 
   // background fill
-  vic::shader::gradient<4> gr = { { center.x, center.y - radius, vic::color::darkred },
-                                  { center.x + radius, center.y, vic::color::darkgreen },
-                                  { center.x, center.y + radius, vic::color::darkblue },
-                                  { center.x - radius, center.y, vic::color::darkyellow }
+  vic::shader::gradient<4> gr = { { center.x, static_cast<std::int16_t>(center.y - radius), vic::color::darkred },
+                                  { static_cast<std::int16_t>(center.x + radius), center.y, vic::color::darkgreen },
+                                  { center.x, static_cast<std::int16_t>(center.y + radius), vic::color::darkblue },
+                                  { static_cast<std::int16_t>(center.x - radius), center.y, vic::color::darkyellow }
                                 };
   _dc.shader_register(&gr);
   _dc.fill(center, vic::color::gray);
@@ -122,7 +127,7 @@ void render_face(const vic::vertex_type& center)
             );
 
     char str[4];
-    _itoa_s(n, str, 4, 10);
+    std::snprintf(str, sizeof(str), "%u", static_cast<unsigned int>(n));
     vic::rect_type rect;
     tc_.get_extend(rect, (std::uint8_t*)str);
     tc_.set_pos(center + get_hand(radius * 6U / 8U, (360U * n / 12U)) + get_text(rect, (360U * n / 12U)));
