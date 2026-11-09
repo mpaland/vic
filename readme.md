@@ -217,8 +217,9 @@ Available heads are:
 | `x11` | Emulates a display in an X11 window (Linux, only Xlib needed) |
 | `skeleton` | Template for new heads |
 
-`skeleton.h` is the template for new heads. `src/head/doc/` holds the controller datasheets and a
-programming summary (`*.md`) of each one with the register / command tables, the orientation bits and what the head sends.
+`skeleton.h` is the template for new heads. `src/head/doc/` holds a programming summary (`*.md`) of each
+controller datasheet with the register / command tables, the orientation bits and what the head sends. The vendor
+datasheets (PDF) are not part of the repository.
 
 ### sprite
 I have always been fascinated by hardware sprites that computers like the Commodore 64 or Amiga offered. When designing VIC, 

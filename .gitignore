@@ -19,3 +19,6 @@ demo/windows/x64/
 # editors
 *.swp
 .idea/
+
+# vendor datasheets, kept local only (summaries in src/head/doc/*.md)
+src/head/doc/*.pdf

@@ -1,9 +1,11 @@
 # MIPI DCS TFT controllers programming summary (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853)
 
 Sources in this folder: `ILI9341.pdf` (ILI Technology, 240RGBx320, 262K color), `ILI9488.pdf` (ILI Technology,
-320RGBx480, 16.7M color, V100), `ST7735.pdf` (Sitronix ST7735R), `ST7789.pdf` (Sitronix ST7789VW V1.0),
-`ST7796.pdf` (Sitronix ST7796S V1.0), `GC9A01.pdf` (Galaxycore GC9A01A), `JD9853.pdf` (Jadard JD9853, see
-also `JD9853.md`). The seven controllers implement the
+320RGBx480, 16.7M color, Preliminary V090), `ST7735.pdf` (Sitronix ST7735R), `ST7789.pdf` (Sitronix ST7789VW V1.0),
+`ST7796.pdf` (Sitronix ST7796S V1.0), `GC9A01.pdf` (Galaxycore GC9A01A), `JD9853.pdf` (Jadard JD9853). The
+detailed per controller references with the full command tables are `ILI9341.md`, `ILI9488.md`, `ST7735.md`,
+`ST7789.md`, `ST7796.md`, `GC9A01.md` and `JD9853.md`; this file holds what they have in common. The seven
+controllers implement the
 MIPI DCS (Display Command Set) user commands, so one head drives them all; they differ in their vendor
 ("command 2") registers, the panel size, the GRAM offset of the panel and the pixel formats of the serial
 interface. The last section describes the vic head `src/head/MIPI_DCS.h`.
@@ -13,14 +15,14 @@ interface. The last section describes the vic head `src/head/MIPI_DCS.h`.
 | Controller | GRAM | Typical panels | Interfaces | Notes |
 |---|---|---|---|---|
 | ILI9341 | 240 x 320 x 18 bit | 2.2" .. 3.2" 240 x 320 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB | the classic Arduino TFT |
-| ILI9488 | 320 x 480 x 18 bit | 3.5" .. 4" 320 x 480 | 8/9/16/18/24 bit 8080, 3/4 wire SPI, RGB, MIPI DSI | serial interface takes 18 / 24 bit pixels only |
-| ST7735 | 132 x 162 x 18 bit | 1.8" 128 x 160, 1.44" 128 x 128, 0.96" 80 x 160 | 8 bit 8080, 3/4 wire SPI, RGB | panel offsets differ per module ("tab color") |
+| ILI9488 | 320 x 480 x 18 bit | 3.5" .. 4" 320 x 480 | 8/9/16/18/24 bit 8080, 3/4 wire SPI, RGB, MIPI DSI | serial interface takes 18 bit (or 3 bit) pixels only, no RGB565 |
+| ST7735 | 132 x 162 x 18 bit | 1.8" 128 x 160, 1.44" 128 x 128, 0.96" 80 x 160 | 8/9/16/18 bit 8080 / 6800, 3/4 wire SPI (no RGB) | panel offsets differ per module ("tab color") |
 | ST7789 | 240 x 320 x 18 bit | 1.3" / 1.54" 240 x 240, 1.14" 135 x 240, 2" 240 x 320 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB | SPI mode 3 on most modules, display inversion on |
 | ST7796 | 320 x 480 x 18 bit | 3.5" / 4" 320 x 480 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB, DSI | vendor registers behind CSCON (F0h) |
-| GC9A01 | 240 x 240 x 18 bit | 1.28" round 240 x 240 | 8/9/16/18 bit 8080, 3/4 wire SPI, RGB | inter register enable (FEh / EFh) before the vendor registers, inversion on |
-| JD9853 | 240 x 320 x 18 bit | 1.47" 172 x 320 (column offset 34), 2" 240 x 320 | 8/9/16/18 bit 8080, 3/4 wire SPI, 2 lane SPI, QSPI, RGB | vendor registers in the OTP, init is SLPOUT + DISPON |
+| GC9A01 | 240 x 240 x 18 bit | 1.28" round 240 x 240 | 8/9/16/18 bit 8080, 3/4 wire SPI, 2 data line SPI, RGB | inter register enable (FEh / EFh) before the vendor registers, inversion on |
+| JD9853 | 240 x 320 x 18 bit | 1.47" 172 x 320 (column offset 34), 2" 240 x 320 | 8/9 bit 8080, 3/4 wire SPI, 2 lane SPI, QSPI, 6 bit RGB | vendor registers in the OTP, init is SLPOUT + DISPON |
 
-All run on 2.8 .. 3.3 V logic (ILI9341 1.65 .. 3.3 V I/O), the 4 wire SPI is `CS`, `SCL`, `SDA`, `D/C`
+All accept 1.65 .. 3.3 V I/O (IOVCC / VDDI), the 4 wire SPI is `CS`, `SCL`, `SDA`, `D/C`
 (D/C = 0 command, 1 parameter / pixel data), typical clock 20 .. 80 MHz for writes, much slower for reads.
 
 ## 2 Address window and memory write
@@ -43,7 +45,7 @@ Pixel formats (3Ah COLMOD, DBI[2:0] = MCU interface, DPI[2:0] = RGB interface):
 |---|---|---|---|
 | 55h (DBI = 101) | 16 bit RGB565 | 2 | ILI9341, ST7735, ST7789, ST7796, GC9A01, JD9853; not on the ILI9488 serial interface |
 | 66h (DBI = 110) | 18 bit RGB666 | 3 (6 bits left aligned per byte) | all |
-| 77h (DBI = 111) | 24 bit RGB888 | 3 | ILI9488, ST7796 |
+| 77h (DBI = 111) | 24 bit RGB888 | 3 | ILI9488, ST7796 (parallel / DPI / DSI only, not on SPI) |
 
 ## 3 MADCTL (36h): orientation and color order
 
@@ -60,7 +62,7 @@ The rotation sequence of the reference drivers is `MX` (rotation 0 of the module
 i.e. relative to the datasheet default: 90° = `MX | MV`, 180° = `MX | MY`, 270° = `MY | MV`. Panels that are
 smaller than the GRAM (ST7789 240 x 240 on 240 x 320, ST7735 128 x 128 / 80 x 160 on 132 x 162) need a
 column / row offset that depends on the mirror bits, e.g. ST7789 240 x 240: offset (0, 0) for `0`, (0, 80) for
-`MY`, (80, 0) for `MX | MV`.
+`MY`, (0, 0) for `MX | MV`, (80, 0) for `MY | MV` and `MX | MY | MV` (with MV the row offset goes into X).
 
 ## 4 Common DCS commands used by the head
 
