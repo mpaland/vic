@@ -127,46 +127,73 @@ protected:
 
 
   /**
+   * Coverage of a pixel
+   * Pixels with the corners, edge centers and center inside the shape are fully covered, pixels with
+   * all corners and the center outside are empty, all other pixels are sampled with 4 x 4 sub pixels.
+   * \param pred Shape predicate, pred(X, Y) returns true if the point (X, Y) in 1/8 pixel screen units is inside the shape
+   * \param x Pixel coordinate
+   * \param y Pixel coordinate
+   * \return Pixel coverage, 0 (empty) to 255 (fully covered)
+   */
+  template<typename Pred>
+  static std::uint32_t aa_coverage(const Pred& pred, std::int32_t x, std::int32_t y)
+  {
+    const std::int32_t X = x * AA_SCALE, Y = y * AA_SCALE;
+    const std::uint32_t corners = (pred(X - 4, Y - 4) ? 1U : 0U) + (pred(X + 4, Y - 4) ? 1U : 0U) + (pred(X - 4, Y + 4) ? 1U : 0U) + (pred(X + 4, Y + 4) ? 1U : 0U);
+    if ((corners == 4U) && pred(X, Y) && pred(X - 4, Y) && pred(X + 4, Y) && pred(X, Y - 4) && pred(X, Y + 4)) {
+      // corners, edge centers and the center inside: fully covered (the hole of a ring is at least 0.5 pixel wide)
+      return 255U;
+    }
+    if ((corners == 0U) && !pred(X, Y)) {
+      // all corners and the center outside: the pixel is not touched (shapes are at least one pixel wide)
+      return 0U;
+    }
+    std::uint32_t count = 0U;
+    for (std::int32_t sy = -(AA_SAMPLES - 1); sy < AA_SAMPLES; sy += 2) {
+      for (std::int32_t sx = -(AA_SAMPLES - 1); sx < AA_SAMPLES; sx += 2) {
+        count += pred(X + sx, Y + sy) ? 1U : 0U;
+      }
+    }
+    return count * 255U / static_cast<std::uint32_t>(AA_SAMPLES * AA_SAMPLES);
+  }
+
+
+  /**
    * Coverage based filling of a shape
-   * Every pixel of the (inclusive) box is tested against the shape predicate: pixels with the
-   * corners, edge centers and center inside are fully covered, pixels with all corners and the
-   * center outside are empty, all other pixels are sampled with 4 x 4 sub pixels.
+   * Every pixel of the (inclusive) box is tested against the shape predicate, see aa_coverage().
    * Fully covered pixels are drawn as horizontal runs via line_horz().
+   * The fully covered pixels of a row of a convex shape are one single run, so only its two ends are
+   * searched from the left and the right, the pixels in between are not tested.
    * \param pipe The shader pipe
    * \param left Inclusive pixel box to scan
    * \param top Inclusive pixel box to scan
    * \param right Inclusive pixel box to scan
    * \param bottom Inclusive pixel box to scan
    * \param pred Shape predicate, pred(X, Y) returns true if the point (X, Y) in 1/8 pixel screen units is inside the shape
+   * \param convex True if the shape is convex
    */
   template<typename Pred>
-  void aa_fill(shader::base* pipe, std::int32_t left, std::int32_t top, std::int32_t right, std::int32_t bottom, const Pred& pred)
+  void aa_fill(shader::base* pipe, std::int32_t left, std::int32_t top, std::int32_t right, std::int32_t bottom, const Pred& pred, bool convex = false)
   {
     for (std::int32_t y = top; y <= bottom; ++y) {
       std::int32_t run_start = 0;
       bool run = false;
       for (std::int32_t x = left; x <= right; ++x) {
-        const std::int32_t X = x * AA_SCALE, Y = y * AA_SCALE;
-        std::uint32_t coverage;
-        const std::uint32_t corners = (pred(X - 4, Y - 4) ? 1U : 0U) + (pred(X + 4, Y - 4) ? 1U : 0U) + (pred(X - 4, Y + 4) ? 1U : 0U) + (pred(X + 4, Y + 4) ? 1U : 0U);
-        if ((corners == 4U) && pred(X, Y) && pred(X - 4, Y) && pred(X + 4, Y) && pred(X, Y - 4) && pred(X, Y + 4)) {
-          // corners, edge centers and the center inside: fully covered (the hole of a ring is at least 0.5 pixel wide)
-          coverage = 255U;
-        }
-        else if ((corners == 0U) && !pred(X, Y)) {
-          // all corners and the center outside: the pixel is not touched (shapes are at least one pixel wide)
-          coverage = 0U;
-        }
-        else {
-          std::uint32_t count = 0U;
-          for (std::int32_t sy = -(AA_SAMPLES - 1); sy < AA_SAMPLES; sy += 2) {
-            for (std::int32_t sx = -(AA_SAMPLES - 1); sx < AA_SAMPLES; sx += 2) {
-              count += pred(X + sx, Y + sy) ? 1U : 0U;
-            }
-          }
-          coverage = count * 255U / static_cast<std::uint32_t>(AA_SAMPLES * AA_SAMPLES);
-        }
+        const std::uint32_t coverage = aa_coverage(pred, x, y);
         if (coverage == 255U) {
+          if (convex) {
+            // start of the run, search its end from the right
+            std::int32_t end = right;
+            for (; end > x; --end) {
+              const std::uint32_t c = aa_coverage(pred, end, y);
+              if (c == 255U) {
+                break;
+              }
+              aa_pixel(pipe, { static_cast<std::int16_t>(end), static_cast<std::int16_t>(y) }, c);
+            }
+            line_horz({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }, { static_cast<std::int16_t>(end), static_cast<std::int16_t>(y) });
+            break;
+          }
           if (!run) {
             run       = true;
             run_start = x;
@@ -352,14 +379,14 @@ protected:
       aa_pixel(pipe, center, 255U);
     }
     else if (quadrants == 0x0FU) {
-      aa_fill(pipe, cx - r1, cy - r1, cx + r1, cy + r1, pred);
+      aa_fill(pipe, cx - r1, cy - r1, cx + r1, cy + r1, pred, true);
     }
     else {
       // the center row and column belong to every quadrant (like disc_sector())
-      if (quadrants & 0x01U) { aa_fill(pipe, cx,      cy - r1, cx + r1, cy,      pred); }
-      if (quadrants & 0x02U) { aa_fill(pipe, cx - r1, cy - r1, cx,      cy,      pred); }
-      if (quadrants & 0x04U) { aa_fill(pipe, cx - r1, cy,      cx,      cy + r1, pred); }
-      if (quadrants & 0x08U) { aa_fill(pipe, cx,      cy,      cx + r1, cy + r1, pred); }
+      if (quadrants & 0x01U) { aa_fill(pipe, cx,      cy - r1, cx + r1, cy,      pred, true); }
+      if (quadrants & 0x02U) { aa_fill(pipe, cx - r1, cy - r1, cx,      cy,      pred, true); }
+      if (quadrants & 0x04U) { aa_fill(pipe, cx - r1, cy,      cx,      cy + r1, pred, true); }
+      if (quadrants & 0x08U) { aa_fill(pipe, cx,      cy,      cx + r1, cy + r1, pred, true); }
     }
     present_lock(false);
   }
@@ -786,7 +813,7 @@ public:
 
     if (anti_aliasing_) {
       // coverage based rendering over the bounding box
-      aa_fill(shader_pipe(), v0.x, util::min3(v0.y, v1.y, v2.y), util::max2(v1.x, v2.x), util::max3(v0.y, v1.y, v2.y), aa_triangle_pred(v0, v1, v2));
+      aa_fill(shader_pipe(), v0.x, util::min3(v0.y, v1.y, v2.y), util::max2(v1.x, v2.x), util::max3(v0.y, v1.y, v2.y), aa_triangle_pred(v0, v1, v2), true);
       present_lock(false);
       return;
     }
