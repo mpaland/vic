@@ -88,7 +88,7 @@ VMCTR, interface mode B0h, frame rate B1h, inversion B4h, DFUNCTR B6h, E9h, adju
 (SWRESET, SLPOUT, NORON, DISPON, the module defaults are fine), `ST7796` (SWRESET, SLPOUT, CSCON C3h / 96h to
 unlock, inversion B4h, DFUNCTR B6h, E8h timing, PWCTR2/3, VCOM C5h, gamma, CSCON 3Ch / 69h to lock, DISPON),
 `GC9A01` (inter register enable FEh / EFh and the long vendor register list, TEON, SLPOUT, DISPON), `JD9853`
-(SWRESET, SLPOUT, NORON, DISPON, the vendor registers come from the OTP). MADCTL, COLMOD and the inversion are
+(SWRESET 120 ms, SLPOUT, NORON, DISPON, the vendor registers come from the OTP). MADCTL, COLMOD and the inversion are
 set by the head after the table.
 
 ## 6 The vic head `src/head/MIPI_DCS.h`
@@ -114,9 +114,10 @@ MIPI_DCS(io::handle_type device);
   streams RGB565 (or RGB666) pixels in blocks of 32; the head tracks the write pointer so that consecutive
   pixels along x need no new window. `blit()` streams the clipped block, `box()` is window + stream, vertical
   lines use a one column window.
-- `pixel_get()` reads 18 bit pixels through RAMRD, `color::none` when the io layer can't read (SPI modules
-  without MISO).
-- `display_enable()` = 29h / 28h, `display_brightness()` = 53h 24h, 51h level, `display_inverse()` relative to
-  the panel default, `shutdown()` = 28h, 10h.
+- `pixel_get()` reads 18 bit pixels through RAMRD (the ST7735 / ST7789 switch COLMOD to 66h for the read and
+  back to 55h), `color::none` when the io layer can't read (SPI modules without MISO).
+- `display_enable()` = 29h / 28h, `display_brightness()` = 53h 24h, 51h level (nothing on the ST7735 and JD9853,
+  they have no brightness commands), `display_inverse()` relative to the panel default, `shutdown()` = 28h, 10h,
+  120 ms.
 - Not covered: partial / scroll modes, tearing effect synchronisation, RGB interface, 24 bit formats, the
   3 wire (9 bit) serial interface (an io layer may build the 9 bit frames from the option).

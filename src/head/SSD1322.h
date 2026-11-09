@@ -104,7 +104,8 @@ class SSD1322 final : public drv
   static const std::uint8_t REMAP_NIBBLE            = 0x04U;    // high nibble = left pixel
   static const std::uint8_t REMAP_COM_SCAN          = 0x10U;
   static const std::uint8_t REMAP_COM_SPLIT         = 0x20U;
-  static const std::uint8_t REMAP_DUAL_COM          = 0x11U;    // second byte: B[4] dual COM line mode, B[0] is fixed 1
+  static const std::uint8_t REMAP_DUAL_COM          = 0x11U;    // second byte: B[4] dual COM line mode (MUX <= 64), B[0] is fixed 1
+  static const std::uint8_t REMAP_SINGLE_COM        = 0x01U;    // second byte: dual COM line mode off, panels with more than 64 rows
 
   // physical panel
   static const bool          ROTATED = (Orientation == orientation_90)  || (Orientation == orientation_270) ||
@@ -159,9 +160,10 @@ public:
     const std::uint8_t zero[1]    = { 0x00U };
     // values of the u8g2 / NHD-3.12 reference sequence; u8g2 sends A0h 14h (COM scan remap for the module orientation),
     // here the mirrors are done in software so the remap is 04h and the module is upright with orientation_0m
-    const std::uint8_t remap[2]   = { static_cast<std::uint8_t>(REMAP_NIBBLE), REMAP_DUAL_COM };   // horizontal increment, nibble remap, dual COM
+    const std::uint8_t remap[2]   = { static_cast<std::uint8_t>(REMAP_NIBBLE),                                  // horizontal increment, nibble remap,
+                                      (PHYS_Y <= 64U) ? REMAP_DUAL_COM : REMAP_SINGLE_COM };                // dual COM up to 64 rows
     const std::uint8_t vdd[1]     = { 0x01U };                                            // internal VDD regulator
-    const std::uint8_t enh_a[2]   = { 0xA0U, 0xFDU };                                     // internal VSL, enhanced low gray scale
+    const std::uint8_t enh_a[2]   = { 0xA0U, 0xFDU };                                     // external VSL (A[1:0] = 00b), enhanced low gray scale
     const std::uint8_t contrast[1]= { Contrast };
     const std::uint8_t master[1]  = { 0x0FU };
     const std::uint8_t phase[1]   = { 0xE2U };                                            // phase 1 = 5, phase 2 = 14 DCLK

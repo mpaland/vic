@@ -114,7 +114,7 @@ namespace MIPI_DCS_init {
     0xB1, 3, 0x01, 0x2C, 0x2D,                      // frame rate normal mode
     0xB2, 3, 0x01, 0x2C, 0x2D,                      // frame rate idle mode
     0xB3, 6, 0x01, 0x2C, 0x2D, 0x01, 0x2C, 0x2D,    // frame rate partial mode
-    0xB4, 1, 0x07,                                  // display inversion control, no inversion
+    0xB4, 1, 0x07,                                  // display inversion control, line inversion drive in all modes
     0xC0, 3, 0xA2, 0x02, 0x84,                      // power control 1
     0xC1, 1, 0xC5,                                  // power control 2
     0xC2, 2, 0x0A, 0x00,                            // power control 3
@@ -205,7 +205,7 @@ namespace MIPI_DCS_init {
   // the JD9853 loads its vendor registers from the OTP, the datasheet power on sequence (8.7 option 2) needs
   // only sleep out and display on; the vendor registers are not documented in the preliminary datasheet
   static const std::uint8_t JD9853[] = {
-    0x01, 0x80, 5,                                  // software reset
+    0x01, 0x80, 120,                                // software reset, 120 ms before sleep out
     0x11, 0x80, 120,                                // sleep out
     0x13, 0,                                        // normal display mode on
     0x29, 0x80, 20                                  // display on
@@ -228,8 +228,9 @@ namespace MIPI_DCS_init {
  * \param Invert Display inversion (21h), the ST7789 and GC9A01 modules need it
  * \param Color_18bit 18 bit pixels (3 bytes, 3Ah = 66h) instead of RGB565 (3Ah = 55h), mandatory for the ILI9488 on SPI
  * \param Offset_X Column offset of the panel in the GRAM, in the orientation the window commands see (after MADCTL),
- *                 e.g. ST7789 240 x 240: 0 / 0 for orientation_0, 0 / 80 for orientation_0m, 80 / 0 for orientation_90;
- *                 ST7735 128 x 160 "green tab": 2 / 1, 128 x 128: 2 / 3 (TFT_eSPI colstart / rowstart);
+ *                 e.g. ST7789 240 x 240: 0 / 0 for orientation_0 and orientation_90, 0 / 80 for orientation_0m and
+ *                 orientation_180, 80 / 0 for orientation_270 and orientation_90m (MV puts the row offset into X);
+ *                 ST7735 128 x 160 "green tab": 2 / 1, 128 x 128: 2 / 3 (TFT_eSPI colstart / rowstart, swapped for MV);
  *                 JD9853 1.47" 172 x 320: 34 / 0 (the panel is centred on the 240 GRAM columns)
  * \param Offset_Y Row offset of the panel in the GRAM
  */
@@ -285,6 +286,11 @@ class MIPI_DCS final : public drv
   // pixels per io::write() in a data stream
   static const std::size_t STREAM_PIXELS = 32U;
   static const std::size_t PIXEL_BYTES   = Color_18bit ? 3U : 2U;
+
+  // the ST7735 / ST7789 read the GRAM in the 18 bit pixel format only, an RGB565 head switches 3Ah for the read
+  static const bool READ_COLMOD_18BIT = !Color_18bit && ((Controller == MIPI_DCS_ST7735) || (Controller == MIPI_DCS_ST7789));
+  // the ST7735 and JD9853 have no brightness commands (51h / 53h)
+  static const bool HAS_BRIGHTNESS = (Controller != MIPI_DCS_ST7735) && (Controller != MIPI_DCS_JD9853);
 
   // vars
   const io::handle_type device_handle_;
@@ -360,10 +366,10 @@ public:
 
   virtual void shutdown()
   {
-    // display off and sleep in
+    // display off and sleep in, the controllers need 120 ms to enter the sleep mode (before power off or sleep out)
     write_cmd(CMD_DISPOFF, nullptr, 0U);
     write_cmd(CMD_SLPIN, nullptr, 0U);
-    io::delay(5U);
+    io::delay(120U);
   }
 
 
@@ -435,13 +441,23 @@ protected:
       return color::none;
     }
 
-    // set the window to the pixel and read it (the io layer handles the dummy byte of the controller)
+    // set the window to the pixel and read it (the io layer handles the dummy byte of the controller),
+    // the ST7735 / ST7789 need the 18 bit pixel format (3Ah = 66h) for a GRAM read
     set_window(vertex.x, vertex.x, vertex.y, vertex.y);
+    if (READ_COLMOD_18BIT) {
+      const std::uint8_t colmod = 0x66U;
+      write_cmd(CMD_COLMOD, &colmod, 1U);
+    }
     write_cmd(CMD_RAMRD, nullptr, 0U);
     pos_ = { -1, -1 };
     std::uint8_t data[3] = { 0U, 0U, 0U };
     std::size_t  length  = 3U;
-    if (!io::read(device_handle_, 1U, data, length, 0U) || (length != 3U)) {
+    const bool   read_ok = io::read(device_handle_, 1U, data, length, 0U) && (length == 3U);
+    if (READ_COLMOD_18BIT) {
+      const std::uint8_t colmod = 0x55U;
+      write_cmd(CMD_COLMOD, &colmod, 1U);
+    }
+    if (!read_ok) {
       // reading is not supported by the interface, the pixel is unknown
       return color::none;
     }
@@ -572,14 +588,17 @@ public:
 
 
   /**
-   * Set the display brightness (51h / 53h), only effective on modules with the backlight connected to the controller
+   * Set the display brightness (51h / 53h), only effective on modules with the backlight connected to the controller,
+   * the ST7735 and JD9853 have no brightness commands. The level is lost in sleep in (shutdown()).
    * \param level 0: dark; 255: maximum
    */
   virtual void display_brightness(std::uint8_t level)
   {
-    const std::uint8_t ctrl = 0x24U;    // brightness control block on, display dimming off
-    write_cmd(CMD_WRCTRLD, &ctrl, 1U);
-    write_cmd(CMD_WRDISBV, &level, 1U);
+    if (HAS_BRIGHTNESS) {
+      const std::uint8_t ctrl = 0x24U;    // brightness control block on, display dimming off
+      write_cmd(CMD_WRCTRLD, &ctrl, 1U);
+      write_cmd(CMD_WRDISBV, &level, 1U);
+    }
   }
 
 

@@ -774,6 +774,18 @@ TEST_CASE(heads_HD44780)
   t4.out(reinterpret_cast<const std::uint8_t*>("\xC3\xA4"));
   CHECK_EQ(io_stub::written()[0], 0xE4U);
 
+  // ROM 0B (ST7066): code page 437 style Latin letters and Greek, a umlaut 84h, n tilde 9Bh, Omega DEh, euro unknown
+  head::HD44780<16, 2, head::HD44780_BUS8, head::HD44780_WAIT_IO, head::HD44780_ROM_0B> lcd0b(nullptr);
+  tc t0b(lcd0b);
+  t0b.set_pos({ 0, 0 });
+  io_stub::clear();
+  CHECK_EQ(t0b.out(reinterpret_cast<const std::uint8_t*>("\xC3\xA4\xC3\xB1\xCE\xA9\xE2\x82\xAC")), 4U);
+  REQUIRE(io_stub::written_size() == 4U);
+  CHECK_EQ(io_stub::written()[0], 0x84U);
+  CHECK_EQ(io_stub::written()[1], 0x9BU);
+  CHECK_EQ(io_stub::written()[2], 0xDEU);
+  CHECK_EQ(io_stub::written()[3], '?');
+
   // busy flag polling: one io::read() per byte when the controller reports not busy
   head::HD44780<16, 2, head::HD44780_BUS8, head::HD44780_WAIT_BUSY> lcdb(nullptr);
   lcdb.init();
@@ -838,6 +850,12 @@ TEST_CASE(heads_MIPI_DCS)
   tft.display_brightness(128U);
   tft.display_inverse(true);
   tft.display_enable(false);
+  // shutdown: display off, sleep in and 120 ms for the sleep mode
+  io_stub::clear();
+  tft.shutdown();
+  CHECK_EQ(io_stub::written()[0], 0x28U);
+  CHECK_EQ(io_stub::written()[1], 0x10U);
+  CHECK_EQ(io_stub::delay_total(), 120U);
 
   // landscape: MADCTL MX | MV | BGR, the window is given in logical coordinates
   head::MIPI_DCS<head::MIPI_DCS_ILI9341, 320, 240, drv::orientation_90> land(nullptr);
@@ -879,10 +897,19 @@ TEST_CASE(heads_MIPI_DCS)
   ds.plot({ 3, 4 });
   w = io_stub::written();
   CHECK_EQ(w[5], 0x2BU); CHECK_EQ(w[6], 0x00U); CHECK_EQ(w[7], 0x54U); CHECK_EQ(w[8], 0x01U); CHECK_EQ(w[9], 0x3FU);
+  // GRAM read on the ST7789: 18 bit pixel format (3Ah = 66h) for RAMRD, then back to RGB565
+  io_stub::clear();
+  CHECK_EQ(ds.pixel_get({ 3, 4 }), color::none);
+  static const std::uint8_t read_18[6] = { 0x2CU, 0x3AU, 0x66U, 0x2EU, 0x3AU, 0x55U };
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), read_18, 6U), 10L);
 
   // the other controllers compile and init
   head::MIPI_DCS<head::MIPI_DCS_ST7735, 128, 160> small(nullptr);
   small.init();
+  // the ST7735 has no brightness commands
+  io_stub::clear();
+  small.display_brightness(128U);
+  CHECK_EQ(io_stub::written_size(), 0U);
   head::MIPI_DCS<head::MIPI_DCS_ST7796, 320, 480> st96(nullptr);
   st96.init();
   head::MIPI_DCS<head::MIPI_DCS_GC9A01, 240, 240> round(nullptr);
@@ -899,7 +926,7 @@ TEST_CASE(heads_MIPI_DCS)
   CHECK_EQ(w[0], 0x01U); CHECK_EQ(w[1], 0x11U); CHECK_EQ(w[2], 0x13U); CHECK_EQ(w[3], 0x29U);
   static const std::uint8_t madctl_jd[5] = { 0x36U, 0x00U, 0x3AU, 0x55U, 0x20U };
   CHECK(find_bytes(w, 20U, madctl_jd, 5U) >= 0L);
-  CHECK(io_stub::delay_total() >= 145U);
+  CHECK(io_stub::delay_total() >= 260U);    // 120 ms after the reset and the sleep out, 20 ms after display on
   dc dj(jd);
   dj.set_color(color::red);
   io_stub::clear();
@@ -935,6 +962,12 @@ TEST_CASE(heads_SH1106)
   CHECK_EQ(w[4], 0x40U);
   CHECK_EQ(w[4U + 1U + 3U], 0x20U);
   CHECK_EQ(w[136U + 1U], 0xB1U);
+  // SH1106 with external VPP: the DC-DC (on after reset) is switched off with ADh 8Ah
+  head::SSD1306<128, 64, drv::orientation_0, head::SSD1306_I2C, true, false, head::SSD1306_CTRL_SH1106> shx(nullptr);
+  io_stub::clear();
+  shx.init();
+  static const std::uint8_t dcdc_off[2] = { 0xADU, 0x8AU };
+  CHECK(find_bytes(io_stub::written(), 40U, dcdc_off, 2U) >= 0L);
   // SSD1309: no charge pump command at all
   head::SSD1306<128, 64, drv::orientation_0, head::SSD1306_SPI4, true, true, head::SSD1306_CTRL_SSD1309> s09(nullptr);
   io_stub::clear();

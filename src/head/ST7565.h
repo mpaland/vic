@@ -30,7 +30,10 @@
 // commands stay at their defaults. See doc/ST7565.md for the programming summary.
 //
 // io layer convention: io::write() option 0 = command, 1 = data (the A0 line),
-// SPI mode 0 / 3. The serial interfaces can't read back.
+// SPI mode 0 / 3. The serial interfaces can't read back. io::init() has to pulse
+// the reset line (/RES, RSTB): the ST7565R and ST7567 need a hardware reset after
+// power on, the software reset E2h of init() doesn't replace it (the UC1701 has a
+// power on reset).
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -49,9 +52,9 @@ namespace head {
 
 // controller type
 typedef enum tag_ST7565_controller_type {
-  ST7565_ST7565,    // Sitronix ST7565R/P, booster ratio command F8h
-  ST7565_ST7567,    // Sitronix ST7567, no booster ratio command
-  ST7565_UC1701     // UltraChip UC1701, booster ratio command F8h
+  ST7565_ST7565,    // Sitronix ST7565R/P, booster ratio command F8h (2x..4x, 5x, 6x)
+  ST7565_ST7567,    // Sitronix ST7567, booster command F8h 4x / 5x only, 4x after reset
+  ST7565_UC1701     // UltraChip UC1701, F8h is accepted as NOP
 } ST7565_controller_type;
 
 
@@ -151,14 +154,14 @@ public:
 
     // power up sequence of the Adafruit ST7565 / u8g2 drivers, SEG and COM direction stay at the datasheet default
     // (orientation is done in software), the DOGM128 / ERC12864 modules are upright with orientation_180 or 0m
-    write_cmd(CMD_RESET);
+    write_cmd(CMD_RESET);   // software reset, the hardware reset is done by io::init()
     io::delay(5U);
     write_cmd(Bias_1_7 ? CMD_BIAS_1_7 : CMD_BIAS_1_9);
     write_cmd(CMD_SEG_NORMAL);
     write_cmd(CMD_COM_NORMAL);
     write_cmd(CMD_START_LINE);
     if (Controller != ST7565_ST7567) {
-      // booster ratio 4x
+      // booster ratio 4x, the ST7567 is at 4x after the hardware reset
       const std::uint8_t cmd[] = { CMD_BOOSTER_RATIO, 0x00U };
       write_cmd(cmd, sizeof(cmd));
     }

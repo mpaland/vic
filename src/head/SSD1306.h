@@ -250,14 +250,13 @@ public:
     // default oscillator clock
     write_cmd(CMD_DISPLAY_CLK_DIV, 0x80U);
 
-    // enable the charge pump (must be set before display on), the SSD1309 has none
-    if (Charge_Pump && (Controller != SSD1306_CTRL_SSD1309)) {
-      if (SH1106) {
-        write_cmd(CMD_SH1106_DCDC, 0x8BU);
-      }
-      else {
-        write_cmd(CMD_CHARGE_PUMP, 0x14U);
-      }
+    // enable the charge pump (must be set before display on), the SSD1309 has none;
+    // the SH1106 powers up with its DC-DC on, it is switched off for an external VPP
+    if (SH1106) {
+      write_cmd(CMD_SH1106_DCDC, static_cast<std::uint8_t>(Charge_Pump ? 0x8BU : 0x8AU));
+    }
+    else if (Charge_Pump && (Controller != SSD1306_CTRL_SSD1309)) {
+      write_cmd(CMD_CHARGE_PUMP, 0x14U);
     }
 
     // set the precharge cycles to high cap type

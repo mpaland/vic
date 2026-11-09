@@ -47,10 +47,11 @@
 // Compatible controllers: the head works unchanged with the Sitronix ST7066 (and
 // ST7066U), Samsung KS0066U, Epson SED1278 and Sunplus SPLC780, they are pin and
 // instruction compatible with the HD44780 (crosschecked against the ST7066
-// datasheet, see doc/HD44780.md section 8). The only difference is the execution
+// datasheet, see doc/HD44780.md section 8). The main difference is the execution
 // time of a data byte, 43 us on the ST7066 instead of 37 us, which is why
 // Exec_Us defaults to 43. ROM code 0A of the ST7066 is the Japanese font
-// (HD44780_ROM_A00), ROM code 0B the European font (HD44780_ROM_A02).
+// (HD44780_ROM_A00), ROM code 0B is a European font of its own (HD44780_ROM_0B),
+// it is not the ISO 8859-1 layout of the HD44780 A02 ROM (see doc/ST7066.md).
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -83,7 +84,8 @@ typedef enum tag_HD44780_wait_type {
 // character ROM of the controller
 typedef enum tag_HD44780_rom_type {
   HD44780_ROM_A00,      // Japanese standard font: ASCII, half width Katakana at A1h..DFh, some symbols at E0h..FFh
-  HD44780_ROM_A02       // European standard font: A0h..FFh follow ISO 8859-1
+  HD44780_ROM_A02,      // European standard font: A0h..FFh follow ISO 8859-1
+  HD44780_ROM_0B        // ST7066 European font (ROM code 0B): code page 437 Latin letters at 80h..9Ah, symbols, Greek
 } HD44780_rom_type;
 
 
@@ -463,6 +465,29 @@ private:
       // ISO 8859-1 block
       if (ch <= 0xFFU) {
         return static_cast<std::uint8_t>(ch);
+      }
+    }
+    else if (Rom == HD44780_ROM_0B) {
+      // ST7066 ROM code 0B (datasheet table 4): UNICODE of the codes 80h..FFh, 0 = no UNICODE equivalent
+      static const std::uint16_t rom_0b[128] = {
+        0x00C7U, 0x00FCU, 0x00E9U, 0x00E2U, 0x00E4U, 0x00E0U, 0x00E5U, 0x00E7U, 0x00EAU, 0x00EBU, 0x00E8U, 0x00EFU, 0x00EEU, 0x00ECU, 0x00C4U, 0x00C5U,
+        0x00C9U, 0x00E6U, 0x00C6U, 0x00F4U, 0x00F6U, 0x00F2U, 0x00FBU, 0x00F9U, 0x00FFU, 0x00D6U, 0x00DCU, 0x00F1U, 0x00D1U, 0x00AAU, 0x00BAU, 0x00BFU,
+        0x00E1U, 0x00EDU, 0x00F3U, 0x00FAU, 0x00A2U, 0x00A3U, 0x00A5U, 0x20A7U, 0x0192U, 0x00A1U, 0x00C3U, 0x00E3U, 0x00D5U, 0x00F5U, 0x00D8U, 0x00F8U,
+        0x02D9U, 0x00A8U, 0x00B0U, 0x0060U, 0x00B4U, 0x00BDU, 0x00BCU, 0x00D7U, 0x00F7U, 0x2264U, 0x2265U, 0x00ABU, 0x00BBU, 0x2260U, 0x221AU, 0x203EU,
+        0x2320U, 0x2321U, 0x0000U, 0x0000U, 0x0000U, 0x2191U, 0x2193U, 0x2192U, 0x2190U, 0x250CU, 0x2510U, 0x2514U, 0x2518U, 0x0000U, 0x00AEU, 0x00A9U,
+        0x2122U, 0x2020U, 0x00A7U, 0x00B6U, 0x0393U, 0x0394U, 0x0398U, 0x039BU, 0x039EU, 0x03A0U, 0x03A3U, 0x03A5U, 0x03A6U, 0x03A8U, 0x03A9U, 0x03B1U,
+        0x03B2U, 0x03B3U, 0x03B4U, 0x03B5U, 0x03B6U, 0x03B7U, 0x03B8U, 0x03B9U, 0x03BAU, 0x03BBU, 0x03BCU, 0x03BDU, 0x03BEU, 0x03C0U, 0x03C1U, 0x03C3U,
+        0x03C4U, 0x03C5U, 0x03C7U, 0x03C8U, 0x03C9U, 0x25BCU, 0x25B6U, 0x25C0U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U, 0x0000U
+      };
+      switch (ch) {
+        case 0x00B5U : return 0xEAU;    // micro sign as mu
+        case 0x00DFU : return 0xE0U;    // sharp s as beta
+        default      : break;
+      }
+      for (std::uint8_t i = 0U; i < 128U; ++i) {
+        if (rom_0b[i] == ch) {
+          return static_cast<std::uint8_t>(0x80U + i);
+        }
       }
     }
     else {
