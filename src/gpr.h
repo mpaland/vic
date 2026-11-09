@@ -228,6 +228,7 @@ protected:
   // sector predicate: ring from inner radius - 0.5 (inside) to outer radius + 0.5 (outside) within the angle span,
   // the outer edge is the same as the one of a disc with the outer radius, so a pie equals a disc and a ring sits
   // exactly on the outside of a disc with radius inner_radius - 1
+  // a circle outline is the one pixel wide ring with inner radius = outer radius
   struct aa_sector_pred
   {
     std::int32_t cx, cy, ri2, ro2;
@@ -308,26 +309,6 @@ protected:
   }
 
 
-  // ring predicate: the one pixel wide ring of a circle outline (radius - 0.5 to radius + 0.5) within the angle span
-  struct aa_ring_pred
-  {
-    std::int32_t cx, cy, ri2, ro2;
-    aa_span      span;
-    aa_ring_pred(vertex_type center, std::uint16_t radius, std::int32_t s, std::int32_t e)
-      : cx(center.x * AA_SCALE), cy(center.y * AA_SCALE)
-      , ri2((radius * AA_SCALE - AA_SCALE / 2) * (radius * AA_SCALE - AA_SCALE / 2))
-      , ro2((radius * AA_SCALE + AA_SCALE / 2) * (radius * AA_SCALE + AA_SCALE / 2))
-      , span(s, e)
-    { }
-    inline bool operator()(std::int32_t X, std::int32_t Y) const
-    {
-      const std::int32_t dx = X - cx, dy = cy - Y;   // math coordinates
-      const std::int32_t d2 = dx * dx + dy * dy;
-      return (d2 >= ri2) && (d2 < ro2) && span(dx, dy);
-    }
-  };
-
-
   /**
    * Anti aliased circle outline, a one pixel wide ring rendered with coverage sampling
    * \param center Center vertex
@@ -347,7 +328,7 @@ protected:
     }
     else {
       const std::int32_t r1 = static_cast<std::int32_t>(radius) + 1;
-      aa_fill(pipe, center.x - r1, center.y - r1, center.x + r1, center.y + r1, aa_ring_pred(center, radius, s, e));
+      aa_fill(pipe, center.x - r1, center.y - r1, center.x + r1, center.y + r1, aa_sector_pred(center, radius, radius, s, e));
     }
     present_lock(false);
   }
