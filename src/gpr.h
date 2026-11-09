@@ -308,6 +308,32 @@ protected:
   }
 
 
+  /**
+   * Limit the span of a row to the pixels where an edge function of triangle_solid() is not negative
+   * \param w Value of the edge function at the start of the row (x = 0)
+   * \param a Increment of the edge function per pixel
+   * \param l First pixel of the span, is increased if necessary
+   * \param r Last pixel of the span, is decreased if necessary, the span is empty if r < l
+   */
+  static void edge_span(std::int32_t w, std::int32_t a, std::int32_t& l, std::int32_t& r)
+  {
+    if (a > 0) {
+      // rising: not negative from ceil(-w / a) on
+      if ((w < 0) && (l < (a - w - 1) / a)) {
+        l = (a - w - 1) / a;
+      }
+    }
+    else if (w < 0) {
+      // falling or constant and already negative: empty span
+      r = -1;
+    }
+    else if ((a < 0) && (r > w / -a)) {
+      // falling: not negative up to floor(w / -a)
+      r = w / -a;
+    }
+  }
+
+
   // triangle predicate: inside or on the edges of a clockwise wound triangle
   struct aa_triangle_pred
   {
@@ -869,24 +895,13 @@ public:
 
     // rasterize
     for (p.y = min_y; p.y <= max_y; ++p.y) {
-      // Barycentric coordinates at start of row
-      std::int32_t w0 = w0_row, w1 = w1_row, w2 = w2_row;
-      std::int16_t l_x = 0;
-      bool inside = false;
-      for (p.x = min_x; p.x <= max_x; ++p.x) {
-        // if p is on or inside all edges, render the pixel
-        if (!inside && w0 >= 0 && w1 >= 0 && w2 >= 0) {
-          inside = true;
-          l_x = p.x;
-        }
-
-        // one step to the right
-        w0 += a12; w1 += a20; w2 += a01;
-
-        if (inside && (w0 < 0 || w1 < 0 || w2 < 0)) {
-          line_horz({ l_x, p.y }, p);
-          break;
-        }
+      // the span of the row are the pixels where all three edge functions are not negative
+      std::int32_t xl = 0, xr = max_x - min_x;
+      edge_span(w0_row, a12, xl, xr);
+      edge_span(w1_row, a20, xl, xr);
+      edge_span(w2_row, a01, xl, xr);
+      if (xl <= xr) {
+        line_horz({ static_cast<std::int16_t>(min_x + xl), p.y }, { static_cast<std::int16_t>(min_x + xr), p.y });
       }
       // one row step
       w0_row += b12; w1_row += b20; w2_row += b01;
