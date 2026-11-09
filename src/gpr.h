@@ -1136,7 +1136,11 @@ public:
 
   /**
    * Fill a region with the drawing color
-   * This routine is only working on displays which support the pixel_get() function
+   * The region is drawn as horizontal spans via line_horz(), which is a native head function if no shader is active.
+   * This routine is only working on displays which support the pixel_get() function.
+   * Filled pixels are detected by reading them back, so the drawing color must be opaque and the shader pipe must
+   * not change colors (like gradient, tint, brush). Shaders which only move pixels (offset, zoom, flip, clipping) are fine.
+   * Opaque colors are compared as stored by the head (e.g. RGB565), they are probed at the start pixel.
    * \param start Start vertex inside the region to fill
    * \param color Color of the surrounding bound or the background color, depending on use_color_as_bounding
    * \param use_color_as_bounding True to use color as bouning color, false to use color as background color which should be filled
@@ -1158,7 +1162,8 @@ public:
 
       gpr&               gpr_;
       shader::base*      pipe_;                  // cached shader pipe
-      color::value_type  color_;
+      color::value_type  color_;                 // bounding or background color, as stored by the head if opaque
+      color::value_type  filled_;                // drawing color as stored by the head
       bool               use_color_as_bounding_;
       std::size_t        stack_count_;
       segment_type       stack_[VIC_GPR_FILL_STACK_SIZE / 8U];
@@ -1179,27 +1184,46 @@ public:
       inline bool test(const vertex_type& point) const
       {
         const color::value_type col = pipe_->pixel_get(point);
-        return (col == gpr_.color_)                         ||
+        return (col == filled_)                             ||
                ((col == color_) &&  use_color_as_bounding_) ||
                ((col != color_) && !use_color_as_bounding_);
       }
 
+      // draw the span x_start (inclusive) to x_end (exclusive) of row y
+      inline void span(std::int16_t x_start, std::int16_t x_end, std::int16_t y)
+      {
+        gpr_.line_horz({ x_start, y }, { static_cast<std::int16_t>(x_end - 1), y });
+      }
+
       void fill(const vertex_type& start)
       {
+        // compare the colors as stored by the head (e.g. RGB565): write them to the start pixel, which is filled anyway, and read them back
+        if (color::is_opaque(color_)) {
+          pipe_->pixel_set(start, color_);
+          color_ = pipe_->pixel_get(start);
+        }
+        pipe_->pixel_set(start, gpr_.color_);
+        filled_ = pipe_->pixel_get(start);
         stack_push({ start.x, static_cast<std::int16_t>(start.x + 1), start.y, 0, 1U, 1U });
-        pipe_->pixel_set({ start.x, start.y }, gpr_.color_);
 
         do {
           segment_type r = stack_pop();
           std::int16_t x_start = r.x_start, x_end = r.x_end;
+          // the extension pixels are only tested here and drawn as one span afterwards, they are never tested again
           if (r.scan_left) { // if we should extend the segment towards the left...
             while (x_start > 0 && !test({ static_cast<std::int16_t>(x_start - 1), r.y })) {
-              pipe_->pixel_set({ --x_start, r.y }, gpr_.color_);
+              --x_start;
+            }
+            if (x_start < r.x_start) {
+              span(x_start, r.x_start, r.y);
             }
           }
           if (r.scan_right) {
             while (x_end < gpr_.screen_width() && !test({ x_end, r.y })) {
-              pipe_->pixel_set({ x_end++, r.y }, gpr_.color_);
+              ++x_end;
+            }
+            if (x_end > r.x_end) {
+              span(r.x_end, x_end, r.y);
             }
           }
           // at this point, the segment from startX (inclusive) to endX (exclusive) is filled. compute the region to ignore
@@ -1220,11 +1244,11 @@ public:
         std::int16_t region_start = -1, x;
         for (x = x_start; x < x_end; ++x) { // scan the width of the parent segment
           if ((is_next_in_dir || x < ignore_start || x >= ignore_end) && !test({ x, y })) {   // if we're outside the region we should ignore and the cell is clear
-            pipe_->pixel_set({ x, y }, gpr_.color_);       // fill the cell
             if (region_start < 0)
-              region_start = x;             // and start a new segment if we haven't already
+              region_start = x;             // start a new segment if we haven't already, it's drawn when it ends
           }
           else if (region_start >= 0) {     // otherwise, if we shouldn't fill this cell and we have a current segment...
+            span(region_start, x, y);       // fill the segment
             stack_push({ region_start, x, y, dir, static_cast<std::uint8_t>(region_start == x_start ? 1U : 0U), 0U });   // push the segment
             region_start = -1;              // and end it
           }
@@ -1233,6 +1257,7 @@ public:
           }
         }
         if (region_start >= 0) {
+          span(region_start, x, y);
           stack_push({ region_start, x, y, dir, static_cast<std::uint8_t>(region_start == x_start ? 1U : 0U), 1U });
         }
       }
@@ -1242,6 +1267,7 @@ public:
         : gpr_(_gpr)
         , pipe_(_gpr.shader_pipe())
         , color_(color)
+        , filled_(_gpr.color_)
         , use_color_as_bounding_(use_color_as_bounding)
         , stack_count_(0U)
       {
@@ -1249,8 +1275,9 @@ public:
       }
     };
 
+    present_lock();
     floodfill _floodfill(*this, start, color, use_color_as_bounding);
-    present();
+    present_lock(false);
   }
 
 };

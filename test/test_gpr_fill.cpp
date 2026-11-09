@@ -6,9 +6,28 @@
 #include "helpers.h"
 #include "dc.h"
 #include "head/memory.h"
+#include "head/framebuffer.h"
 
 using namespace vic;
 using vic_test::PAL_X;
+
+
+namespace {
+
+// a memory head which counts the native line_horz() calls
+class line_head : public head::memory<10, 8>
+{
+public:
+  line_head() : lines_(0U) { }
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    ++lines_;
+    drv::line_horz(v0, v1, color);
+  }
+  std::uint32_t lines_;
+};
+
+} // namespace
 
 
 TEST_CASE(gpr_fill_bounded)
@@ -118,4 +137,79 @@ TEST_CASE(gpr_fill_start_on_bound)
   d.set_color(color::white);
   d.fill({ 2, 2 }, color::red);
   CHECK_EQ(vic_test::count_pixels(h, color::white), 1U);
+}
+
+
+TEST_CASE(gpr_fill_native_line_horz)
+{
+  // without shaders the spans are drawn with the native line_horz() of the head
+  line_head h;
+  dc d(h);
+  d.set_color(color::red);
+  d.rectangle({ 1, 1, 9, 7 });
+  const std::uint32_t lines = h.lines_;
+  d.set_color(color::white);
+  d.fill({ 4, 4 }, color::red);
+  CHECK_RASTER(h, vic_test::PAL_RG,
+    "..........",
+    ".RRRRRRRR.",
+    ".RWWWWWWR.",
+    ".RWWWWWWR.",
+    ".RWWWWWWR.",
+    ".RWWWWWWR.",
+    ".RRRRRRRR.",
+    "..........");
+  // the start row is extended to the left and right, each of the other 3 rows is one span
+  CHECK_EQ(h.lines_ - lines, 5U);
+}
+
+
+TEST_CASE(gpr_fill_shader_offset)
+{
+  // a shader which only moves the pixels: the spans are drawn through the shader pipe
+  head::memory<10, 8> h;
+  dc d(h);
+  shader::offset off({ 1, 1 });
+  d.shader_register(&off);
+  d.set_color(color::red);
+  d.rectangle({ 0, 0, 8, 6 });
+  d.set_color(color::white);
+  d.fill({ 3, 3 }, color::red);
+  CHECK_RASTER(h, vic_test::PAL_RG,
+    "..........",
+    ".RRRRRRRR.",
+    ".RWWWWWWR.",
+    ".RWWWWWWR.",
+    ".RWWWWWWR.",
+    ".RWWWWWWR.",
+    ".RRRRRRRR.",
+    "..........");
+  CHECK_EQ(h.present_count(), 2U);
+}
+
+
+TEST_CASE(gpr_fill_quantized_colors)
+{
+  // a RGB565 framebuffer stores red as 0xFFF80000 and white as 0xFFF8FCF8,
+  // the bound and the filled pixels are only found if the colors are compared as stored
+  head::memory<10, 8> m;
+  head::framebuffer<10, 8, 1, color::format_RGB565> fb(m);
+  dc d(fb);
+  d.set_color(color::red);
+  d.rectangle({ 1, 1, 9, 7 });
+  d.set_color(color::white);
+  d.fill({ 4, 4 }, color::red);
+  CHECK_EQ(vic_test::count_pixels(m, 0xFFF8FCF8UL), 24U);   // the 6 x 4 inside
+  CHECK_EQ(vic_test::count_pixels(m, 0xFFF80000UL), 24U);   // the frame is untouched
+  CHECK_EQ(d.pixel_get({ 0, 0 }), 0xFF000000UL);            // outside is untouched (black framebuffer)
+
+  // background mode with a color which RGB565 can't store exactly
+  d.cls(0xFF123456UL);
+  const color::value_type bg = d.pixel_get({ 5, 5 });
+  CHECK(bg != 0xFF123456UL);
+  d.set_color(0xFFABCDEFUL);
+  d.fill({ 0, 0 }, 0xFF123456UL, false);
+  const color::value_type filled = d.pixel_get({ 5, 5 });
+  CHECK(filled != bg);
+  CHECK_EQ(vic_test::count_pixels_not(m, filled), 0U);       // the whole screen is filled
 }
