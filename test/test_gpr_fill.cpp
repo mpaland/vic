@@ -7,6 +7,7 @@
 #include "dc.h"
 #include "head/memory.h"
 #include "head/framebuffer.h"
+#include "shader/gradient.h"
 
 using namespace vic;
 using vic_test::PAL_X;
@@ -212,4 +213,27 @@ TEST_CASE(gpr_fill_quantized_colors)
   const color::value_type filled = d.pixel_get({ 5, 5 });
   CHECK(filled != bg);
   CHECK_EQ(vic_test::count_pixels_not(m, filled), 0U);       // the whole screen is filled
+}
+
+
+TEST_CASE(gpr_fill_gradient_shader)
+{
+  // like demo_clock: a circle filled through a gradient shader, the pen is the bounding color
+  head::memory<21, 21> h;
+  dc d(h);
+  d.set_color(color::gray);
+  d.circle({ 10, 10 }, 8U);
+  shader::gradient<2> gr = { { { 2, 10 }, color::darkred }, { { 18, 10 }, color::darkblue } };
+  d.shader_register(&gr);
+  d.fill({ 10, 10 }, color::gray);
+  d.shader_remove(&gr);
+
+  // the fill stays inside the circle: same pixel count as the disc
+  head::memory<21, 21> ref;
+  dc r(ref);
+  r.disc({ 10, 10 }, 8U);
+  CHECK_EQ(vic_test::count_pixels(h, color::none), vic_test::count_pixels(ref, color::none));
+  CHECK_EQ(h.pixel({ 2, 10 }), color::gray);      // the circle is untouched
+  CHECK(h.pixel({ 10, 10 }) != color::gray);      // the inside has the gradient colors
+  CHECK(h.pixel({ 10, 10 }) != color::none);
 }

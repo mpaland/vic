@@ -1138,9 +1138,9 @@ public:
    * Fill a region with the drawing color
    * The region is drawn as horizontal spans via line_horz(), which is a native head function if no shader is active.
    * This routine is only working on displays which support the pixel_get() function.
-   * Filled pixels are detected by reading them back, so the drawing color must be opaque and the shader pipe must
-   * not change colors (like gradient, tint, brush). Shaders which only move pixels (offset, zoom, flip, clipping) are fine.
-   * Opaque colors are compared as stored by the head (e.g. RGB565), they are probed at the start pixel.
+   * Filled pixels are detected by reading them back, which is reliable with an opaque drawing color and shaders which only
+   * move pixels (offset, zoom, flip, clipping). With shaders which change colors (like gradient, tint) it depends on the region.
+   * The colors are compared as given and as stored by the head (e.g. RGB565), which is probed at the start pixel.
    * \param start Start vertex inside the region to fill
    * \param color Color of the surrounding bound or the background color, depending on use_color_as_bounding
    * \param use_color_as_bounding True to use color as bouning color, false to use color as background color which should be filled
@@ -1162,7 +1162,8 @@ public:
 
       gpr&               gpr_;
       shader::base*      pipe_;                  // cached shader pipe
-      color::value_type  color_;                 // bounding or background color, as stored by the head if opaque
+      color::value_type  color_;                 // bounding or background color
+      color::value_type  stored_;                // bounding or background color as stored by the head
       color::value_type  filled_;                // drawing color as stored by the head
       bool               use_color_as_bounding_;
       std::size_t        stack_count_;
@@ -1181,12 +1182,11 @@ public:
       // returns true if pixel is of : drawing color or
       // use_color_as_bounding_ == true  : bounding color
       // use_color_as_bounding_ == false : not of background color
+      // the colors are compared as given and as stored by the head
       inline bool test(const vertex_type& point) const
       {
         const color::value_type col = pipe_->pixel_get(point);
-        return (col == filled_)                             ||
-               ((col == color_) &&  use_color_as_bounding_) ||
-               ((col != color_) && !use_color_as_bounding_);
+        return (col == gpr_.color_) || (col == filled_) || (((col == color_) || (col == stored_)) == use_color_as_bounding_);
       }
 
       // draw the span x_start (inclusive) to x_end (exclusive) of row y
@@ -1197,10 +1197,10 @@ public:
 
       void fill(const vertex_type& start)
       {
-        // compare the colors as stored by the head (e.g. RGB565): write them to the start pixel, which is filled anyway, and read them back
+        // the colors as stored by the head (e.g. RGB565): write them to the start pixel, which is filled anyway, and read them back
         if (color::is_opaque(color_)) {
           pipe_->pixel_set(start, color_);
-          color_ = pipe_->pixel_get(start);
+          stored_ = pipe_->pixel_get(start);
         }
         pipe_->pixel_set(start, gpr_.color_);
         filled_ = pipe_->pixel_get(start);
@@ -1267,6 +1267,7 @@ public:
         : gpr_(_gpr)
         , pipe_(_gpr.shader_pipe())
         , color_(color)
+        , stored_(color)
         , filled_(_gpr.color_)
         , use_color_as_bounding_(use_color_as_bounding)
         , stack_count_(0U)
