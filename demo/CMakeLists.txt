@@ -38,7 +38,7 @@ else()
   set(VIC_DEMO_LIBS X11::X11)
 endif()
 
-set(VIC_DEMOS demo_sprite demo_clock demo_aa demo_font demo_vecfont demo_gauges demo_widget demo_input)
+set(VIC_DEMOS demo_sprite demo_clock demo_aa demo_font demo_vecfont demo_gauges demo_widget demo_input demo_fill)
 
 foreach(demo ${VIC_DEMOS})
   add_executable(vic_${demo} ${VIC_DEMO_MAIN} ${demo}.cpp)

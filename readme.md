@@ -581,8 +581,9 @@ VIC itself is header only and needs no build. The repository contains a CMake pr
 (`test/`) and, on Windows and Linux (X11), the demos (`demo/`): a clock, a sprite demo (`demo_sprite.cpp` with sprite sheets,
 rotation and anti aliasing), the anti aliasing comparison (`demo_aa.cpp`), a font demo (`demo_font.cpp`, cycles
 through all fonts with a pangram, digits and Latin-1 samples), the widget demo (`demo_widget.cpp`, every widget
-with its features), the gauge demo (`demo_gauges.cpp`, an aircraft engine page) and the input demo
-(`demo_input.cpp`, a settings page operated by a simulated touch).
+with its features), the gauge demo (`demo_gauges.cpp`, an aircraft engine page), the input demo
+(`demo_input.cpp`, a settings page operated by a simulated touch) and the fill demo (`demo_fill.cpp`, the flood fill
+in slow motion on a RGB565 framebuffer).
 
 `demo/heads/` holds one small portable program per head (`vic_head_<name>`): it instantiates the head for a common
 module with the orientation the module needs, draws a test scene and runs with the tracing io layer
