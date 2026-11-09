@@ -275,6 +275,39 @@ protected:
   };
 
 
+  /**
+   * Anti aliased sector or ring
+   * Only the pixels of a row which can be touched by the ring are tested: the ones which are not
+   * completely outside of the outer circle and not completely inside of the hole
+   * \param pipe The shader pipe
+   * \param center Center vertex
+   * \param inner_radius Inner sector radius
+   * \param outer_radius Outer sector radius
+   * \param s Start angle (normalized, 0 - 359)
+   * \param e End angle, > s, <= s + 360
+   */
+  void aa_sector(shader::base* pipe, vertex_type center, std::uint16_t inner_radius, std::uint16_t outer_radius, std::int32_t s, std::int32_t e)
+  {
+    const aa_sector_pred pred(center, inner_radius, outer_radius, s, e);
+    // half pixel units: the ring is ri <= distance < ro, the nearest point of a pixel is 2 * |d| - 1, the farthest 2 * |d| + 1
+    const std::int32_t ro = 2 * outer_radius + 1, ri = 2 * inner_radius - 1;
+    for (std::int32_t dy = -static_cast<std::int32_t>(outer_radius); dy <= static_cast<std::int32_t>(outer_radius); ++dy) {
+      const std::int32_t y    = center.y + dy;
+      const std::int32_t df   = 2 * util::abs(dy) + 1;    // farthest
+      const std::int32_t dn   = dy ? df - 2 : 0;          // nearest
+      const std::int32_t xo   = static_cast<std::int32_t>(util::isqrt(static_cast<std::uint32_t>(ro * ro - dn * dn)) + 1U) / 2;        // last pixel to test
+      const std::int32_t xi   = df < ri ? static_cast<std::int32_t>(util::isqrt(static_cast<std::uint32_t>(ri * ri - df * df))) / 2 : 0;   // first pixel to test
+      if (xi == 0) {
+        aa_fill(pipe, center.x - xo, y, center.x + xo, y, pred);
+      }
+      else {
+        aa_fill(pipe, center.x - xo, y, center.x - xi, y, pred);
+        aa_fill(pipe, center.x + xi, y, center.x + xo, y, pred);
+      }
+    }
+  }
+
+
   // triangle predicate: inside or on the edges of a clockwise wound triangle
   struct aa_triangle_pred
   {
@@ -354,8 +387,7 @@ protected:
       }
     }
     else {
-      const std::int32_t r1 = static_cast<std::int32_t>(radius) + 1;
-      aa_fill(pipe, center.x - r1, center.y - r1, center.x + r1, center.y + r1, aa_sector_pred(center, radius, radius, s, e));
+      aa_sector(pipe, center, radius, radius, s, e);
     }
     present_lock(false);
   }
@@ -1090,9 +1122,8 @@ public:
 
     if (anti_aliasing_) {
       shader::base* const pipe = shader_pipe();
-      const std::int32_t r1 = static_cast<std::int32_t>(outer_radius) + 1;
       present_lock();
-      aa_fill(pipe, center.x - r1, center.y - r1, center.x + r1, center.y + r1, aa_sector_pred(center, inner_radius, outer_radius, s, e));
+      aa_sector(pipe, center, inner_radius, outer_radius, s, e);
       present_lock(false);
       return;
     }
