@@ -96,6 +96,14 @@ int main()
     static void disc(vic::dc& d)          { d.disc({ 120, 80 }, 60U); }
     static void sector(vic::dc& d)        { d.sector({ 120, 80 }, 20U, 60U, 30U, 300U); }
     static void triangle(vic::dc& d)      { d.triangle_solid({ 10, 150 }, { 120, 10 }, { 230, 150 }); }
+    // anti aliased
+    static void aa_line(vic::dc& d)       { d.anti_aliasing_enable(); d.line({ 5, 10 }, { 230, 60 }); }
+    static void aa_circle(vic::dc& d)     { d.anti_aliasing_enable(); d.circle({ 120, 80 }, 60U); }
+    static void aa_disc(vic::dc& d)       { d.anti_aliasing_enable(); d.disc({ 120, 80 }, 60U); }
+    static void aa_sector(vic::dc& d)     { d.anti_aliasing_enable(); d.sector({ 120, 80 }, 20U, 60U, 30U, 300U); }
+    static void aa_ring(vic::dc& d)       { d.anti_aliasing_enable(); d.sector({ 120, 80 }, 54U, 60U, 30U, 300U); }
+    static void aa_triangle(vic::dc& d)   { d.anti_aliasing_enable(); d.triangle_solid({ 10, 150 }, { 120, 10 }, { 230, 150 }); }
+    static void aa_rect_rounded(vic::dc& d) { d.anti_aliasing_enable(); d.rectangle(vic::rect_type{ 20, 20, 220, 140 }, 40U); }
   };
 
   std::printf("vic gpr micro benchmark, %s, 240 x 160 memory head\n\n", VIC_HEAD_MEMORY_VERSION);
@@ -110,5 +118,12 @@ int main()
   bench("disc r60",              &ops::disc);
   bench("sector 20..60 30..300", &ops::sector);
   bench("triangle solid",        &ops::triangle);
+  bench("aa line shallow",       &ops::aa_line);
+  bench("aa circle r60",         &ops::aa_circle);
+  bench("aa disc r60",           &ops::aa_disc);
+  bench("aa sector 20..60",      &ops::aa_sector);
+  bench("aa ring 54..60",        &ops::aa_ring);
+  bench("aa triangle solid",     &ops::aa_triangle);
+  bench("aa rectangle rounded r40", &ops::aa_rect_rounded);
   return 0;
 }
