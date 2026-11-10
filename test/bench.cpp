@@ -104,6 +104,9 @@ int main()
     static void aa_ring(vic::dc& d)       { d.anti_aliasing_enable(); d.sector({ 120, 80 }, 54U, 60U, 30U, 300U); }
     static void aa_triangle(vic::dc& d)   { d.anti_aliasing_enable(); d.triangle_solid({ 10, 150 }, { 120, 10 }, { 230, 150 }); }
     static void aa_rect_rounded(vic::dc& d) { d.anti_aliasing_enable(); d.rectangle(vic::rect_type{ 20, 20, 220, 140 }, 40U); }
+    // pen width
+    static void line_wide(vic::dc& d)     { d.set_pen_width(5U); d.line({ 5, 10 }, { 230, 60 }); }
+    static void aa_line_wide(vic::dc& d)  { d.anti_aliasing_enable(); d.set_pen_width(5U); d.line({ 5, 10 }, { 230, 60 }); }
   };
 
   std::printf("vic gpr micro benchmark, %s, 240 x 160 memory head\n\n", VIC_HEAD_MEMORY_VERSION);
@@ -125,5 +128,7 @@ int main()
   bench("aa ring 54..60",        &ops::aa_ring);
   bench("aa triangle solid",     &ops::aa_triangle);
   bench("aa rectangle rounded r40", &ops::aa_rect_rounded);
+  bench("line shallow, pen 5",   &ops::line_wide);
+  bench("aa line shallow, pen 5", &ops::aa_line_wide);
   return 0;
 }

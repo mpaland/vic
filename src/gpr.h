@@ -52,6 +52,7 @@ class gpr
 
   bool              anti_aliasing_;   // true if AA is enabled
   color::value_type color_;           // actual drawing color
+  std::uint16_t     pen_width_;       // pen width in pixel, >= 1
 
 protected:
 
@@ -70,6 +71,7 @@ protected:
   gpr()
     : anti_aliasing_(false)   // no AA as default
     , color_(color::gray)     // default drawing color
+    , pen_width_(1U)          // one pixel pen
   { }
 
 
@@ -395,6 +397,99 @@ protected:
   }
 
 
+  // stroke predicate: the rectangle around a segment, half the pen width to both sides and half a pixel
+  // beyond the end points (butt caps which cover the end pixels, like an axis aligned line)
+  struct aa_stroke_pred
+  {
+    std::int32_t x0, y0, dx, dy, len2, len, half, cap;
+    aa_stroke_pred(vertex_type v0, vertex_type v1, std::uint16_t width)
+      : x0(v0.x * AA_SCALE), y0(v0.y * AA_SCALE), dx((v1.x - v0.x) * AA_SCALE), dy((v1.y - v0.y) * AA_SCALE)
+      , len2(dx * dx + dy * dy), len(static_cast<std::int32_t>(util::isqrt(static_cast<std::uint32_t>(len2))))
+      , half(width * (AA_SCALE / 2) * len), cap((AA_SCALE / 2) * len)
+    { }
+    inline bool operator()(std::int32_t X, std::int32_t Y) const
+    {
+      const std::int32_t rx = X - x0, ry = Y - y0;
+      const std::int32_t c = rx * dy - ry * dx, d = rx * dx + ry * dy;    // distance to / along the segment, times len
+      return (c <= half) && (c > -half) && (d >= -cap) && (d <= len2 + cap);
+    }
+  };
+
+
+  /**
+   * Line with a pen width > 1
+   * An axis aligned line is a box, even widths get the extra pixel at the bottom / right.
+   * A sloped line is the stroke rectangle around the segment, see aa_stroke_pred. Its four edge functions
+   * are linear, so the span of every row is computed with edge_span() and every pixel is written once.
+   * The line must not be longer than 4000 pixels to avoid overflows in the 32 bit math.
+   * \param v0 Start vertex
+   * \param v1 End vertex
+   */
+  void line_wide(vertex_type v0, vertex_type v1)
+  {
+    const std::int32_t w = pen_width_;
+    if ((v0.x == v1.x) || (v0.y == v1.y)) {
+      const bool horz = v0.y == v1.y;
+      util::min_max_swap(v0.x, v1.x);
+      util::min_max_swap(v0.y, v1.y);
+      box({ static_cast<std::int16_t>(v0.x - (horz ? 0 : (w - 1) / 2)), static_cast<std::int16_t>(v0.y - (horz ? (w - 1) / 2 : 0)),
+            static_cast<std::int16_t>(v1.x + (horz ? 0 : w / 2) + 1),   static_cast<std::int16_t>(v1.y + (horz ? w / 2 : 0) + 1) });
+      return;
+    }
+
+    shader::base* const pipe = shader_pipe();
+    const aa_stroke_pred pred(v0, v1, pen_width_);
+    const std::int32_t m      = anti_aliasing_ ? pred.len * AA_SCALE : 0;   // one pixel more to get the partly covered pixels
+    const std::int32_t left   = util::min2(v0.x, v1.x) - w / 2 - 1, right  = util::max2(v0.x, v1.x) + w / 2 + 1;
+    const std::int32_t top    = util::min2(v0.y, v1.y) - w / 2 - 1, bottom = util::max2(v0.y, v1.y) + w / 2 + 1;
+
+    present_lock();
+    for (std::int32_t y = top; y <= bottom; ++y) {
+      // edge functions at the first pixel of the row
+      const std::int32_t rx = left * AA_SCALE - pred.x0, ry = y * AA_SCALE - pred.y0;
+      const std::int32_t c = rx * pred.dy - ry * pred.dx, d = rx * pred.dx + ry * pred.dy;
+      std::int32_t xl = 0, xr = right - left;
+      edge_span(pred.half + m - c,            -AA_SCALE * pred.dy, xl, xr);
+      edge_span(pred.half + m + c - 1,         AA_SCALE * pred.dy, xl, xr);
+      edge_span(pred.cap + m + d,              AA_SCALE * pred.dx, xl, xr);
+      edge_span(pred.len2 + pred.cap + m - d, -AA_SCALE * pred.dx, xl, xr);
+      if (xl <= xr) {
+        if (anti_aliasing_) {
+          aa_fill(pipe, left + xl, y, left + xr, y, pred, true);
+        }
+        else {
+          line_horz({ static_cast<std::int16_t>(left + xl), static_cast<std::int16_t>(y) }, { static_cast<std::int16_t>(left + xr), static_cast<std::int16_t>(y) });
+        }
+      }
+    }
+    present_lock(false);
+  }
+
+
+  /**
+   * Round joint of two lines with a pen width > 1: a disc with the pen width as diameter
+   * \param v Vertex of the joint
+   */
+  void pen_joint(vertex_type v)
+  {
+    const std::int32_t w = pen_width_, h = w / 2;
+    if (anti_aliasing_) {
+      aa_disc_pred pred(v, 0U);
+      pred.r2 = (w * AA_SCALE / 2) * (w * AA_SCALE / 2);
+      aa_fill(shader_pipe(), v.x - h - 1, v.y - h - 1, v.x + h + 1, v.y + h + 1, pred, true);
+      return;
+    }
+    for (std::int32_t dy = -h; dy <= h; ++dy) {
+      // half pixel units: pixels with a center distance < w / 2
+      const std::int32_t d2 = w * w - 4 * dy * dy - 1;
+      if (d2 >= 0) {
+        const std::int32_t ext = static_cast<std::int32_t>(util::isqrt(static_cast<std::uint32_t>(d2))) / 2;
+        line_horz({ static_cast<std::int16_t>(v.x - ext), static_cast<std::int16_t>(v.y + dy) }, { static_cast<std::int16_t>(v.x + ext), static_cast<std::int16_t>(v.y + dy) });
+      }
+    }
+  }
+
+
   /**
    * Anti aliased circle outline, a one pixel wide ring rendered with coverage sampling
    * \param center Center vertex
@@ -469,6 +564,30 @@ public:
   color::value_type get_color() const
   {
     return color_;
+  }
+
+
+  /**
+   * Set the pen width
+   * Affected primitives: line, polyline, triangle, rectangle and circle. A sloped line has butt caps,
+   * polylines and triangles get round joints (with a translucent pen the joints are blended twice).
+   * A wide rectangle grows inwards, the pen width of a rounded rectangle is limited to its border radius.
+   * A wide circle is the ring around its radius.
+   * \param width Pen width in pixel, 1 is default
+   */
+  void set_pen_width(std::uint16_t width)
+  {
+    pen_width_ = static_cast<std::uint16_t>(width ? width : 1U);
+  }
+
+
+  /**
+   * Get the pen width
+   * \return Actual pen width in pixel
+   */
+  std::uint16_t get_pen_width() const
+  {
+    return pen_width_;
   }
 
 
@@ -552,6 +671,10 @@ public:
    */
   void line(vertex_type v0, vertex_type v1)
   {
+    if (pen_width_ > 1U) {
+      line_wide(v0, v1);
+      return;
+    }
     // axis aligned lines are horizontal/vertical lines, which the head may draw natively
     if (v0.y == v1.y) {
       line_horz(v0, v1);
@@ -726,6 +849,22 @@ public:
       // empty rect
       return;
     }
+    if (pen_width_ > 1U) {
+      // wide frame: four boxes, the frame grows inwards
+      const std::int32_t w = pen_width_;
+      if ((rect.right - rect.left <= 2 * w) || (rect.bottom - rect.top <= 2 * w)) {
+        box(rect);
+        return;
+      }
+      const std::int16_t yt = static_cast<std::int16_t>(rect.top + w), yb = static_cast<std::int16_t>(rect.bottom - w);
+      present_lock();
+      box({ rect.left, rect.top, rect.right, yt });
+      box({ rect.left, yb, rect.right, rect.bottom });
+      box({ rect.left, yt, static_cast<std::int16_t>(rect.left + w), yb });
+      box({ static_cast<std::int16_t>(rect.right - w), yt, rect.right, yb });
+      present_lock(false);
+      return;
+    }
     const std::int16_t x1 = static_cast<std::int16_t>(rect.right - 1);    // inside coordinates
     const std::int16_t y1 = static_cast<std::int16_t>(rect.bottom - 1);
 
@@ -776,6 +915,25 @@ public:
     const std::int16_t y0 = rect.top,   y1 = static_cast<std::int16_t>(rect.bottom - 1);
     const std::uint16_t ur = static_cast<std::uint16_t>(r);
 
+    if (pen_width_ > 1U) {
+      // wide frame: the same tiling as below with boxes and ring quarters, the pen width is limited to the radius
+      // anti aliased quarters only cover their start and end row / column by half, so the boxes include both
+      const std::int16_t  w  = static_cast<std::int16_t>(pen_width_ < ur ? pen_width_ : ur);
+      const std::int16_t  o  = anti_aliasing_ ? 0 : 1;
+      const std::uint16_t ri = static_cast<std::uint16_t>(r - w + 1), ro = static_cast<std::uint16_t>(r + o);
+      present_lock();
+      box({ static_cast<std::int16_t>(x0 + r + o), y0, static_cast<std::int16_t>(x1 - r + 1), static_cast<std::int16_t>(y0 + w) });           // top
+      box({ x0, static_cast<std::int16_t>(y0 + r), static_cast<std::int16_t>(x0 + w), static_cast<std::int16_t>(y1 - r - o + 1) });           // left
+      box({ static_cast<std::int16_t>(x0 + r), static_cast<std::int16_t>(y1 - w + 1), static_cast<std::int16_t>(x1 - r - o + 1), rect.bottom });   // bottom
+      box({ static_cast<std::int16_t>(x1 - w + 1), static_cast<std::int16_t>(y0 + r + o), rect.right, static_cast<std::int16_t>(y1 - r + 1) });    // right
+      sector({ static_cast<std::int16_t>(x1 - r), static_cast<std::int16_t>(y0 + r) }, ri, ro,   0U,  90U);   // top/right
+      sector({ static_cast<std::int16_t>(x0 + r), static_cast<std::int16_t>(y0 + r) }, ri, ro,  90U, 180U);   // top/left
+      sector({ static_cast<std::int16_t>(x0 + r), static_cast<std::int16_t>(y1 - r) }, ri, ro, 180U, 270U);   // bottom/left
+      sector({ static_cast<std::int16_t>(x1 - r), static_cast<std::int16_t>(y1 - r) }, ri, ro, 270U, 360U);   // bottom/right
+      present_lock(false);
+      return;
+    }
+
     // The quarter circles are half open arcs: they include their start angle point but not
     // their end angle point (the 90°, 180°, 270° and 360° points). These four points are
     // covered by the straight lines, so every frame pixel is written exactly once.
@@ -819,6 +977,9 @@ public:
     present_lock();
     for (std::size_t n = 0U; n + 1U < vertex_count; ++n) {
       line(vertices[n], vertices[n + 1U]);
+      if ((pen_width_ > 1U) && (n + 2U < vertex_count)) {
+        pen_joint(vertices[n + 1U]);
+      }
     }
     present_lock(false);    // present
   }
@@ -836,6 +997,11 @@ public:
     line(v0, v1);
     line(v1, v2);
     line(v2, v0);
+    if (pen_width_ > 1U) {
+      pen_joint(v0);
+      pen_joint(v1);
+      pen_joint(v2);
+    }
     present_lock(false);  // present
   }
 
@@ -926,6 +1092,13 @@ public:
       end_angle = 360U;
     }
     if (start_angle >= end_angle) {
+      return;
+    }
+    if (pen_width_ > 1U) {
+      // a wide circle is the ring around the radius (the outer radius of a solid sector is outside)
+      const std::uint16_t in = static_cast<std::uint16_t>((pen_width_ - 1U) / 2U);
+      sector(center, static_cast<std::uint16_t>(radius > in ? radius - in : 0U),
+             static_cast<std::uint16_t>(radius + pen_width_ / 2U + (anti_aliasing_ ? 0U : 1U)), start_angle, end_angle);
       return;
     }
     if (anti_aliasing_) {

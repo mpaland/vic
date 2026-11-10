@@ -498,3 +498,38 @@ TEST_CASE(gpr_aa_sprite)
   CHECK_EQ(h.pixel({ 14, 14 }), color::blue);
   CHECK_EQ(h.pixel({ 11, 11 }), color::blue);
 }
+
+
+TEST_CASE(gpr_aa_pen_width)
+{
+  // the coverage of a wide line sums up to the area of its stroke: width * (length + 1)
+  for (std::uint16_t w = 2U; w <= 5U; ++w) {
+    aa_dc a;
+    a.d.set_pen_width(w);
+    a.d.line({ 4, 6 }, { 19, 14 });     // length 17
+    const std::uint32_t area = w * 18U * 255U;
+    const std::uint32_t sum  = total_alpha(a.head);
+    CHECK(sum + area / 50U >= area);
+    CHECK(sum <= area + area / 50U);
+    // the butt caps end half a pixel behind the end points, which covers 15 of the 16 samples of the end pixels
+    CHECK_EQ(alpha_at(a.head, 4, 6), 239U);
+    CHECK_EQ(alpha_at(a.head, 19, 14), 239U);
+    CHECK_EQ(alpha_at(a.head, 12, 10), 255U);
+    CHECK_EQ(alpha_at(a.head, 4, 12), 0U);
+    CHECK_EQ(a.head.oob_count(), 0U);
+  }
+
+  // joints (blended, the lines overlap there): the round joint closes the outer corner of a polyline
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+  d.anti_aliasing_enable(true);
+  d.set_color(color::white);
+  d.set_pen_width(4U);
+  static const vertex_type v[] = { { 3, 18 }, { 11, 5 }, { 20, 18 } };
+  d.polyline(v, 3U);
+  CHECK_EQ(h.pixel({ 11, 5 }), color::white);
+  CHECK_EQ(h.pixel({ 11, 4 }), color::white);
+  CHECK_EQ(h.pixel({ 11, 6 }), color::white);
+  CHECK_EQ(h.pixel({ 11, 2 }), color::blue);
+}

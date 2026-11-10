@@ -124,6 +124,17 @@ All rects (`rect_type`) are right/bottom **exclusive**, like `{ left, top, right
 clockwise. Angle intervals like in `sector()` are half open (`[start, end)`), so adjacent sectors tile without gaps
 or double drawn pixels.
 
+Outlines are one pixel wide by default, `set_pen_width()` makes `line()`, `polyline()`, `triangle()`, `rectangle()`
+and `circle()` wider:
+- A line is the rectangle around its segment with butt caps, an axis aligned line is a box (an even width has its
+  extra pixel at the bottom / right). Every pixel is written once, so translucent pens work.
+- Polylines and triangles get round joints. The joints overlap the lines, a translucent pen is blended twice there.
+- A rectangle grows inwards, its outer size stays the rect. The pen width of a rounded rectangle is limited to its
+  border radius.
+- A circle is the ring around its radius, like `sector()` with the radii `radius - (width - 1) / 2` and
+  `radius + width / 2`.
+- `line_horz()` and `line_vert()` always stay one pixel wide, filled primitives and text are not affected.
+
 ### txr
 The Text Renderer is responsible for rendering text fonts on graphic displays. It supports antialiasing, monospaced and proportional fonts.
 
@@ -296,6 +307,8 @@ math is used anywhere.
   `[start, end)`, and a triangle covers everything on or inside its edges. The result has the same visual size as the
   non anti aliased primitive. Fully covered pixels are drawn as solid horizontal runs, so the interior is
   still rendered with the native line functions of the head and only the edge pixels are single alpha pixels.
+- **Wide lines** (pen width > 1) are sampled like the filled primitives against the rectangle of their stroke, their
+  round joints against a disc, wide circles are ring sectors.
 - Rounded boxes and rectangles get anti aliased corners, their straight parts stay as they are.
 - Not affected: pixels, axis aligned lines, boxes, plain rectangles and text. Fonts bring their own anti aliasing with
   2, 4 or 8 bit per pixel glyphs, the text renderer maps the pixel intensity to the alpha channel in the same way.
@@ -426,6 +439,8 @@ dc(drv& head);                                            // drawing context on 
 // state
 void set_color(color::value_type color);                  // pen color
 color::value_type get_color() const;
+void set_pen_width(std::uint16_t width);                  // line, polyline, triangle, rectangle, circle; default 1
+std::uint16_t get_pen_width() const;
 void set_bg_color(color::value_type bg);                  // blend background for write-only heads
 void anti_aliasing_enable(bool enable = true);
 void alpha_blending_enable(bool enable = true);

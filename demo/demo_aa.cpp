@@ -30,8 +30,8 @@
 // dc::anti_aliasing_enable().
 // Shown are:
 // - a fan of lines with all slopes (Wu lines)
-// - circle, disc, rounded box, ring sectors (pie chart)
-// - a rotating clock hand, a rotating triangle and a sweeping spinner
+// - circle, disc, rounded box, rounded rectangle (pen width 2), ring sectors (pie chart)
+// - a rotating clock hand (pen width 3), a rotating triangle and a sweeping spinner
 // - a translucent disc, anti aliasing and alpha blending work together
 // - a 3x magnifier at the bottom which shows the pixels of the moving hand
 // The background is a gradient, so the edge pixels are blended with different
@@ -149,7 +149,9 @@ void render_static(vic::dc& _dc, std::int16_t xo)
   // R O U N D E D   B O X
   _dc.set_color(COL_BOX);
   _dc.box(R(xo, 136, 24, 158, 54), 7U);
+  _dc.set_pen_width(2U);
   _dc.rectangle(R(xo, 136, 58, 158, 78), 5U);
+  _dc.set_pen_width(1U);
 }
 
 
@@ -175,7 +177,9 @@ void render_animated(vic::dc& _dc, std::int16_t xo, std::uint32_t t)
       _dc.line(vic::util::vertex_rotate(P(xo, 32, 116 - 24), c, a), vic::util::vertex_rotate(P(xo, 32, 116 - 27), c, a));
     }
     _dc.set_color(COL_HAND);
+    _dc.set_pen_width(3U);
     _dc.line(c, vic::util::vertex_rotate(P(xo, 32, 116 - 25), c, hand_angle));
+    _dc.set_pen_width(1U);
     _dc.line(c, vic::util::vertex_rotate(P(xo, 32, 116 + 6), c, hand_angle));
     _dc.disc(c, 2U);
   }
