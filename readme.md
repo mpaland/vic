@@ -618,6 +618,30 @@ C++11 mode (GCC, Clang); `-DVIC_TEST_ASAN=ON` builds them with address and undef
 The test framework (`test/vic_test.h`) is self contained, the tests render on the `memory` head and compare the result
 with ASCII art rasters, so new primitives and heads are easy to test.
 
+### Using VIC in your project
+VIC is header only, so the `src` folder on the include path is all it needs. With CMake there are three ways to get
+the `vic::vic` interface target:
+```cmake
+# installed package: cmake --install build --prefix <prefix>, then
+find_package(vic CONFIG REQUIRED)
+
+# or fetched at configure time
+include(FetchContent)
+FetchContent_Declare(vic GIT_REPOSITORY https://github.com/mpaland/vic.git GIT_TAG v2.1.0)   # x-release-please-version
+FetchContent_MakeAvailable(vic)
+
+# or as a sub folder / git submodule
+add_subdirectory(vic)
+
+target_link_libraries(my_app PRIVATE vic::vic)
+```
+Tests, demos and install rules are only generated if VIC is the top level project (`-DVIC_INSTALL=ON` forces the
+install rules). With PlatformIO add the repository to the `lib_deps` of your `platformio.ini` (`library.json` is the
+manifest):
+```ini
+lib_deps = https://github.com/mpaland/vic.git
+```
+
 
 ## Projects Using VIC
 - [turnkeyboard](https://github.com/mpaland/turnkeyboard) uses VIC as universal display library.

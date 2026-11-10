@@ -70,6 +70,12 @@ jobs:
           head -10 diag.log | sed -E 's/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::error file=\1,line=\2,col=\3::\5/'
       - name: Test
         run: ctest --test-dir build --output-on-failure
+      - name: Package
+        run: |
+          cmake --install build --prefix "$RUNNER_TEMP/vic"
+          cmake -S test/package -B build-package -DCMAKE_PREFIX_PATH="$RUNNER_TEMP/vic"
+          cmake --build build-package
+          ctest --test-dir build-package --output-on-failure
 
   sanitizers:
     name: ASan + UBSan (clang, ubuntu-latest)
