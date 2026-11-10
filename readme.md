@@ -120,8 +120,8 @@ Furthermore the `gpr` should be a collection of the fastest implementations of t
 So, if you find any errors, have speed improvements or even a better algorithm for some primitives - **please** share and contribute!
 
 All rects (`rect_type`) are right/bottom **exclusive**, like `{ left, top, right, bottom }` covers the pixels
-`left <= x < right` and `top <= y < bottom`. Angles are given in degrees, 0° is at 12 o'clock and angles run
-clockwise. Angle intervals like in `sector()` are half open (`[start, end)`), so adjacent sectors tile without gaps
+`left <= x < right` and `top <= y < bottom`. Angles are given in degrees, 0° is at 3 o'clock and angles run
+counter clockwise. Angle intervals like in `sector()` are half open (`[start, end)`), so adjacent sectors tile without gaps
 or double drawn pixels.
 
 Outlines are one pixel wide by default, `set_pen_width()` makes `line()`, `polyline()`, `triangle()`, `rectangle()`
