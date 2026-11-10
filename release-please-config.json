@@ -16,7 +16,11 @@
   ],
   "packages": {
     ".": {
-      "extra-files": [ "CMakeLists.txt" ]
+      "extra-files": [
+        "CMakeLists.txt",
+        "readme.md",
+        { "type": "json", "path": "library.json", "jsonpath": "$.version" }
+      ]
     }
   }
 }

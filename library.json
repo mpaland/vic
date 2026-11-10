@@ -1,0 +1,25 @@
+{
+  "name": "vic",
+  "version": "2.1.0",
+  "description": "Video Interface Controller - header only C++ graphics library for graphic, dot matrix, alpha numeric and seven-segment displays in embedded systems",
+  "keywords": "display, graphics, lcd, oled, tft, e-paper, font, sprite, widget, anti-aliasing",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/mpaland/vic.git"
+  },
+  "authors": [
+    {
+      "name": "Marco Paland",
+      "maintainer": true
+    }
+  ],
+  "license": "MIT",
+  "homepage": "https://github.com/mpaland/vic",
+  "frameworks": "*",
+  "platforms": "*",
+  "headers": [ "dc.h", "tc.h" ],
+  "export": {
+    "include": [ "src", "LICENSE", "README.md", "library.json" ],
+    "exclude": [ "src/head/doc", "src/font/ttf" ]
+  }
+}
