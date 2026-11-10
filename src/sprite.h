@@ -25,19 +25,12 @@
 //
 // \brief Sprite classes, a canvas sprite is a dc where every rendered pixel is
 // stored in a pattern buffer. Sprites restore their background when they are
-// moved and respect each other's z-order.
+// moved and respect each other's z-order. Unlimited amount of sprites are supported.
 //
 // vic::sprite::canvas<400, 1> greenball(_head, 5);   // create 400 pixel sprite object with one frame, z-index 5
 // greenball.set_color(vic::color::green);            // set drawing color to green
 // greenball.disc({ 10, 10 }, 10);                    // draw a green filled circle
 // greenball.render({ 50, 10 });                      // render the sprite to 50,10
-//
-// support:
-// - unlimited amount of sprites
-// - z-order of sprites
-//
-// todo:
-// - collision detection
 //
 ///////////////////////////////////////////////////////////////////////////////
 
