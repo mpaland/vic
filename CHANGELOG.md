@@ -1,5 +1,25 @@
 # Changelog
 
+## [2.2.0](https://github.com/mpaland/vic/compare/v2.1.0...v2.2.0) (2026-11-10)
+
+
+### Features
+
+* **cmake:** Added install rules and the package config ([73b7cb7](https://github.com/mpaland/vic/commit/73b7cb777dec468be3f6a13c1125cd00681d6b42))
+* **gpr:** Added the pen width for lines and outlines ([23be7aa](https://github.com/mpaland/vic/commit/23be7aa96d7fb52e62ae7388325c4a2597dcb6a6))
+* **pio:** Added a PlatformIO manifest ([14cfbc7](https://github.com/mpaland/vic/commit/14cfbc7210b9fc41ee329a6a6cc28283195be93b))
+
+
+### Bug Fixes
+
+* **gpr:** Anti aliased rounded rectangle had four half covered pixels between arcs and lines ([7cc136c](https://github.com/mpaland/vic/commit/7cc136c8c845e91f6c3d56e1a701d18efb02573e))
+
+
+### Documentation
+
+* **readme:** Added the CodeQL badge, removed the issues badge ([331ac82](https://github.com/mpaland/vic/commit/331ac824abdc99fc2e8b729c08d619ca4c3dce24))
+* **readme:** Corrected the angle direction of the gpr section ([a13dd94](https://github.com/mpaland/vic/commit/a13dd94bec3fb7fbfc2c14352782e4ef8f9da591))
+
 ## [2.1.0](https://github.com/mpaland/vic/compare/v2.0.0...v2.1.0) (2026-11-10)
 
 
