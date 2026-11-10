@@ -235,6 +235,21 @@ TEST_CASE(gpr_aa_circle_arcs_tile)
   CHECK_EQ(alpha_at(rr.head, 2, 2), 0U);        // corner is cut
   CHECK(alpha_at(rr.head, 3, 3) > 0U);          // and anti aliased
   CHECK_EQ(alpha_at(rr.head, 10, 9), 0U);       // inside empty
+  // blended: the pixels where the arcs meet the straight parts are solid (the arcs cover them only by half)
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+  d.anti_aliasing_enable(true);
+  d.set_color(color::white);
+  d.rectangle(rect_type{ 2, 2, 20, 16 }, 4U);
+  CHECK_EQ(h.pixel({ 6, 2 }),   color::white);
+  CHECK_EQ(h.pixel({ 15, 2 }),  color::white);
+  CHECK_EQ(h.pixel({ 2, 6 }),   color::white);
+  CHECK_EQ(h.pixel({ 2, 11 }),  color::white);
+  CHECK_EQ(h.pixel({ 6, 15 }),  color::white);
+  CHECK_EQ(h.pixel({ 15, 15 }), color::white);
+  CHECK_EQ(h.pixel({ 19, 6 }),  color::white);
+  CHECK_EQ(h.pixel({ 19, 11 }), color::white);
 }
 
 

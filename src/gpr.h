@@ -914,12 +914,12 @@ public:
     const std::int16_t x0 = rect.left,  x1 = static_cast<std::int16_t>(rect.right - 1);   // inside coordinates
     const std::int16_t y0 = rect.top,   y1 = static_cast<std::int16_t>(rect.bottom - 1);
     const std::uint16_t ur = static_cast<std::uint16_t>(r);
+    // anti aliased quarters only cover their start and end point by half, so the straight parts include both then
+    const std::int16_t  o  = anti_aliasing_ ? 0 : 1;
 
     if (pen_width_ > 1U) {
       // wide frame: the same tiling as below with boxes and ring quarters, the pen width is limited to the radius
-      // anti aliased quarters only cover their start and end row / column by half, so the boxes include both
       const std::int16_t  w  = static_cast<std::int16_t>(pen_width_ < ur ? pen_width_ : ur);
-      const std::int16_t  o  = anti_aliasing_ ? 0 : 1;
       const std::uint16_t ri = static_cast<std::uint16_t>(r - w + 1), ro = static_cast<std::uint16_t>(r + o);
       present_lock();
       box({ static_cast<std::int16_t>(x0 + r + o), y0, static_cast<std::int16_t>(x1 - r + 1), static_cast<std::int16_t>(y0 + w) });           // top
@@ -938,10 +938,10 @@ public:
     // their end angle point (the 90°, 180°, 270° and 360° points). These four points are
     // covered by the straight lines, so every frame pixel is written exactly once.
     present_lock();
-    line_horz({ static_cast<std::int16_t>(x0 + r + 1), y0 }, { static_cast<std::int16_t>(x1 - r),     y0 });   // top,    includes the 90° point of the top/right arc
-    line_vert({ x0, static_cast<std::int16_t>(y0 + r)     }, { x0, static_cast<std::int16_t>(y1 - r - 1) });   // left,   includes the 180° point of the top/left arc
-    line_horz({ static_cast<std::int16_t>(x0 + r),     y1 }, { static_cast<std::int16_t>(x1 - r - 1), y1 });   // bottom, includes the 270° point of the bottom/left arc
-    line_vert({ x1, static_cast<std::int16_t>(y0 + r + 1) }, { x1, static_cast<std::int16_t>(y1 - r)     });   // right,  includes the 360° point of the bottom/right arc
+    line_horz({ static_cast<std::int16_t>(x0 + r + o), y0 }, { static_cast<std::int16_t>(x1 - r),     y0 });   // top,    includes the 90° point of the top/right arc
+    line_vert({ x0, static_cast<std::int16_t>(y0 + r)     }, { x0, static_cast<std::int16_t>(y1 - r - o) });   // left,   includes the 180° point of the top/left arc
+    line_horz({ static_cast<std::int16_t>(x0 + r),     y1 }, { static_cast<std::int16_t>(x1 - r - o), y1 });   // bottom, includes the 270° point of the bottom/left arc
+    line_vert({ x1, static_cast<std::int16_t>(y0 + r + o) }, { x1, static_cast<std::int16_t>(y1 - r)     });   // right,  includes the 360° point of the bottom/right arc
     circle({ static_cast<std::int16_t>(x1 - r), static_cast<std::int16_t>(y0 + r) }, ur,   0U,  90U);   // top/right
     circle({ static_cast<std::int16_t>(x0 + r), static_cast<std::int16_t>(y0 + r) }, ur,  90U, 180U);   // top/left
     circle({ static_cast<std::int16_t>(x0 + r), static_cast<std::int16_t>(y1 - r) }, ur, 180U, 270U);   // bottom/left
