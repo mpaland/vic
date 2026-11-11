@@ -14,6 +14,8 @@
 
 ### A universal, lightweight, extremely fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems
 
+**Website and documentation: [mpaland.github.io/vic](https://mpaland.github.io/vic/)** (command reference, head reference and examples)
+
 ## Highlights and Design Goals
 - Designed for displays on **(slow) serial buses** like SPI, I²C or UART: primitives are rendered with a minimum of
   commands sent to the display, no framebuffer transfer is needed (but supported)
@@ -144,7 +146,7 @@ Fonts are header files in `src/font/`, a font is a class with one `info()` metho
 - `Montserrat_10_aa2`, `Montserrat_12_aa2`, `Montserrat_16_aa4`, `Montserrat_24_aa4`: proportional, anti aliased,
   ASCII + Latin-1, generated from the Montserrat TTF (OFL)
 - `Michroma_10_aa2`, `Michroma_12_aa2`, `Michroma_16_aa4`, `Michroma_24_aa4`: same for the Michroma TTF (OFL)
-- `Arial_std_12_aa2`, `Arial_num_16x24_AA4`: legacy fonts
+- `Arial_std_12_aa2`, `Arial_num_16x24_aa4`: legacy fonts
 
 Vector (outline) fonts scale to any size, one header serves all sizes: `set_font(font, size)`, size is the line
 height in pixel. Stems, bars and dot rows are hinted to whole pixels, so they stay crisp at every size:
@@ -189,7 +191,7 @@ Available stock shaders are:
 - flip
 - tint
 - brush
-- gradient (linear, radial, sweep)
+- gradient (distance weighted, horizontal, vertical, solid)
 - rotate
 
 ### tc
@@ -364,14 +366,14 @@ Drawing is done with a drawing context (`dc`) and text is written with a text co
 #include "font/Arial_num_16x24_AA4.h"
 
 vic::dc _dc(_head);
-_dc.set_color(vic::color::brightblue);    // select bright blue drawing color
+_dc.set_color(vic::color::blue);          // select blue drawing color
 _dc.line({ 10, 10 }, { 40, 40 });         // draw a line from 10,10 to 40,40
 _dc.box({ 50, 10, 90, 30 }, 4U);          // filled box with rounded corners, right/bottom exclusive
 _dc.disc({ 120, 60 }, 20U);               // filled circle
 
 // write some text
-vic::tc _tc(_head);
-vic::font::Arial_num_16x24_AA4 _font;
+vic::tc _tc(_dc);
+vic::font::Arial_num_16x24_aa4 _font;
 _tc.set_font(_font);
 _tc.set_color(vic::color::yellow);
 _tc.out({ 10, 50 }, (const std::uint8_t*)"12,34.56-7890");
@@ -387,7 +389,7 @@ _head1.init();  // explicit head 1 init
 
 vic::dc _dc0(_head0);
 vic::dc _dc1(_head1);
-_dc0.set_color(vic::color::brightblue);
+_dc0.set_color(vic::color::blue);
 _dc0.line({ 10, 10 }, { 40, 40 });
 _dc1.set_color(vic::color::red);           // eg. for system debug, status etc.
 _dc1.box({ 100, 100, 120, 120 });
@@ -490,7 +492,7 @@ bool shader_is_active() const;
 ```cpp
 tc(dc& _dc);                                              // text on a graphic head through a dc
 tc(drv& head);                                            // text on an alpha numeric head
-void set_font(const font::font_type& font);
+void set_font(const font::font_type& font, std::uint8_t size = 0U);  // size: vector fonts only
 void set_color(color::value_type color);
 void set_pos(vertex_type pos);                            // pixel (graphic) or character cell (alpha)
 void set_inverse(bool inverse = true);
@@ -657,6 +659,11 @@ lib_deps = https://github.com/mpaland/vic.git
 6. Publish the branch (`git push origin my-new-feature`)
 7. Create a new pull request
 8. Profit! :heavy_check_mark:
+
+The website ([mpaland.github.io/vic](https://mpaland.github.io/vic/)) is built from `site/` with Astro Starlight
+(`cd site && npm install && npm run dev`) and deployed by `.github/workflows/pages.yml`. The command and head reference
+pages are hand written: before every release they are compared with this readme and the headers and updated.
+`tools/check_docs.py` checks that every head and widget has a page.
 
 
 ## License

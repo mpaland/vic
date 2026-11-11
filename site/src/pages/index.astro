@@ -1,0 +1,330 @@
+---
+import { readFileSync, readdirSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { Code } from 'astro:components';
+import '../styles/fonts.css';
+import '../styles/landing.css';
+
+// facts read from the repository at build time, so the page follows the code
+// npm scripts run in site/, the repository is its parent
+const repo = pathToFileURL(resolve(process.cwd(), '..') + '/');
+const version: string = JSON.parse(readFileSync(new URL('.release-please-manifest.json', repo), 'utf8'))['.'];
+const count = (dir: string, skip: string[]) =>
+	readdirSync(new URL(dir, repo)).filter((f) => f.endsWith('.h') && !skip.includes(f)).length;
+const heads = count('src/head/', ['skeleton.h']);
+const widgets = count('src/widget/', ['widget.h']);
+const fonts = count('src/font/', []);
+
+const base = import.meta.env.BASE_URL.replace(/\/?$/, '/');
+const docs = (p: string) => `${base}${p}`;
+const media = (f: string) => `${base}media/${f}`;
+const github = 'https://github.com/mpaland/vic';
+
+const description =
+	'A universal, lightweight, extremely fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems.';
+
+const heroDemos = [
+	{ src: 'demo_sprite.gif', label: 'sprite engine' },
+	{ src: 'demo_gauges.gif', label: 'gauge widgets' },
+	{ src: 'demo_aa.gif', label: 'anti aliasing' },
+	{ src: 'demo_vecfont.gif', label: 'vector fonts' },
+	{ src: 'demo_widget.gif', label: 'widgets' },
+	{ src: 'demo_input.gif', label: 'touch input' },
+];
+
+const highlights = [
+	{ icon: 'bus', title: 'Made for slow buses', text: 'SPI, I²C or UART: primitives are sent as the fewest native commands the controller understands. No framebuffer transfer needed, but supported.' },
+	{ icon: 'bolt', title: 'Blazing fast primitives', text: 'Lines, circles, discs, sectors, triangles, rounded boxes and text, all with fast integer math and no floating point at all.' },
+	{ icon: 'sprite', title: 'Sprite engine', text: 'Sheet and canvas sprites with z-order, rotation, alpha blending and pixel exact collision detection, like the hardware sprites of the C64 and Amiga.' },
+	{ icon: 'shader', title: 'Shader pipe', text: 'Clipping, zoom, offset, flip, tint, brush, rotate and color gradients on every pixel on its way to the display.' },
+	{ icon: 'aa', title: 'Anti aliasing', text: 'Wu lines and 4 x 4 sub pixel coverage for circles, discs, sectors and triangles. The interior still goes out as native runs.' },
+	{ icon: 'header', title: 'Header only C++11', text: 'No build, no dependencies, no STL, no new / delete, no float. Lint and /W4 clean, tested with MSVC, GCC, Clang and sanitizers.' },
+	{ icon: 'multi', title: 'Multi display, multihead', text: 'As many displays as you like, or combine any number of different modules into one big screen with the multihead driver.' },
+	{ icon: 'widget', title: 'Widgets', text: 'Gauges, bar gauges, labels, progress bars, bitmaps, compass, buttons, sliders, spinboxes and more, redrawn only where they change.' },
+];
+
+const gallery = [
+	{ src: 'demo_sprite.gif', title: 'Sprites', text: 'Sheet sprites, a canvas sprite, rotation, alpha blending, z-order and collision detection: the ghosts turn red when they meet.', link: 'examples/sprites/' },
+	{ src: 'demo_aa.gif', title: 'Anti aliasing', text: 'The same scene twice, left plain, right anti aliased, with a 3x magnifier of the moving clock hand.', link: 'design/anti-aliasing/' },
+	{ src: 'demo_gauges.gif', title: 'Gauges', text: 'An aircraft engine page built from gauge, bar gauge and label widgets. Needles and markers are canvas sprites.', link: 'examples/gauges/' },
+	{ src: 'demo_widget.gif', title: 'Widgets', text: 'Every widget with its features: orientations, borders, bitmap formats, alignment, color escapes, bands and ticks.', link: 'reference/widgets/' },
+	{ src: 'demo_input.gif', title: 'Touch input', text: 'A settings page with checkboxes, switch, slider, spinbox, buttons and soft keys, operated by a simulated touch.', link: 'examples/input/' },
+	{ src: 'demo_vecfont.gif', title: 'Vector fonts', text: 'Montserrat and Michroma outlines from 9 to 44 px, hinted to whole pixels, then a smooth zoom from 8 to 85 px.', link: 'reference/fonts/' },
+];
+
+const layers = [
+	{ name: 'Your application', sub: 'draws, writes, animates', link: 'getting-started/first-program/' },
+	{ name: 'dc · tc', sub: 'drawing and text context: color, pen, AA, fonts', link: 'reference/dc/' },
+	{ name: 'gpr · txr', sub: 'primitive and text renderer, integer only', link: 'design/architecture/' },
+	{ name: 'shader pipe', sub: 'clip · zoom · rotate · gradient · blend', link: 'reference/shader/' },
+	{ name: 'drv', sub: 'native hooks: line_horz · box · move · blit', link: 'reference/drv/' },
+	{ name: 'head', sub: 'SSD1306 · ST7789 · MAX7219 · e-paper · …', link: 'heads/' },
+];
+
+const sample = `#include "head/MIPI_DCS.h"
+#include "dc.h"
+#include "tc.h"
+#include "font/Michroma_vec.h"
+
+vic::head::MIPI_DCS<vic::head::MIPI_DCS_ST7789, 240, 320> lcd(spi);
+lcd.init();
+
+vic::dc dc(lcd);
+dc.anti_aliasing_enable();
+dc.set_color(vic::color::argb(0x22, 0xE3, 0xFF));
+dc.sector({ 120, 160 }, 70U, 90U, 30U, 330U);   // smooth ring segment
+dc.set_color(vic::color::white);
+dc.line({ 120, 160 }, { 180, 110 });             // Wu line needle
+
+vic::tc tc(dc);
+vic::font::Michroma_vec font;
+tc.set_font(font, 24U);                          // vector font, any size
+tc.out({ 72, 200 }, (const std::uint8_t*)"2100 RPM");`;
+
+const install = {
+	cmake: `include(FetchContent)
+FetchContent_Declare(vic GIT_REPOSITORY ${github}.git GIT_TAG v${version})
+FetchContent_MakeAvailable(vic)
+
+target_link_libraries(my_app PRIVATE vic::vic)`,
+	pio: `; platformio.ini
+[env:my_board]
+lib_deps = ${github}.git`,
+	sub: `git submodule add ${github}.git vic
+
+# CMakeLists.txt
+add_subdirectory(vic)
+target_link_libraries(my_app PRIVATE vic::vic)`,
+};
+---
+
+<!doctype html>
+<html lang="en" data-theme="dark">
+	<head>
+		<meta charset="utf-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<title>vic · Video Interface Controller library</title>
+		<meta name="description" content={description} />
+		<meta property="og:title" content="vic · Video Interface Controller library" />
+		<meta property="og:description" content={description} />
+		<meta property="og:image" content={new URL(media('demo_sprite.png'), Astro.site).href} />
+		<meta name="theme-color" content="#000000" />
+		<link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
+		<link rel="preload" as="image" href={media(heroDemos[0].src)} />
+	</head>
+	<body>
+		<nav class="top">
+			<a class="brand" href={base}>
+				<img src={`${base}favicon.svg`} alt="" width="28" height="28" />
+				<span>vic</span>
+			</a>
+			<div class="links">
+				<a href={docs('getting-started/introduction/')}>Docs</a>
+				<a href={docs('reference/')}>Reference</a>
+				<a href={docs('heads/')}>Heads</a>
+				<a href={docs('examples/')}>Examples</a>
+				<a class="gh" href={github} aria-label="vic on GitHub">
+					<svg viewBox="0 0 16 16" width="20" height="20" aria-hidden="true"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z"></path></svg>
+				</a>
+			</div>
+		</nav>
+
+		<header class="hero" id="hero">
+			<canvas class="pix" id="pix" aria-hidden="true"></canvas>
+			<div class="glow g1" aria-hidden="true"></div>
+			<div class="glow g2" aria-hidden="true"></div>
+			<div class="glow g3" aria-hidden="true"></div>
+
+			<div class="hero-grid">
+				<div class="copy">
+					<a class="pill" href={docs('changelog/')}>
+						<span class="dot"></span> v{version} <span class="sep">·</span> header only C++11
+					</a>
+					<h1>
+						<span class="w" style="--d:0">Drive</span>{' '}
+						<span class="w grad" style="--d:1">every</span>{' '}
+						<span class="w grad" style="--d:2">display.</span>
+					</h1>
+					<p class="lead">{description}</p>
+					<div class="cta">
+						<a class="btn primary" href={docs('getting-started/introduction/')}>
+							Get started <span aria-hidden="true">→</span>
+						</a>
+						<a class="btn ghost" href={github}>View on GitHub</a>
+					</div>
+					<ul class="chips">
+						{['Header only', 'No heap', 'No float', 'No STL', 'C++11', 'MIT'].map((c, i) => (
+							<li style={`--i:${i}`}>{c}</li>
+						))}
+					</ul>
+				</div>
+
+				<div class="device-wrap">
+					<div class="device" id="device">
+						<div class="bezel">
+							<div class="screen" id="screen">
+								<img class="layer show boot" src={media(heroDemos[0].src)} alt="vic demo output" width="320" height="200" />
+								<img class="layer" alt="" width="320" height="200" />
+								<div class="wipe" aria-hidden="true"></div>
+								<div class="crt" aria-hidden="true"></div>
+							</div>
+							<div class="bezel-foot">
+								<span class="led"></span>
+								<span class="model">VIC · 320 × 200</span>
+								<span class="now" id="now">{heroDemos[0].label}</span>
+							</div>
+						</div>
+					</div>
+					<div class="device-shadow" aria-hidden="true"></div>
+				</div>
+			</div>
+
+			<a class="scroll-cue" href="#highlights" aria-label="Scroll to the highlights"><span></span></a>
+			<script type="application/json" id="hero-demos" set:html={JSON.stringify(heroDemos.map((d) => ({ src: media(d.src), label: d.label })))} />
+		</header>
+
+		<main>
+			<section class="stats reveal" aria-label="vic in numbers">
+				<div><b data-count={heads}>{heads}</b><span>display heads</span></div>
+				<div><b data-count={widgets}>{widgets}</b><span>widgets</span></div>
+				<div><b data-count={fonts}>{fonts}</b><span>fonts, 3 scalable</span></div>
+				<div><b data-count="0">0</b><span>heap allocations</span></div>
+				<div><b data-count="0">0</b><span>float operations</span></div>
+			</section>
+
+			<section class="section" id="highlights">
+				<p class="eyebrow reveal">Highlights</p>
+				<h2 class="reveal">Small enough for an 8 bit MCU.<br /><span class="grad">Fast enough for a TFT.</span></h2>
+				<div class="cards">
+					{highlights.map((h, i) => (
+						<article class="card reveal" style={`--i:${i % 4}`}>
+							<div class="icon" data-icon={h.icon} aria-hidden="true">
+								{h.icon === 'bus' && <svg viewBox="0 0 24 24"><path d="M3 7h4l2 4h6l2-4h4M3 17h18M7 7v10M17 7v10" /></svg>}
+								{h.icon === 'bolt' && <svg viewBox="0 0 24 24"><path d="M13 2 4 14h7l-1 8 9-12h-7z" /></svg>}
+								{h.icon === 'sprite' && <svg viewBox="0 0 24 24"><path d="M5 20V10a7 7 0 0 1 14 0v10l-2.3-2-2.3 2-2.4-2-2.3 2L7.3 18z" /><circle cx="9.5" cy="10.5" r="1.3" /><circle cx="14.5" cy="10.5" r="1.3" /></svg>}
+								{h.icon === 'shader' && <svg viewBox="0 0 24 24"><path d="M3 6h18M3 12h18M3 18h18" /><circle cx="8" cy="6" r="2" /><circle cx="15" cy="12" r="2" /><circle cx="10" cy="18" r="2" /></svg>}
+								{h.icon === 'aa' && <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8" /><path d="M12 4v16" /></svg>}
+								{h.icon === 'header' && <svg viewBox="0 0 24 24"><path d="M8 4 4 12l4 8M16 4l4 8-4 8M14 4l-4 16" /></svg>}
+								{h.icon === 'multi' && <svg viewBox="0 0 24 24"><rect x="2" y="6" width="6" height="10" rx="1" /><rect x="9" y="6" width="6" height="10" rx="1" /><rect x="16" y="6" width="6" height="10" rx="1" /><path d="M5 19h14" /></svg>}
+								{h.icon === 'widget' && <svg viewBox="0 0 24 24"><path d="M4 16a8 8 0 0 1 16 0" /><path d="m12 16 4-5" /><path d="M3 20h18" /></svg>}
+							</div>
+							<h3>{h.title}</h3>
+							<p>{h.text}</p>
+						</article>
+					))}
+				</div>
+			</section>
+
+			<section class="section" id="demos">
+				<p class="eyebrow reveal">Demos</p>
+				<h2 class="reveal">Real output. <span class="grad">Every pixel rendered by vic.</span></h2>
+				<p class="sub reveal">Recordings of the demos in <code>demo/</code>, running on the Windows and X11 emulation heads at 320 × 200.</p>
+				<div class="gallery">
+					{gallery.map((g, i) => (
+						<a class="shot reveal" href={docs(g.link)} style={`--i:${i % 3}`}>
+							<div class="mini-bezel">
+								<img src={media(g.src)} alt={`${g.title} demo`} width="320" height="200" loading="lazy" decoding="async" />
+							</div>
+							<h3>{g.title} <span aria-hidden="true">→</span></h3>
+							<p>{g.text}</p>
+						</a>
+					))}
+				</div>
+			</section>
+
+			<section class="section split" id="aa">
+				<div class="reveal">
+					<p class="eyebrow">Anti aliasing</p>
+					<h2>Smooth edges. <span class="grad">Zero floats.</span></h2>
+					<p class="sub">
+						Lines use the Xiaolin Wu algorithm, circles, discs, sectors and triangles sample their edge pixels on a
+						4 × 4 sub pixel grid: 17 coverage levels, integer math only. Fully covered pixels still go out as native
+						horizontal runs, only the edge pixels are blended.
+					</p>
+					<p class="hint">Move the pointer over the image: left plain, right anti aliased.</p>
+					<a class="btn ghost small" href={docs('design/anti-aliasing/')}>How it works <span aria-hidden="true">→</span></a>
+				</div>
+				<div class="magnify reveal" id="magnify" style={`--img:url(${media('demo_aa.png')})`}>
+					<img src={media('demo_aa.png')} alt="The same scene without (left) and with (right) anti aliasing" width="640" height="400" loading="lazy" />
+					<div class="lens" aria-hidden="true"></div>
+				</div>
+			</section>
+
+			<section class="section split rev" id="architecture">
+				<div class="stack reveal" aria-label="Rendering pipeline">
+					{layers.map((l, i) => (
+						<a class="layer-row" href={docs(l.link)} style={`--i:${i}`}>
+							<span class="name">{l.name}</span>
+							<span class="lsub">{l.sub}</span>
+						</a>
+					))}
+					<div class="packet" aria-hidden="true"></div>
+				</div>
+				<div class="reveal">
+					<p class="eyebrow">Architecture</p>
+					<h2>One pipeline. <span class="grad">Any controller.</span></h2>
+					<p class="sub">
+						A head only needs <code>pixel_set</code> and <code>pixel_get</code>. If the controller can draw horizontal
+						lines, boxes or move blocks natively, the head overrides those hooks and every primitive above uses them
+						automatically. The very same driver runs on every platform, only four I/O functions are yours.
+					</p>
+					<a class="btn ghost small" href={docs('design/architecture/')}>The design <span aria-hidden="true">→</span></a>
+				</div>
+			</section>
+
+			<section class="section split" id="code">
+				<div class="reveal">
+					<p class="eyebrow">Usage</p>
+					<h2>Ten lines to <span class="grad">first light.</span></h2>
+					<p class="sub">
+						Create the head for your display, put a drawing context on it and draw. Swap the head for
+						<code>windows</code> or <code>x11</code> and the same code runs in a window on your desktop.
+					</p>
+					<a class="btn ghost small" href={docs('getting-started/first-program/')}>Your first program <span aria-hidden="true">→</span></a>
+				</div>
+				<div class="code-card reveal">
+					<div class="code-bar"><i></i><i></i><i></i><span>main.cpp</span></div>
+					<Code code={sample} lang="cpp" theme="github-dark-default" />
+				</div>
+			</section>
+
+			<section class="section" id="start">
+				<p class="eyebrow reveal">Get started</p>
+				<h2 class="reveal">Add it. <span class="grad">Include it. Done.</span></h2>
+				<div class="tabs reveal" id="tabs">
+					<div class="tab-bar" role="tablist">
+						<button role="tab" aria-selected="true" data-tab="cmake">CMake</button>
+						<button role="tab" aria-selected="false" data-tab="pio">PlatformIO</button>
+						<button role="tab" aria-selected="false" data-tab="sub">Submodule</button>
+					</div>
+					<div class="tab-panel" data-panel="cmake"><Code code={install.cmake} lang="cmake" theme="github-dark-default" /></div>
+					<div class="tab-panel" data-panel="pio" hidden><Code code={install.pio} lang="ini" theme="github-dark-default" /></div>
+					<div class="tab-panel" data-panel="sub" hidden><Code code={install.sub} lang="bash" theme="github-dark-default" /></div>
+				</div>
+				<div class="cta center reveal">
+					<a class="btn primary" href={docs('getting-started/installation/')}>Installation guide <span aria-hidden="true">→</span></a>
+					<a class="btn ghost" href={docs('reference/')}>Command reference</a>
+				</div>
+			</section>
+		</main>
+
+		<footer class="foot">
+			<div class="glow g4" aria-hidden="true"></div>
+			<p class="foot-brand">vic</p>
+			<p>Video Interface Controller library · v{version}</p>
+			<p class="foot-links">
+				<a href={github}>GitHub</a>
+				<a href={docs('getting-started/introduction/')}>Docs</a>
+				<a href={docs('changelog/')}>Changelog</a>
+				<a href={`${github}/blob/master/LICENSE`}>MIT licence</a>
+			</p>
+			<p class="small">© 2011-present PALANDesign Hannover, Germany. Fonts Michroma and Doto under the SIL Open Font License (<a href={`${base}fonts/Michroma-OFL.txt`}>Michroma</a>, <a href={`${base}fonts/Doto-OFL.txt`}>Doto</a>).</p>
+		</footer>
+
+		<script>
+			import { initLanding } from '../scripts/landing';
+			initLanding();
+		</script>
+	</body>
+</html>

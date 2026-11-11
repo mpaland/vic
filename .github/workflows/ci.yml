@@ -104,3 +104,12 @@ jobs:
           head -10 diag.log | sed -E 's/^([^:]+):([0-9]+):([0-9]+): (error|warning): (.*)$/::error file=\1,line=\2,col=\3::\5/'
       - name: Test
         run: ctest --test-dir build --output-on-failure
+
+  docs:
+    name: Docs coverage
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - name: Every head and widget has a website page
+        run: python3 tools/check_docs.py

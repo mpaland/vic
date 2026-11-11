@@ -1,0 +1,13 @@
+/* OFL fonts shipped with vic (src/font/ttf), copied to src/assets/fonts by scripts/sync-assets.mjs */
+@font-face {
+	font-family: 'Michroma';
+	src: url('../assets/fonts/Michroma-Regular.ttf') format('truetype');
+	font-weight: 400;
+	font-display: swap;
+}
+@font-face {
+	font-family: 'Doto';
+	src: url('../assets/fonts/Doto-Variable.ttf') format('truetype');
+	font-weight: 100 900;
+	font-display: swap;
+}

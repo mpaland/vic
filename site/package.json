@@ -1,0 +1,19 @@
+{
+  "name": "vic-site",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "sync": "node scripts/sync-assets.mjs",
+    "dev": "node scripts/sync-assets.mjs && astro dev",
+    "start": "node scripts/sync-assets.mjs && astro dev",
+    "build": "node scripts/sync-assets.mjs && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.42.10",
+    "astro": "^7.3.6",
+    "sharp": "^0.35.3"
+  }
+}

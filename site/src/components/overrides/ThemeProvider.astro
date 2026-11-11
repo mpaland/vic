@@ -1,0 +1,8 @@
+---
+// The vic site is black only: always dark, no theme picker.
+---
+
+<script is:inline>
+	document.documentElement.dataset.theme = 'dark';
+	window.StarlightThemeProvider = { updatePickers() {} };
+</script>

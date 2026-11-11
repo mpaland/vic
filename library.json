@@ -14,7 +14,7 @@
     }
   ],
   "license": "MIT",
-  "homepage": "https://github.com/mpaland/vic",
+  "homepage": "https://mpaland.github.io/vic/",
   "frameworks": "*",
   "platforms": "*",
   "headers": [
