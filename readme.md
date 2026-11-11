@@ -1,5 +1,6 @@
 # Video Interface Controller library
 
+[![Docs](https://img.shields.io/badge/docs-mpaland.github.io%2Fvic-38bdf8)](https://mpaland.github.io/vic/)
 [![Release](https://img.shields.io/github/v/tag/mpaland/vic?label=release&sort=semver)](https://github.com/mpaland/vic/tags)
 [![CI](https://github.com/mpaland/vic/actions/workflows/ci.yml/badge.svg?branch=master)](https://github.com/mpaland/vic/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/mpaland/vic/actions/workflows/codeql.yml/badge.svg?branch=master)](https://github.com/mpaland/vic/actions/workflows/codeql.yml)
