@@ -1,6 +1,6 @@
 {
   "name": "vic",
-  "version": "2.2.0",
+  "version": "2.2.1",
   "description": "Video Interface Controller - header only C++ graphics library for graphic, dot matrix, alpha numeric and seven-segment displays in embedded systems",
   "keywords": "display, graphics, lcd, oled, tft, e-paper, font, sprite, widget, anti-aliasing",
   "repository": {

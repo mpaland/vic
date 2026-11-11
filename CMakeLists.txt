@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(vic VERSION 2.2.0 LANGUAGES CXX   # x-release-please-version
+project(vic VERSION 2.2.1 LANGUAGES CXX   # x-release-please-version
         DESCRIPTION "Video Interface Controller - header only graphics library for embedded displays")
 
 include(GNUInstallDirs)
