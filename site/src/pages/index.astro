@@ -24,15 +24,6 @@ const github = 'https://github.com/mpaland/vic';
 const description =
 	'A universal, lightweight, extremely fast and powerful C++ library for driving graphic, dot, alpha numeric and seven-segment displays in embedded systems.';
 
-const heroDemos = [
-	{ src: 'demo_sprite.gif', label: 'sprite engine' },
-	{ src: 'demo_gauges.gif', label: 'gauge widgets' },
-	{ src: 'demo_aa.gif', label: 'anti aliasing' },
-	{ src: 'demo_vecfont.gif', label: 'vector fonts' },
-	{ src: 'demo_widget.gif', label: 'widgets' },
-	{ src: 'demo_input.gif', label: 'touch input' },
-];
-
 const highlights = [
 	{ icon: 'bus', title: 'Made for slow buses', text: 'SPI, I²C or UART: primitives are sent as the fewest native commands the controller understands. No framebuffer transfer needed, but supported.' },
 	{ icon: 'bolt', title: 'Blazing fast primitives', text: 'Lines, circles, discs, sectors, triangles, rounded boxes and text, all with fast integer math and no floating point at all.' },
@@ -111,7 +102,6 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 		<meta property="og:image" content={new URL(media('demo_sprite.png'), Astro.site).href} />
 		<meta name="theme-color" content="#000000" />
 		<link rel="icon" href={`${base}favicon.svg`} type="image/svg+xml" />
-		<link rel="preload" as="image" href={media(heroDemos[0].src)} />
 	</head>
 	<body>
 		<nav class="top">
@@ -131,11 +121,6 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 		</nav>
 
 		<header class="hero" id="hero">
-			<canvas class="pix" id="pix" aria-hidden="true"></canvas>
-			<div class="glow g1" aria-hidden="true"></div>
-			<div class="glow g2" aria-hidden="true"></div>
-			<div class="glow g3" aria-hidden="true"></div>
-
 			<div class="hero-grid">
 				<div class="copy">
 					<a class="pill" href={docs('changelog/')}>
@@ -143,8 +128,8 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 					</a>
 					<h1>
 						<span class="w" style="--d:0">Drive</span>{' '}
-						<span class="w grad" style="--d:1">every</span>{' '}
-						<span class="w grad" style="--d:2">display.</span>
+						<span class="w" style="--d:1">every</span>{' '}
+						<span class="w" style="--d:2">display.</span>
 					</h1>
 					<p class="lead">{description}</p>
 					<div class="cta">
@@ -153,35 +138,19 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 						</a>
 						<a class="btn ghost" href={github}>View on GitHub</a>
 					</div>
-					<ul class="chips">
-						{['Header only', 'No heap', 'No float', 'No STL', 'C++11', 'MIT'].map((c, i) => (
-							<li style={`--i:${i}`}>{c}</li>
-						))}
-					</ul>
+					<p class="facts">Header only · No heap · No float · No STL · C++11 · MIT</p>
 				</div>
 
-				<div class="device-wrap">
-					<div class="device" id="device">
-						<div class="bezel">
-							<div class="screen" id="screen">
-								<img class="layer show boot" src={media(heroDemos[0].src)} alt="vic demo output" width="320" height="200" />
-								<img class="layer" alt="" width="320" height="200" />
-								<div class="wipe" aria-hidden="true"></div>
-								<div class="crt" aria-hidden="true"></div>
-							</div>
-							<div class="bezel-foot">
-								<span class="led"></span>
-								<span class="model">VIC · 320 × 200</span>
-								<span class="now" id="now">{heroDemos[0].label}</span>
-							</div>
-						</div>
-					</div>
-					<div class="device-shadow" aria-hidden="true"></div>
+				<div class="scene-wrap">
+					<canvas
+						id="scene"
+						role="img"
+						aria-label="A gauge drawn by vic, shown as an exploded view of its rendering layers: dc, gpr, drv and head"
+					></canvas>
 				</div>
 			</div>
 
 			<a class="scroll-cue" href="#highlights" aria-label="Scroll to the highlights"><span></span></a>
-			<script type="application/json" id="hero-demos" set:html={JSON.stringify(heroDemos.map((d) => ({ src: media(d.src), label: d.label })))} />
 		</header>
 
 		<main>
@@ -195,7 +164,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 
 			<section class="section" id="highlights">
 				<p class="eyebrow reveal">Highlights</p>
-				<h2 class="reveal">Small enough for an 8 bit MCU.<br /><span class="grad">Fast enough for a TFT.</span></h2>
+				<h2 class="reveal">Small enough for an 8 bit MCU.<br /><span class="soft">Fast enough for a TFT.</span></h2>
 				<div class="cards">
 					{highlights.map((h, i) => (
 						<article class="card reveal" style={`--i:${i % 4}`}>
@@ -218,7 +187,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 
 			<section class="section" id="demos">
 				<p class="eyebrow reveal">Demos</p>
-				<h2 class="reveal">Real output. <span class="grad">Every pixel rendered by vic.</span></h2>
+				<h2 class="reveal">Real output. <span class="soft">Every pixel rendered by vic.</span></h2>
 				<p class="sub reveal">Recordings of the demos in <code>demo/</code>, running on the Windows and X11 emulation heads at 320 × 200.</p>
 				<div class="gallery">
 					{gallery.map((g, i) => (
@@ -236,7 +205,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 			<section class="section split" id="aa">
 				<div class="reveal">
 					<p class="eyebrow">Anti aliasing</p>
-					<h2>Smooth edges. <span class="grad">Zero floats.</span></h2>
+					<h2>Smooth edges. <span class="soft">Zero floats.</span></h2>
 					<p class="sub">
 						Lines use the Xiaolin Wu algorithm, circles, discs, sectors and triangles sample their edge pixels on a
 						4 × 4 sub pixel grid: 17 coverage levels, integer math only. Fully covered pixels still go out as native
@@ -263,7 +232,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 				</div>
 				<div class="reveal">
 					<p class="eyebrow">Architecture</p>
-					<h2>One pipeline. <span class="grad">Any controller.</span></h2>
+					<h2>One pipeline. <span class="soft">Any controller.</span></h2>
 					<p class="sub">
 						A head only needs <code>pixel_set</code> and <code>pixel_get</code>. If the controller can draw horizontal
 						lines, boxes or move blocks natively, the head overrides those hooks and every primitive above uses them
@@ -276,7 +245,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 			<section class="section split" id="code">
 				<div class="reveal">
 					<p class="eyebrow">Usage</p>
-					<h2>Ten lines to <span class="grad">first light.</span></h2>
+					<h2>Ten lines to <span class="soft">first light.</span></h2>
 					<p class="sub">
 						Create the head for your display, put a drawing context on it and draw. Swap the head for
 						<code>windows</code> or <code>x11</code> and the same code runs in a window on your desktop.
@@ -291,7 +260,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 
 			<section class="section" id="start">
 				<p class="eyebrow reveal">Get started</p>
-				<h2 class="reveal">Add it. <span class="grad">Include it. Done.</span></h2>
+				<h2 class="reveal">Add it. <span class="soft">Include it. Done.</span></h2>
 				<div class="tabs reveal" id="tabs">
 					<div class="tab-bar" role="tablist">
 						<button role="tab" aria-selected="true" data-tab="cmake">CMake</button>
@@ -310,7 +279,6 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 		</main>
 
 		<footer class="foot">
-			<div class="glow g4" aria-hidden="true"></div>
 			<p class="foot-brand">vic</p>
 			<p>Video Interface Controller library · v{version}</p>
 			<p class="foot-links">
@@ -319,7 +287,7 @@ target_link_libraries(my_app PRIVATE vic::vic)`,
 				<a href={docs('changelog/')}>Changelog</a>
 				<a href={`${github}/blob/master/LICENSE`}>MIT licence</a>
 			</p>
-			<p class="small">© 2011-present PALANDesign Hannover, Germany. Fonts Michroma and Doto under the SIL Open Font License (<a href={`${base}fonts/Michroma-OFL.txt`}>Michroma</a>, <a href={`${base}fonts/Doto-OFL.txt`}>Doto</a>).</p>
+			<p class="small">© 2011-present PALANDesign Hannover, Germany. Font Michroma under the <a href={`${base}fonts/Michroma-OFL.txt`}>SIL Open Font License</a>.</p>
 		</footer>
 
 		<script>

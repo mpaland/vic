@@ -1,12 +1,6 @@
 /* vic black theme for the Starlight docs (dark only, see components/overrides) */
 :root,
 :root[data-theme='dark'] {
-	--vic-cyan: #22e3ff;
-	--vic-violet: #8b5cf6;
-	--vic-pink: #ff4fd8;
-	--vic-amber: #ffb547;
-	--vic-grad: linear-gradient(100deg, var(--vic-cyan), var(--vic-violet) 55%, var(--vic-pink));
-
 	--sl-font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 	--sl-font-mono: ui-monospace, 'Cascadia Code', 'SFMono-Regular', Consolas, monospace;
 
@@ -19,9 +13,9 @@
 	--sl-color-gray-6: #141519;
 	--sl-color-black: #000000;
 
-	--sl-color-accent-low: #1d1340;
-	--sl-color-accent: #8b5cf6;
-	--sl-color-accent-high: #cdbcff;
+	--sl-color-accent-low: #0b2a3a;
+	--sl-color-accent: #38bdf8;
+	--sl-color-accent-high: #bae6fd;
 
 	--sl-color-bg: #000000;
 	--sl-color-bg-nav: rgba(0, 0, 0, 0.72);
@@ -48,26 +42,6 @@ h1#_top {
 	letter-spacing: -0.02em;
 }
 
-h1#_top {
-	background: var(--vic-grad);
-	-webkit-background-clip: text;
-	background-clip: text;
-	color: transparent;
-	width: fit-content;
-}
-
-/* subtle glow at the top of every docs page */
-.main-frame::before {
-	content: '';
-	position: fixed;
-	inset: 0 0 auto 0;
-	height: 26rem;
-	pointer-events: none;
-	background: radial-gradient(60% 100% at 70% 0%, rgba(139, 92, 246, 0.13), transparent 70%),
-		radial-gradient(40% 80% at 30% 0%, rgba(34, 227, 255, 0.07), transparent 70%);
-	z-index: -1;
-}
-
 .sl-markdown-content table {
 	display: table;
 	width: 100%;
@@ -86,7 +60,6 @@ img.pixel,
 	image-rendering: pixelated;
 	border-radius: 10px;
 	border: 1px solid var(--sl-color-hairline-light);
-	box-shadow: 0 0 40px rgba(139, 92, 246, 0.15);
 	width: 640px;
 	max-width: 100%;
 }
