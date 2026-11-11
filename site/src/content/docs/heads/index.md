@@ -10,6 +10,39 @@ A display together with its controller is called a **head**. Every head is a cla
 derived from the driver base class `vic::drv` (`src/drv.h`). A head is platform independent: it talks to the
 hardware only through the I/O functions declared in `src/io.h`, which your platform implements once.
 
+## Available heads
+
+| Head | Displays / controllers | Color format | Interface |
+|---|---|---|---|
+| [`BA6x`](/vic/heads/ba6x/) | Wincor Nixdorf BA60 (1 x 16), BA63 (2 x 20), BA66 (4 x 20) customer displays | alpha numeric | USB, RS232 |
+| [`digole`](/vic/heads/digole/) | Digole serial graphic modules, up to 256 x 256 | RGB888 (`ESC` color command) | UART, SPI, I²C |
+| [`HD44780`](/vic/heads/hd44780/) | HD44780, ST7066, KS0066U, SED1278, SPLC780 character LCDs | alpha numeric | 4 or 8 bit parallel, I²C expander |
+| [`ILI9325`](/vic/heads/ili9325/) | ILI9325 240 x 320 TFT | RGB565 / RGB666 | SPI, 8 / 9 / 16 / 18 bit memory mapped |
+| [`MAX7219`](/vic/heads/max7219/) | MAX7219 / MAX7221 8 x 8 LED matrix | 1 bit | SPI |
+| [`MIPI_DCS`](/vic/heads/mipi-dcs/) | ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 TFTs | RGB565 / RGB666 | SPI, parallel |
+| [`PCD8544`](/vic/heads/pcd8544/) | Nokia 5110 / 3310 84 x 48 LCD | 1 bit | SPI |
+| [`seven_segment`](/vic/heads/seven-segment/) | 7 segment digits on any raw segment driver | segments | SPI, shift register |
+| [`SSD1306`](/vic/heads/ssd1306/) | SSD1306, SSD1309, SH1106 monochrome OLEDs | 1 bit | I²C, 3 / 4 wire SPI, 8 bit parallel |
+| [`SSD1322`](/vic/heads/ssd1322/) | SSD1322 256 x 64 gray scale OLEDs | 4 bit gray | SPI, parallel |
+| [`SSD1331`](/vic/heads/ssd1331/) | SSD1331 96 x 64 RGB OLED | RGB565 | SPI, 8 / 16 bit parallel |
+| [`SSD1351`](/vic/heads/ssd1351/) | SSD1351 128 x 128 RGB OLED | RGB565 | SPI, parallel |
+| [`SSD1680`](/vic/heads/ssd1680/) | SSD1680, SSD1681 black / white (/ red) e-paper | 1 bit (+ red plane) | SPI + BUSY |
+| [`ST7565`](/vic/heads/st7565/) | ST7565, ST7567, UC1701 128 x 64 COG LCDs | 1 bit | SPI, parallel |
+| [`ST7920`](/vic/heads/st7920/) | ST7920 128 x 64 graphic LCD | 1 bit | serial, 4 / 8 bit parallel |
+| [`STPxxP05`](/vic/heads/stpxxp05/) | STP08xP05, STP16xP05, STP24DP05 LED drivers | 1 bit | SPI |
+| [`framebuffer`](/vic/heads/framebuffer/) | RAM framebuffer with dirty rect transfer in front of any head | ARGB8888, RGB565, RGB332, L1 | none (bound head) |
+| [`memory`](/vic/heads/memory/) | pure RAM head with statistics, unit tests and off screen rendering | ARGB8888 | none |
+| [`multihead`](/vic/heads/multihead/) | combines several heads to one screen | of the heads | none (bound heads) |
+| [`dummy`](/vic/heads/dummy/) | null head, swallows everything | none | none |
+| [`windows`](/vic/heads/windows/), [`windows_text`](/vic/heads/windows/) | display emulation in a Win32 window | RGB888 | Win32 GDI |
+| [`x11`](/vic/heads/x11/) | display emulation in an X11 window | RGB888 | Xlib |
+| [`skeleton`](/vic/heads/skeleton/) | template for a new head |  |  |
+
+Every device head has a small demo program in `demo/heads/<head>.cpp` (CMake target `vic_head_<head>`), linked
+with `io_trace.cpp`, which prints the command and data stream the head sends. The programming summaries of the
+controller datasheets are in
+[`src/head/doc/`](https://github.com/mpaland/vic/tree/master/src/head/doc).
+
 ## Instantiate and initialize
 
 Everything that is fixed by the hardware (screen size, orientation, bus mode, controller variant) is a template
@@ -157,36 +190,3 @@ HD44780 and SSD1680 heads wait a fixed time). `demo/heads/io_trace.cpp` implemen
 dump to stdout and is the template for a real I/O layer. Every function is described in
 [Write your own head: Platform I/O](/vic/heads/skeleton/#platform-io), installation in
 [Installation](/vic/getting-started/installation/).
-
-## Available heads
-
-| Head | Displays / controllers | Color format | Interface | |
-|---|---|---|---|---|
-| `BA6x` | Wincor Nixdorf BA60 (1 x 16), BA63 (2 x 20), BA66 (4 x 20) customer displays | alpha numeric | USB, RS232 | [BA6x](/vic/heads/ba6x/) |
-| `digole` | Digole serial graphic modules, up to 256 x 256 | RGB888 (`ESC` color command) | UART, SPI, I²C | [digole](/vic/heads/digole/) |
-| `HD44780` | HD44780, ST7066, KS0066U, SED1278, SPLC780 character LCDs | alpha numeric | 4 or 8 bit parallel, I²C expander | [HD44780](/vic/heads/hd44780/) |
-| `ILI9325` | ILI9325 240 x 320 TFT | RGB565 / RGB666 | SPI, 8 / 9 / 16 / 18 bit memory mapped | [ILI9325](/vic/heads/ili9325/) |
-| `MAX7219` | MAX7219 / MAX7221 8 x 8 LED matrix | 1 bit | SPI | [MAX7219](/vic/heads/max7219/) |
-| `MIPI_DCS` | ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 TFTs | RGB565 / RGB666 | SPI, parallel | [MIPI_DCS](/vic/heads/mipi-dcs/) |
-| `PCD8544` | Nokia 5110 / 3310 84 x 48 LCD | 1 bit | SPI | [PCD8544](/vic/heads/pcd8544/) |
-| `seven_segment` | 7 segment digits on any raw segment driver | segments | SPI, shift register | [seven_segment](/vic/heads/seven-segment/) |
-| `SSD1306` | SSD1306, SSD1309, SH1106 monochrome OLEDs | 1 bit | I²C, 3 / 4 wire SPI, 8 bit parallel | [SSD1306](/vic/heads/ssd1306/) |
-| `SSD1322` | SSD1322 256 x 64 gray scale OLEDs | 4 bit gray | SPI, parallel | [SSD1322](/vic/heads/ssd1322/) |
-| `SSD1331` | SSD1331 96 x 64 RGB OLED | RGB565 | SPI, 8 / 16 bit parallel | [SSD1331](/vic/heads/ssd1331/) |
-| `SSD1351` | SSD1351 128 x 128 RGB OLED | RGB565 | SPI, parallel | [SSD1351](/vic/heads/ssd1351/) |
-| `SSD1680` | SSD1680, SSD1681 black / white (/ red) e-paper | 1 bit (+ red plane) | SPI + BUSY | [SSD1680](/vic/heads/ssd1680/) |
-| `ST7565` | ST7565, ST7567, UC1701 128 x 64 COG LCDs | 1 bit | SPI, parallel | [ST7565](/vic/heads/st7565/) |
-| `ST7920` | ST7920 128 x 64 graphic LCD | 1 bit | serial, 4 / 8 bit parallel | [ST7920](/vic/heads/st7920/) |
-| `STPxxP05` | STP08xP05, STP16xP05, STP24DP05 LED drivers | 1 bit | SPI | [STPxxP05](/vic/heads/stpxxp05/) |
-| `framebuffer` | RAM framebuffer with dirty rect transfer in front of any head | ARGB8888, RGB565, RGB332, L1 | none (bound head) | [framebuffer](/vic/heads/framebuffer/) |
-| `memory` | pure RAM head with statistics, unit tests and off screen rendering | ARGB8888 | none | [memory](/vic/heads/memory/) |
-| `multihead` | combines several heads to one screen | of the heads | none (bound heads) | [multihead](/vic/heads/multihead/) |
-| `dummy` | null head, swallows everything | none | none | [dummy](/vic/heads/dummy/) |
-| `windows`, `windows_text` | display emulation in a Win32 window | RGB888 | Win32 GDI | [windows](/vic/heads/windows/) |
-| `x11` | display emulation in an X11 window | RGB888 | Xlib | [x11](/vic/heads/x11/) |
-| `skeleton` | template for a new head | | | [Write your own head](/vic/heads/skeleton/) |
-
-Every device head has a small demo program in `demo/heads/<head>.cpp` (CMake target `vic_head_<head>`), linked
-with `io_trace.cpp`, which prints the command and data stream the head sends. The programming summaries of the
-controller datasheets are in
-[`src/head/doc/`](https://github.com/mpaland/vic/tree/master/src/head/doc).
