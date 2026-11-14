@@ -246,7 +246,9 @@ rendered in z-order with alpha blending. Pixel exact collision detection comes f
 (`set_collision_handler()`) on a sprite and it is called once for every other sprite it overlaps with when it is
 rendered, or poll `get_collision()` after `render()`. Without a handler the detection costs nothing.  
 For fast background restoration without using an array due to memory constrains, I created an [avl_array](https://github.com/mpaland/avl_array) buffer, 
-which is extremely fast and doesn't consume much memory.  
+which is extremely fast and doesn't consume much memory. Where the frame size of a sprite is fixed, a plain two dimensional
+array with x and y as keys (4 byte per pixel) is used instead: for the restore buffer of a sheet sprite and for both buffers
+of `sprite::canvas_sheet_xy`, a canvas sheet which needs about half of the RAM.  
 The `demo/demo_sprite.cpp` is completely rendered by VIC primitives and shows sheet sprites, a canvas sprite (the ball), rotation,
 alpha blending, z-order and the collision detection (the ghosts turn red when they meet):
 
@@ -530,6 +532,7 @@ bool framebuffer_set_display(std::size_t plane, std::uint8_t alpha = 0);
 canvas<Pixel, Frames>(drv& head, std::int16_t z_index = 0);   // dynamic sprite, drawn with the dc functions
 sheet<Width, Height>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // frames from a sprite sheet
 canvas_sheet<Pixel>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // sheet frames, rotatable
+canvas_sheet_xy<Width, Height, Rotate = true>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // like canvas_sheet with array buffers, about half of the RAM, less without rotation
 
 void render(vertex_type position, std::uint16_t frame = 0);   // move / show, an invalid frame (0xFFFF) hides
 vertex_type get_position() const;
