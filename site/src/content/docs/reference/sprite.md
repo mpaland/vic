@@ -8,8 +8,9 @@ sidebar:
 Sprites (`sprite.h`, namespace `vic::sprite`) are moving objects which restore their background when they move or
 change their frame. `sheet` renders frames directly out of a constant sprite sheet in flash and needs no RAM for the
 pattern, `canvas` is a sprite which is drawn on with the normal [`dc`](/vic/reference/dc/) functions, and
-`canvas_sheet` loads sheet frames into a canvas, so they can be rotated and tinted. Overlapping sprites are rendered
-in z-order with alpha blending, pixel exact collision detection is available per sprite.
+`canvas_sheet` and `canvas_sheet_xy` load sheet frames into a canvas, so they can be rotated and tinted. Overlapping
+sprites are rendered in z-order with alpha blending, pixel exact collision detection is available per sprite. See
+[Sprite types](#sprite-types) for the differences.
 
 ![Sprite demo](/vic/media/demo_sprite.gif)
 
@@ -21,7 +22,7 @@ vic::sprite::canvas<400U, 1U> ball(head, 5);     // 400 pixel per frame, 1 frame
 ball.set_color(vic::color::green);
 ball.disc({ 10, 10 }, 10U);                      // draw into the canvas, nothing appears yet
 
-vic::sprite::canvas_sheet<320U> coin(head, &sprite_sheet_coin, 10);   // in front of the ball
+vic::sprite::canvas_sheet_xy<16U, 16U> coin(head, &sprite_sheet_coin, 10);   // 16 x 16 pixel frames, in front of the ball
 
 for (std::int16_t x = 0; x < 200; ++x) {
   ball.render({ x, 40 });                        // move: restores the old background, draws the new position
@@ -31,13 +32,35 @@ for (std::int16_t x = 0; x < 200; ++x) {
 
 ## Sprite types
 
-| Class | Pattern | RAM | Rotation |
-|---|---|---|---|
-| `canvas<Pixel, Frames>` | Drawn with the `dc` functions, `Frames` frames | Pattern and restore buffer, `Pixel` entries each | Yes |
-| `sheet<Frame_Width, Frame_Height>` | Frames of a constant sprite sheet | Restore buffer only | No |
-| `canvas_sheet<Pixel>` | A sheet frame loaded into a one frame canvas on every `render()` | Like a canvas | Yes |
+The four sprite types differ in where the pattern (the pixels of the sprite) comes from, what can be done with it
+and how much RAM it takes:
 
-The buffers are AVL trees ([avl_array](https://github.com/mpaland/avl_array)) of vertex and color, no heap is used.
+- **`sheet`** renders its frames directly out of a constant sprite sheet in flash. It needs no RAM for the pattern
+  and is the smallest and fastest sprite, but the frames can't be rotated, changed by shaders or drawn on. Take it
+  for every sprite which just plays the frames of a sheet.
+- **`canvas`** is a drawing context. Its frames are not taken out of a sheet, they are drawn with the `dc`
+  functions (lines, discs, text) and can be changed at any time. It can be rotated. Take it for sprites which are
+  created at run time.
+- **`canvas_sheet`** loads a sheet frame into a canvas on every `render()`. The frame passes the shader pipe of the
+  canvas, so it can be recolored (`tint`), zoomed or flipped, and the canvas can be rotated. The pattern may have
+  any shape and position, only its pixel count is limited. It needs the most RAM.
+- **`canvas_sheet_xy`** does the same as a `canvas_sheet` with a canvas of a fixed size. Its buffers are plain
+  arrays instead of trees, so it needs about half of the RAM and renders faster, and less again if it is never
+  rotated (`Rotate = false`). Pixels which a shader moves out of the canvas are dropped. Take it instead of a
+  `canvas_sheet` whenever the size of the frame is known.
+
+| | `sheet<Frame_Width, Frame_Height>` | `canvas<Pixel, Frames>` | `canvas_sheet<Pixel>` | `canvas_sheet_xy<Width, Height, Rotate>` |
+|---|---|---|---|---|
+| Pattern | Sheet frame, read from flash | Drawn with the `dc` functions | Sheet frame, loaded into a canvas | Sheet frame, loaded into a canvas |
+| Rotation | No | Yes | Yes | Yes, no with `Rotate = false` |
+| Shaders | No | While drawing | While the frame is loaded | While the frame is loaded, inside the canvas |
+| Pattern buffer | None | AVL tree, 13 byte per pixel | AVL tree, 13 byte per pixel | Array, 4 byte per pixel |
+| Restore buffer | Array, 4 byte and 1 bit per pixel | AVL tree, 15 byte per pixel | AVL tree, 15 byte per pixel | Array, 4 byte and 1 bit per pixel, about twice the pixels with rotation |
+| RAM of a 24 x 24 pixel sprite | 2488 byte | 16300 byte | 16308 byte | 8104 byte, 4820 byte with `Rotate = false` |
+
+The RAM is the `sizeof` of `sheet<24, 24>`, `canvas<576, 1>`, `canvas_sheet<576>` and `canvas_sheet_xy<24, 24>` on
+a 32 bit build. The AVL trees are [avl_array](https://github.com/mpaland/avl_array) buffers of vertex and color,
+the arrays are plain two dimensional arrays with x and y as keys. No heap is used.
 
 ### Rendering model
 
@@ -268,8 +291,8 @@ class sheet : public base;
 ```
 
 A sheet sprite takes its frames directly out of a sprite sheet, the pattern needs no RAM, only the restore buffer
-of `Frame_Width * Frame_Height` entries. Pixels with the background color of the sheet are transparent. A sheet
-sprite can't be rotated or drawn on.
+of `Frame_Width * Frame_Height` entries (a two dimensional array of 4 byte and one bit per pixel). Pixels with the
+background color of the sheet are transparent. A sheet sprite can't be rotated or drawn on.
 
 ### `sheet()`
 
@@ -352,6 +375,50 @@ first. An invalid frame renders an empty sprite (hides it). Presents the head.
 | `position` | Screen vertex where the origin of the sprite is rendered |
 | `frame` | Frame of the sheet |
 | `angle` | Rotation angle in degree, clockwise on the screen |
+
+## Canvas sheet sprite with array buffers
+
+```cpp
+template <std::uint16_t Width, std::uint16_t Height, bool Rotate = true>
+class canvas_sheet_xy : public base;
+```
+
+A canvas sheet sprite of a fixed size. It is used like a `canvas_sheet` (`frame_count()`, `set_rotation()`,
+`get_rotation()`, `get_rotation_center()`, `render()`), but stores the pattern and the background in plain two
+dimensional arrays with x and y as keys instead of AVL trees. It needs about half of the RAM and renders faster.
+The price is a pattern which is limited to the canvas of `Width x Height`: pixels which a shader moves out of the
+canvas are dropped. So a frame which is zoomed by 2 needs twice the width and height, shaders like `tint` or `flip`
+need nothing extra. Rotation with `set_rotation()` or `render()` needs nothing extra either, the restore array is
+as big as the diagonal of the canvas. A sprite which is never rotated gets `Rotate = false`: its restore array has
+the size of the canvas then, and rotating it is a compile error.
+
+| Template parameter | Description |
+|---|---|
+| `Width` | Width of the canvas, at least `sprite_width` of the sheet |
+| `Height` | Height of the canvas, at least `sprite_height` of the sheet |
+| `Rotate` | `true` (default) if the sprite can be rotated, `false` for a restore array of the canvas size |
+
+The saving is biggest for square frames, `sizeof` on a 32 bit build:
+
+| Frame | `canvas_sheet` | `canvas_sheet_xy` | `canvas_sheet_xy`, `Rotate = false` |
+|---|---|---|---|
+| 16 x 16 | `canvas_sheet<320>`: 9140 byte | `canvas_sheet_xy<16, 16>`: 3972 byte | `canvas_sheet_xy<16, 16, false>`: 2220 byte |
+| 24 x 24 | `canvas_sheet<576>`: 16308 byte | `canvas_sheet_xy<24, 24>`: 8104 byte | `canvas_sheet_xy<24, 24, false>`: 4820 byte |
+| 32 x 32 | `canvas_sheet<1280>`: 36020 byte | `canvas_sheet_xy<32, 32>`: 14184 byte | `canvas_sheet_xy<32, 32, false>`: 8460 byte |
+
+### `canvas_sheet_xy()`
+
+```cpp
+canvas_sheet_xy(drv& head, const sheet_info_type* sheet_info, std::int16_t z_index = 0);
+```
+
+Creates a canvas sheet sprite with array buffers.
+
+| Parameter | Description |
+|---|---|
+| `head` | Head to render on |
+| `sheet_info` | The sprite sheet |
+| `z_index` | Z-index, a bigger z-index is in front |
 
 ## Sprite sheets
 

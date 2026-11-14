@@ -61,19 +61,25 @@ void render_background(vic::drv& head)
 #include "sprite_sheets/ghost.h"
 
 // the z-index defines what is in front: ghosts (30, 31) > ball (15) > bina (10) > coins (5)
-static vic::sprite::sheet<32, 48>         bina  (head, &sprite_sheet_bina,  10);
-static vic::sprite::canvas_sheet<320>     coin  (head, &sprite_sheet_coin,   5);
-static vic::sprite::canvas_sheet<576>     ghost0(head, &sprite_sheet_ghost, 30);
-static vic::sprite::canvas_sheet<576>     ghost1(head, &sprite_sheet_ghost, 31);
-static vic::sprite::canvas<256, 1>        ball  (head, 15);
+static vic::sprite::sheet<32, 48>                  bina  (head, &sprite_sheet_bina,  10);
+static vic::sprite::canvas_sheet_xy<16, 16>        coin  (head, &sprite_sheet_coin,   5);
+static vic::sprite::canvas_sheet_xy<24, 24, false> ghost0(head, &sprite_sheet_ghost, 30);
+static vic::sprite::canvas_sheet_xy<24, 24, false> ghost1(head, &sprite_sheet_ghost, 31);
+static vic::sprite::canvas<256, 1>                 ball  (head, 15);
 ```
 
 - `sheet<Frame_Width, Frame_Height>` renders frames straight out of a sprite sheet (`sheet_info_type`). It is the
   cheapest sprite, but it can't be rotated or recolored.
 - `canvas_sheet<Pixel>` loads the sheet frame into a canvas, so it can be rotated and shaders apply. `Pixel` needs
   some headroom over `sprite_width * sprite_height` for rotated frames.
+- `canvas_sheet_xy<Width, Height>` is used like a `canvas_sheet` and needs about half of the RAM, the pattern is
+  limited to a canvas of `Width x Height`. `canvas_sheet_xy<Width, Height, false>` can't be rotated and needs even
+  less. The demo uses it for the rotating coin and the tinted ghosts, which are not rotated.
 - `canvas<Pixel, Frames>` is a sprite you draw on with all drawing context functions.
 - Bigger z-index is in front. Sprites with the same z-index are placed behind the existing ones.
+
+The differences of the sprite types and their RAM are compared in the
+[sprite reference](/vic/reference/sprite/#sprite-types).
 
 ## Canvas sprite
 
@@ -117,7 +123,7 @@ for (std::uint32_t t = 0U; ; ++t) {
 }
 ```
 
-- `canvas_sheet::render(position, frame, angle)` rotates around the center of the sheet frame,
+- `canvas_sheet_xy::render(position, frame, angle)` (like the one of `canvas_sheet`) rotates around the center of the sheet frame,
   `canvas::set_rotation(angle, center)` around a center in canvas coordinates. The angle is in degree, clockwise on
   screen. The pattern itself is not modified.
 - Rendering an invalid frame (`0xFFFF`) hides a sprite and restores its background. The demo ends its one shot burst

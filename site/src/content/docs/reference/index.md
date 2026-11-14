@@ -71,7 +71,7 @@ don't present are marked in their description.
 | [`vic::dc`](/vic/reference/dc/) | `dc.h` | Drawing context: pen color and width, anti aliasing, primitives, shader pipe. Derived from `vic::gpr` (`gpr.h`), the graphic primitive renderer. |
 | [`vic::tc`](/vic/reference/tc/) | `tc.h` | Text context: renders UTF-8 strings with bitmap and vector fonts on a `dc`, or forwards text to an alpha numeric head. Derived from `vic::txr` (`txr.h`), the text renderer. |
 | [`vic::drv`](/vic/reference/drv/) | `drv.h` | Driver base class of every head: screen, viewport, framebuffer planes, display control and the virtual hooks a head overrides. |
-| [`vic::sprite`](/vic/reference/sprite/) | `sprite.h` | Sprite engine: `canvas`, `sheet` and `canvas_sheet` sprites with z-order, rotation and collision detection. |
+| [`vic::sprite`](/vic/reference/sprite/) | `sprite.h` | Sprite engine: `canvas`, `sheet`, `canvas_sheet` and `canvas_sheet_xy` sprites with z-order, rotation and collision detection. |
 | [`vic::shader`](/vic/reference/shader/) | `shader/base.h`, `shader/brush.h`, `shader/gradient.h`, `shader/rotate.h` | Pixel and vertex shaders of the shader pipe: clipping, zoom, offset, flip, tint, alpha blend, brush, gradients, rotate. |
 | [`vic::widget`](/vic/reference/widgets/) | `widget/*.h` | Widgets: bitmap, progress, label, textbox, gauges, LED, input widgets and more. |
 | [`vic::color`, `vic::util`](/vic/reference/color-util/) | `color.h`, `util.h` | Color formats, assembly, blending, conversion and named colors; vertex, pixel and rect types, integer math helpers. |
