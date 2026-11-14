@@ -114,7 +114,7 @@ void on_ghost_collision(vic::sprite::base&, vic::sprite::base& other, void* arg)
 
 
 // render a ghost, tinted red if it collided with the other ghost in its last render
-void render_ghost(vic::sprite::canvas_sheet<576>& ghost, vic::vertex_type pos, std::uint16_t frame, ghost_state& state, vic::shader::tint& red)
+void render_ghost(vic::sprite::canvas_sheet_xy<24, 24, false>& ghost, vic::vertex_type pos, std::uint16_t frame, ghost_state& state, vic::shader::tint& red)
 {
   if (state.hit) {
     state.hit = false;      // consumed, render() below sets it again if the ghosts still overlap
@@ -213,20 +213,22 @@ void demo()
   // S P R I T E S
   // the z-index defines what is in front: bursts > ghosts > ship > ball > bina > coins
   static vic::sprite::sheet<32, 48> bina(head(), &sprite_sheet_bina, 10);
-  // coins and bursts are canvas sheets, so they can be rotated (the canvas needs some headroom for rotated frames)
-  static vic::sprite::canvas_sheet<320> coin0(head(), &sprite_sheet_coin, 5);
-  static vic::sprite::canvas_sheet<320> coin1(head(), &sprite_sheet_coin, 5);
-  static vic::sprite::canvas_sheet<320> coin2(head(), &sprite_sheet_coin, 5);
+  // coins and bursts are canvas sheets, so they can be rotated. A canvas_sheet_xy has a canvas of a fixed size
+  // (the frame size here) and needs less than half of the RAM of a canvas_sheet
+  static vic::sprite::canvas_sheet_xy<16, 16> coin0(head(), &sprite_sheet_coin, 5);
+  static vic::sprite::canvas_sheet_xy<16, 16> coin1(head(), &sprite_sheet_coin, 5);
+  static vic::sprite::canvas_sheet_xy<16, 16> coin2(head(), &sprite_sheet_coin, 5);
   // the ghosts are canvas sheets, so a tint shader can recolor them when they collide
-  static vic::sprite::canvas_sheet<576> ghost0(head(), &sprite_sheet_ghost, 30);
-  static vic::sprite::canvas_sheet<576> ghost1(head(), &sprite_sheet_ghost, 31);
+  // they are not rotated (Rotate = false), so their restore buffer has the size of the canvas only
+  static vic::sprite::canvas_sheet_xy<24, 24, false> ghost0(head(), &sprite_sheet_ghost, 30);
+  static vic::sprite::canvas_sheet_xy<24, 24, false> ghost1(head(), &sprite_sheet_ghost, 31);
   static ghost_state ghost_st[2] = { { &ghost1, false }, { &ghost0, false } };
   ghost0.set_collision_handler(on_ghost_collision, &ghost_st[0]);
   ghost1.set_collision_handler(on_ghost_collision, &ghost_st[1]);
   vic::shader::tint ghost_red(vic::color::red, 200U);
   static vic::sprite::sheet<24, 16> ship(head(), &sprite_sheet_ship, 20);
-  static vic::sprite::canvas_sheet<1280> burst0(head(), &sprite_sheet_star, 40);
-  static vic::sprite::canvas_sheet<1280> burst1(head(), &sprite_sheet_star, 41);
+  static vic::sprite::canvas_sheet_xy<32, 32> burst0(head(), &sprite_sheet_star, 40);
+  static vic::sprite::canvas_sheet_xy<32, 32> burst1(head(), &sprite_sheet_star, 41);
 
   // the ball is a canvas sprite: a beach ball drawn with disc sectors, it is rotated while rolling
   static vic::sprite::canvas<256, 1> ball(head(), 15);
@@ -244,8 +246,8 @@ void demo()
     ball.disc({ -3, -3 }, 1U);
   }
 
-  vic::sprite::canvas_sheet<320>*  const coins[3]  = { &coin0, &coin1, &coin2 };
-  vic::sprite::canvas_sheet<1280>* const bursts[2] = { &burst0, &burst1 };
+  vic::sprite::canvas_sheet_xy<16, 16>* const coins[3]  = { &coin0, &coin1, &coin2 };
+  vic::sprite::canvas_sheet_xy<32, 32>* const bursts[2] = { &burst0, &burst1 };
 
   // A N I M A T I O N   S T A T E
   std::int16_t  bina_x    = 20,  bina_dir = 1;             // bina walks left and right
