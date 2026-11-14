@@ -314,6 +314,96 @@ TEST_CASE(sprite_sheet_render)
 }
 
 
+TEST_CASE(sprite_sheet_move_restore)
+{
+  // 3 x 3 pixel sheet in RGB332 with one frame, the center pixel is background (black)
+  static const std::uint8_t data[] = { 0xE0, 0x1C, 0x03,  0xFC, 0x00, 0x1F,  0xE3, 0xFF, 0x92 };
+  static const sprite::sheet_info_type info = { 3U, 3U, 3U, 3U, color::black, color::format_RGB332, data };
+
+  head_type h;
+  dc d(h);
+  // every background pixel has its own color
+  for (std::int16_t y = 0; y < 12; ++y) {
+    for (std::int16_t x = 0; x < 16; ++x) {
+      d.pixel_set({ x, y }, color::argb(static_cast<std::uint8_t>(x * 16), static_cast<std::uint8_t>(y * 16), 0x55U));
+    }
+  }
+
+  sprite::sheet<3, 3> s(h, &info, 0);
+  // overlapping moves in all directions (the restore buffer is moved), jumps and a partially off screen position
+  static const vertex_type path[] = {
+    { 5, 5 }, { 6, 5 }, { 8, 5 }, { 7, 5 }, { 5, 5 }, { 5, 6 }, { 5, 8 }, { 5, 7 }, { 5, 5 },
+    { 6, 6 }, { 8, 8 }, { 7, 7 }, { 5, 5 }, { 6, 4 }, { 4, 6 }, { 2, 8 }, { 4, 6 }, { 12, 1 },
+    { 12, 1 }, { 9, 4 }, { -1, -1 }, { 0, 0 }, { 14, 10 }, { 13, 9 }, { 5, 5 }
+  };
+  for (std::size_t n = 0U; n < sizeof(path) / sizeof(path[0]); ++n) {
+    s.render(path[n], 0U);
+    std::uint32_t wrong = 0U;
+    for (std::int16_t y = 0; y < 12; ++y) {
+      for (std::int16_t x = 0; x < 16; ++x) {
+        color::value_type expected = color::argb(static_cast<std::uint8_t>(x * 16), static_cast<std::uint8_t>(y * 16), 0x55U);
+        const std::int16_t sx = static_cast<std::int16_t>(x - path[n].x);
+        const std::int16_t sy = static_cast<std::int16_t>(y - path[n].y);
+        if ((sx >= 0) && (sx < 3) && (sy >= 0) && (sy < 3) && ((sx != 1) || (sy != 1))) {
+          expected = sprite::sheet_pixel_color(info, &data[sy * 3 + sx]);
+        }
+        if (h.pixel({ x, y }) != expected) {
+          ++wrong;
+        }
+      }
+    }
+    CHECK_EQ(wrong, 0U);
+  }
+
+  // hide the sprite: the complete background is back
+  s.render({ 5, 5 }, 1U);
+  for (std::int16_t y = 0; y < 12; ++y) {
+    for (std::int16_t x = 0; x < 16; ++x) {
+      CHECK_EQ(h.pixel({ x, y }), color::argb(static_cast<std::uint8_t>(x * 16), static_cast<std::uint8_t>(y * 16), 0x55U));
+    }
+  }
+}
+
+
+TEST_CASE(sprite_sheet_move_overlap)
+{
+  // a sheet moves below and above a canvas sprite, the background must survive in both orders
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+
+  sprite::canvas<64, 1> below(h, -1);
+  sprite::canvas<64, 1> above(h, 1);
+  below.set_color(color::white);
+  below.box({ 0, 0, 3, 3 });
+  above.set_color(color::yellow);
+  above.box({ 0, 0, 3, 3 });
+  sprite::sheet<2, 2> s(h, &info565, 0);
+
+  below.render({ 2, 2 });
+  above.render({ 8, 2 });
+  for (std::int16_t x = 0; x < 13; ++x) {
+    s.render({ x, 3 }, 0U);
+    // the sheet pixel (0, 0) is red, visible unless the 'above' sprite covers it
+    CHECK_EQ(h.pixel({ x, 3 }), ((x >= 8) && (x < 11)) ? static_cast<color::value_type>(color::yellow) : 0xFFF80000UL);
+  }
+  // move the canvas sprites away while the sheet is at rest, then hide the sheet
+  below.render({ 2, 8 });
+  above.render({ 8, 8 });
+  s.render({ 0, 0 }, 0xFFFFU);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue),   16U * 12U - 18U);
+  CHECK_EQ(vic_test::count_pixels(h, color::white),  9U);
+  CHECK_EQ(vic_test::count_pixels(h, color::yellow), 9U);
+}
+
+
+TEST_CASE(sprite_sheet_memory)
+{
+  // the restore buffer of a sheet is a two dimensional array: 4 byte color and one bit per frame pixel
+  CHECK(sizeof(sprite::sheet<32, 48>) <= 32U * 48U * 4U + 32U * 48U / 8U + 256U);
+}
+
+
 TEST_CASE(sprite_sheet_formats)
 {
   head_type h;
@@ -902,4 +992,246 @@ TEST_CASE(sprite_canvas_restore_transparent_background)
   CHECK_EQ(h.pixel({ 4, 3 }), color::none);
   CHECK_EQ(h.pixel({ 4, 4 }), color::white);
   CHECK_EQ(h.pixel({ 6, 6 }), color::white);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// canvas sheet with two dimensional arrays as buffers
+//
+
+namespace {
+
+// 12 x 5 pixel sheet in RGB332 with two frames of 6 x 5, black (0x00) is background
+const std::uint8_t sheet_xy[] = {
+  0xE0, 0xE0, 0x00, 0x1C, 0x1C, 0x03,   0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00,
+  0xE0, 0x00, 0x00, 0x00, 0x1C, 0x03,   0xFF, 0xE3, 0x00, 0x00, 0x1F, 0xFF,
+  0xFC, 0xFC, 0xFC, 0xFC, 0xFC, 0xFC,   0xFF, 0x00, 0x92, 0x92, 0x00, 0xFF,
+  0x03, 0x00, 0x1F, 0x1F, 0x00, 0xE3,   0xFF, 0xE3, 0x00, 0x00, 0x1F, 0xFF,
+  0x03, 0x03, 0x00, 0x00, 0xE3, 0xE3,   0x00, 0xFF, 0xFF, 0xFF, 0xFF, 0x00
+};
+const sprite::sheet_info_type info_xy = { 12U, 5U, 6U, 5U, color::black, color::format_RGB332, sheet_xy };
+
+typedef head::memory<40, 30> head_xy_type;
+
+
+// hash of all head pixels
+std::uint32_t head_hash(const head_xy_type& h)
+{
+  std::uint32_t hash = 2166136261U;
+  for (std::int16_t y = 0; y < 30; ++y) {
+    for (std::int16_t x = 0; x < 40; ++x) {
+      hash = (hash ^ h.pixel({ x, y })) * 16777619U;
+    }
+  }
+  return hash;
+}
+
+
+// render a canvas sheet with and without rotation
+struct render_rotated
+{
+  template <typename Sprite>
+  static void render(Sprite& s, vertex_type position, std::uint16_t frame, std::int16_t angle)
+  { s.render(position, frame, angle); }
+};
+
+struct render_unrotated
+{
+  template <typename Sprite>
+  static void render(Sprite& s, vertex_type position, std::uint16_t frame, std::int16_t)
+  { s.render(position, frame); }
+};
+
+
+// render a canvas sheet sprite on a path with rotation, frame changes, a tint shader and other sprites in the way
+// the head is hashed after every step
+template <typename Sprite, typename Render>
+void run_canvas_sheet(std::uint32_t* hashes, std::uint16_t steps)
+{
+  head_xy_type h;
+  dc d(h);
+  // every background pixel has its own color
+  for (std::int16_t y = 0; y < 30; ++y) {
+    for (std::int16_t x = 0; x < 40; ++x) {
+      d.pixel_set({ x, y }, color::argb(static_cast<std::uint8_t>(x * 6), static_cast<std::uint8_t>(y * 8), 0x55U));
+    }
+  }
+  const std::uint32_t background = head_hash(h);
+
+  sprite::canvas<64, 1> above(h, 5);
+  above.set_color(color::argb(0xFFU, 0xFFU, 0x00U, 0x80U));   // half transparent
+  above.box({ 0, 0, 5, 5 });
+  sprite::sheet<6, 5> below(h, &info_xy, -1);
+  Sprite s(h, &info_xy, 1);
+  shader::tint red(color::red, 128U);
+
+  below.render({ 18, 9 }, 1U);
+  for (std::uint16_t n = 0U; n < steps; ++n) {
+    // one pixel moves first, jumps then
+    const vertex_type position = (n < 120U) ? vertex_type{ static_cast<std::int16_t>(6 + n % 24U), static_cast<std::int16_t>(4 + (n / 3U) % 16U) }
+                                            : vertex_type{ static_cast<std::int16_t>(4 + (n * 5U) % 27U), static_cast<std::int16_t>(2 + (n * 3U) % 19U) };
+    const std::uint16_t frame = ((n % 50U) == 49U) ? 0xFFFFU : static_cast<std::uint16_t>(n % 2U);
+    const std::int16_t  angle = ((n % 8U) == 0U) ? 0 : static_cast<std::int16_t>(n);
+    if ((n % 16U) == 0U) {
+      above.render({ static_cast<std::int16_t>(12 + (n / 16U) % 9U), static_cast<std::int16_t>(8 + (n / 16U) % 5U) });
+    }
+    if ((n % 9U) == 4U) {
+      s.shader_register(&red);
+      Render::render(s, position, frame, angle);
+      s.shader_remove(&red);
+    }
+    else {
+      Render::render(s, position, frame, angle);
+    }
+    hashes[n] = head_hash(h);
+  }
+
+  // hide all sprites: the background is back
+  above.render({ 0, 0 }, 0xFFFFU);
+  below.render({ 0, 0 }, 0xFFFFU);
+  s.render({ 0, 0 }, 0xFFFFU);
+  CHECK_EQ(head_hash(h), background);
+}
+
+} // namespace
+
+
+TEST_CASE(sprite_canvas_sheet_xy)
+{
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+
+  sprite::canvas_sheet_xy<2, 2> s(h, &info565, 0);
+  CHECK_EQ(s.frame_count(), 2U);
+  s.render({ 3, 3 }, 0U);
+  CHECK_EQ(h.pixel({ 3, 3 }), 0xFFF80000UL);
+  CHECK_EQ(h.pixel({ 4, 3 }), 0xFF0000F8UL);
+  CHECK_EQ(h.pixel({ 3, 4 }), color::blue);
+  CHECK_EQ(h.pixel({ 4, 4 }), 0xFF00FC00UL);
+
+  s.render({ 6, 6 }, 1U);
+  CHECK_EQ(h.pixel({ 3, 3 }), color::blue);
+  CHECK_EQ(h.pixel({ 6, 6 }), 0xFF00FC00UL);
+  CHECK_EQ(h.pixel({ 7, 6 }), 0xFFF8FCF8UL);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 2U);
+
+  // frame 0 (red, blue / bg, green) rotated by 90 degree around the frame center (1, 1), like a canvas_sheet
+  s.render({ 4, 4 }, 0U, 90);
+  CHECK_EQ(h.pixel({ 6, 4 }), 0xFFF80000UL);
+  CHECK_EQ(h.pixel({ 6, 5 }), 0xFF0000F8UL);
+  CHECK_EQ(h.pixel({ 5, 5 }), 0xFF00FC00UL);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 3U);
+
+  s.render({ 6, 6 }, 5U);   // invalid frame: empty
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+}
+
+
+TEST_CASE(sprite_canvas_sheet_xy_equal)
+{
+  // a canvas sheet with array buffers renders exactly like a canvas sheet with AVL buffers
+  static std::uint32_t avl[360], xy[360];
+  run_canvas_sheet<sprite::canvas_sheet<160>, render_rotated>(avl, 360U);
+  run_canvas_sheet<sprite::canvas_sheet_xy<6, 5>, render_rotated>(xy, 360U);
+  std::uint32_t different = 0U;
+  for (std::uint16_t n = 0U; n < 360U; ++n) {
+    if (avl[n] != xy[n]) {
+      ++different;
+    }
+  }
+  CHECK_EQ(different, 0U);
+
+  // the same without rotation: the restore buffer of the canvas sheet has the size of the canvas then
+  run_canvas_sheet<sprite::canvas_sheet<160>, render_unrotated>(avl, 360U);
+  run_canvas_sheet<sprite::canvas_sheet_xy<6, 5, false>, render_unrotated>(xy, 360U);
+  different = 0U;
+  for (std::uint16_t n = 0U; n < 360U; ++n) {
+    if (avl[n] != xy[n]) {
+      ++different;
+    }
+  }
+  CHECK_EQ(different, 0U);
+}
+
+
+TEST_CASE(sprite_canvas_sheet_xy_rotation)
+{
+  // a frame without background pixels is rotated by every angle around different centers:
+  // the restore buffer has to hold every pixel of the rotated frame, otherwise pixels are left on the head
+  static const std::uint8_t data[7 * 4] = {
+    0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE0,
+    0xE0, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0xE0,
+    0xE0, 0x1C, 0x1C, 0x1C, 0x1C, 0x1C, 0xE0,
+    0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE0, 0xE0
+  };
+  static const sprite::sheet_info_type info = { 7U, 4U, 7U, 4U, color::black, color::format_RGB332, data };
+
+  static head::memory<64, 48> h;
+  dc d(h);
+  d.cls(color::blue);
+  sprite::canvas_sheet_xy<7, 4> s(h, &info, 0);
+  static const vertex_type centers[] = { { 0, 0 }, { 3, 2 }, { 6, 3 }, { -4, -4 }, { 12, 9 } };
+  for (std::size_t c = 0U; c < sizeof(centers) / sizeof(centers[0]); ++c) {
+    for (std::int16_t angle = 0; angle < 360; ++angle) {
+      s.set_rotation(angle, centers[c]);
+      s.render({ static_cast<std::int16_t>(30 + angle % 3), 22 }, 0U);
+      // a rotated frame has about as many pixels as the frame
+      const std::size_t pixels = vic_test::count_pixels_not(h, color::blue);
+      CHECK((pixels >= 18U) && (pixels <= 42U));
+    }
+  }
+  s.render({ 30, 22 }, 0xFFFFU);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 64U * 48U);
+}
+
+
+TEST_CASE(sprite_canvas_sheet_xy_window)
+{
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+  shader::zoom zoom(2U, 2U);
+  {
+    // frame 0 (red, blue / bg, green) zoomed by 2 needs a canvas of 4 x 4
+    sprite::canvas_sheet_xy<4, 4> s(h, &info565, 0);
+    s.shader_register(&zoom);
+    s.render({ 2, 2 }, 0U);
+    CHECK_EQ(h.pixel({ 2, 2 }), 0xFFF80000UL);
+    CHECK_EQ(h.pixel({ 3, 3 }), 0xFFF80000UL);
+    CHECK_EQ(h.pixel({ 4, 2 }), 0xFF0000F8UL);
+    CHECK_EQ(h.pixel({ 5, 3 }), 0xFF0000F8UL);
+    CHECK_EQ(h.pixel({ 2, 4 }), color::blue);
+    CHECK_EQ(h.pixel({ 4, 4 }), 0xFF00FC00UL);
+    CHECK_EQ(h.pixel({ 5, 5 }), 0xFF00FC00UL);
+    CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 12U);
+    s.render({ 2, 2 }, 0xFFFFU);
+    CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  }
+  {
+    // a canvas of 3 x 3 is too small for the zoomed frame: the pixels outside of the canvas are dropped
+    sprite::canvas_sheet_xy<3, 3> s(h, &info565, 0);
+    s.shader_register(&zoom);
+    s.render({ 2, 2 }, 0U);
+    CHECK_EQ(h.pixel({ 2, 2 }), 0xFFF80000UL);
+    CHECK_EQ(h.pixel({ 3, 3 }), 0xFFF80000UL);
+    CHECK_EQ(h.pixel({ 4, 2 }), 0xFF0000F8UL);
+    CHECK_EQ(h.pixel({ 5, 2 }), color::blue);
+    CHECK_EQ(h.pixel({ 4, 4 }), 0xFF00FC00UL);
+    CHECK_EQ(h.pixel({ 5, 5 }), color::blue);
+    CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 7U);
+    s.render({ 5, 5 }, 0U);
+    CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 7U);
+    s.render({ 2, 2 }, 0xFFFFU);
+    CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  }
+}
+
+
+TEST_CASE(sprite_canvas_sheet_xy_memory)
+{
+  // arrays instead of AVL trees: a 24 x 24 pixel canvas sheet takes about half of the RAM
+  CHECK(sizeof(sprite::canvas_sheet_xy<24, 24>) * 10U < sizeof(sprite::canvas_sheet<576>) * 6U);
+  // without rotation the restore buffer doesn't grow: pattern and restore buffer of 24 x 24 colors, one bit per restore color
+  CHECK(sizeof(sprite::canvas_sheet_xy<24, 24, false>) <= 2U * 24U * 24U * 4U + 24U * 24U / 8U + 256U);
 }

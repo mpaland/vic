@@ -763,13 +763,16 @@ public:
 
 /**
  * Sheet sprite, the frames are taken directly out of a sprite sheet
- * \param Frame_Width Width of one frame in pixel
- * \param Frame_Height Height of one frame in pixel
+ * The restore (background) buffer is a two dimensional array of the frame size with x and y as keys: a sheet only
+ * stores background pixels where its frame is, so the keys are the screen position modulo the frame size. Every
+ * pixel inside the frame has its own entry then, wherever the sprite is
+ * \param Frame_Width Width of one frame in pixel, at least the sprite width of the sheet
+ * \param Frame_Height Height of one frame in pixel, at least the sprite height of the sheet
  */
 template <std::uint16_t Frame_Width, std::uint16_t Frame_Height>
 class sheet : public base
 {
-  typedef avl_array<vertex_type, color::value_type, std::uint16_t, Frame_Width * Frame_Height, true> restore_type;
+  static_assert((Frame_Width > 0U) && (Frame_Height > 0U), "sheet frame size must be positive");
 
   const sheet_info_type*  sheet_info_;          // sheet info
   std::uint16_t           frames_per_row_;      // frames per sheet row
@@ -778,8 +781,10 @@ class sheet : public base
   std::uint32_t           pattern_it_;          // pattern iterator
   rect_type               pattern_bounding_;    // pattern bounding box
 
-  restore_type                    restore_;     // restore (background) buffer
-  typename restore_type::iterator restore_it_;  // restore iterator
+  color::value_type       restore_[Frame_Height][Frame_Width];                    // restore (background) buffer [y][x]
+  std::uint8_t            restore_used_[Frame_Height][(Frame_Width + 7U) / 8U];   // one bit per buffer entry: entry is used
+  vertex_type             restore_origin_;      // sprite position of the buffered pixels
+  vertex_type             restore_it_;          // restore iterator, x/y keys
 
 public:
   /**
@@ -795,6 +800,9 @@ public:
     , frame_count_(0U)
     , pattern_size_(0U)
     , pattern_it_(0U)
+    , restore_used_()
+    , restore_origin_({ 0, 0 })
+    , restore_it_({ 0, Frame_Height })
   {
     pattern_bounding_.clear();
     if (sheet_info_ && sheet_info_->sprite_width && sheet_info_->sprite_height) {
@@ -861,17 +869,28 @@ public:
   virtual inline void restore_it_next(bool next) final
   {
     if (next) {
-      ++restore_it_;
+      restore_it_.x++;
     }
     else {
-      restore_it_ = restore_.begin();
+      restore_it_ = { 0, 0 };
+    }
+    // take the next used entry
+    for (; restore_it_.y < Frame_Height; ++restore_it_.y, restore_it_.x = 0) {
+      for (; restore_it_.x < Frame_Width; ++restore_it_.x) {
+        if (restore_used_[restore_it_.y][restore_it_.x / 8] & (1U << (restore_it_.x % 8))) {
+          return;
+        }
+      }
     }
   }
 
   virtual inline bool restore_it_get(pixel_type& pixel) final
   {
-    if (restore_it_ != restore_.end()) {
-      pixel = { restore_it_.key(), restore_it_.val() };
+    if (restore_it_.y < Frame_Height) {
+      // get the screen position back out of the keys: it's the one inside the frame at the sprite position of the buffered pixels
+      pixel.vertex.x = static_cast<std::int16_t>(restore_origin_.x + (restore_it_.x + Frame_Width  - static_cast<std::uint16_t>(restore_origin_.x + 32768) % Frame_Width)  % Frame_Width);
+      pixel.vertex.y = static_cast<std::int16_t>(restore_origin_.y + (restore_it_.y + Frame_Height - static_cast<std::uint16_t>(restore_origin_.y + 32768) % Frame_Height) % Frame_Height);
+      pixel.color    = restore_[restore_it_.y][restore_it_.x];
       return true;
     }
     return false;
@@ -879,25 +898,30 @@ public:
 
   virtual inline void restore_it_delete() final
   {
-    typename restore_type::iterator it = restore_it_++;
-    if (restore_it_ != restore_.end()) {
-      const vertex_type key = restore_it_.key();
-      restore_.erase(it);
-      restore_it_ = restore_.find(key);    // restore old iterator position
-    }
-    else {
-      restore_.erase(it);
-    }
+    restore_used_[restore_it_.y][restore_it_.x / 8] &= static_cast<std::uint8_t>(~(1U << (restore_it_.x % 8)));
+    restore_it_next(true);
   }
 
   virtual inline void restore_set(const pixel_type& pixel) final
   {
-    restore_.insert(pixel.vertex, pixel.color);
+    // the keys are the screen position modulo the frame size (+ 32768 for positive values)
+    const std::int32_t x = static_cast<std::uint16_t>(pixel.vertex.x + 32768) % Frame_Width;
+    const std::int32_t y = static_cast<std::uint16_t>(pixel.vertex.y + 32768) % Frame_Height;
+    restore_[y][x] = pixel.color;
+    restore_used_[y][x / 8] |= static_cast<std::uint8_t>(1U << (x % 8));
+    // pixels are only set while the sprite is at its place: remember it, render() changes the position before it restores
+    restore_origin_ = position_;
   }
 
   virtual inline bool restore_find(pixel_type& pixel) final
   {
-    return restore_.find(pixel.vertex, pixel.color);
+    const std::int32_t x = static_cast<std::uint16_t>(pixel.vertex.x + 32768) % Frame_Width;
+    const std::int32_t y = static_cast<std::uint16_t>(pixel.vertex.y + 32768) % Frame_Height;
+    if (restore_used_[y][x / 8] & (1U << (x % 8))) {
+      pixel.color = restore_[y][x];
+      return true;
+    }
+    return false;
   }
 
 private:
@@ -1025,6 +1049,359 @@ public:
 
     // call the base class
     canvas<Pixel, 1U>::render(position, 0U);
+  }
+};
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// C A N V A S   S H E E T   X Y   S P R I T E
+//
+
+/**
+ * Canvas sheet sprite of a fixed size
+ * It is used like a canvas_sheet, but the pattern and the restore buffer are two dimensional arrays with x and y as
+ * keys instead of AVL trees, which need about half of the RAM and are faster.
+ * The pattern is limited to the canvas of Width x Height, pixels which a shader (zoom, offset etc.) moves out of the
+ * canvas are dropped. The restore buffer has the size of the canvas, or of the rotated canvas if the sprite can be
+ * rotated. Its keys are the screen position modulo this size, so every pixel of the sprite has its own entry,
+ * wherever the sprite is
+ * \param Width Width of the canvas, at least "sheet_info_->sprite_width" to hold the sprite
+ * \param Height Height of the canvas, at least "sheet_info_->sprite_height" to hold the sprite
+ * \param Rotate true if the sprite can be rotated. Set it to false if rotation is not needed, the restore buffer
+ *               has the size of the canvas then instead of the (about two times bigger) rotated canvas
+ */
+template <std::uint16_t Width, std::uint16_t Height, bool Rotate = true>
+class canvas_sheet_xy : public base
+{
+  static_assert((Width > 0U) && (Height > 0U), "canvas size must be positive");
+
+  /**
+   * Get the size of the restore buffer of the rotated canvas at compile time: the diagonal of the canvas
+   * \param size Start value 1, the recursion is used to stay C++11 compliant
+   * \return Biggest width and height of the box of the rotated canvas (the diagonal and the 3 pixel margin of the box)
+   */
+  static constexpr std::uint16_t rotated_size(std::uint32_t size)
+  {
+    return (size * size >= static_cast<std::uint32_t>(Width) * Width + static_cast<std::uint32_t>(Height) * Height) ? static_cast<std::uint16_t>(size + 3U) : rotated_size(size + 1U);
+  }
+
+  static const std::uint16_t RESTORE_WIDTH  = Rotate ? rotated_size(1U) : Width;
+  static const std::uint16_t RESTORE_HEIGHT = Rotate ? rotated_size(1U) : Height;
+
+  /**
+   * Output shader, stores all rendered pixels in the pattern buffer
+   */
+  class output : public shader::base
+  {
+    color::value_type (&pattern_)[Height][Width];
+
+  public:
+    output(color::value_type (&pattern)[Height][Width])
+      : pattern_(pattern)
+    { }
+
+    inline virtual void pixel_set(vertex_type vertex, color::value_type color) final
+    {
+      if ((vertex.x >= 0) && (vertex.x < Width) && (vertex.y >= 0) && (vertex.y < Height)) {
+        // color::none deletes the pixel (e.g. to punch out pixels), an existing pixel is alpha blended
+        color::value_type& pattern = pattern_[vertex.y][vertex.x];
+        pattern = ((color == color::none) || (pattern == color::none)) ? color : color::alpha_blend(color, pattern);
+      }
+    }
+
+    inline virtual color::value_type pixel_get(vertex_type vertex) final
+    {
+      return ((vertex.x >= 0) && (vertex.x < Width) && (vertex.y >= 0) && (vertex.y < Height)) ? pattern_[vertex.y][vertex.x] : static_cast<color::value_type>(color::none);
+    }
+  };
+
+  const sheet_info_type*  sheet_info_;          // sheet info
+  std::uint16_t           frames_per_row_;      // frames per sheet row
+  std::uint16_t           frame_count_;         // number of frames in the sheet
+
+  color::value_type       pattern_[Height][Width];                                  // pattern buffer [y][x], color::none is no pixel
+  output                  output_shader_;                                           // shader output
+
+  color::value_type       restore_[RESTORE_HEIGHT][RESTORE_WIDTH];                  // restore (background) buffer [y][x]
+  std::uint8_t            restore_used_[RESTORE_HEIGHT][(RESTORE_WIDTH + 7U) / 8U]; // one bit per buffer entry: entry is used
+  vertex_type             restore_origin_;      // top left screen position of the box of the buffered pixels
+  vertex_type             restore_it_;          // restore iterator, x/y keys
+
+  // rotation, the pattern is rotated at render time by mapping every destination pixel back to the pattern
+  std::int16_t            angle_;               // rotation angle in degree, 0 = no rotation
+  vertex_type             rot_center_;          // rotation center in canvas coordinates
+  std::int32_t            inv_sin_;             // sin(-angle), destination to source mapping
+  std::int32_t            inv_cos_;             // cos(-angle)
+  rect_type               it_box_;              // iteration box of the (rotated) canvas
+  vertex_type             it_pos_;              // pattern iterator position (destination coordinates)
+  color::value_type       it_color_;            // pattern color at it_pos_
+
+public:
+  /**
+   * ctor
+   * \param head Reference to the head instance
+   * \param sheet_info The sheet info
+   * \param z_index Z-index of the sprite, bigger z-index moves to front
+   */
+  canvas_sheet_xy(drv& head, const sheet_info_type* sheet_info, std::int16_t z_index = 0)
+    : base(head, z_index)
+    , sheet_info_(sheet_info)
+    , frames_per_row_(0U)
+    , frame_count_(0U)
+    , pattern_()
+    , output_shader_(pattern_)
+    , restore_used_()
+    , restore_origin_({ 0, 0 })
+    , restore_it_({ 0, RESTORE_HEIGHT })
+    , angle_(0)
+    , rot_center_({ 0, 0 })
+    , inv_sin_(0)
+    , inv_cos_(16384)
+    , it_box_({ 0, 0, 0, 0 })
+    , it_pos_({ 0, 0 })
+    , it_color_(color::none)
+  {
+    // use own output shader as shader pipeline output
+    shader_pipe_ = &output_shader_;
+
+    if (sheet_info_ && sheet_info_->sprite_width && sheet_info_->sprite_height) {
+      frames_per_row_ = static_cast<std::uint16_t>(sheet_info_->width / sheet_info_->sprite_width);
+      frame_count_    = static_cast<std::uint16_t>(frames_per_row_ * (sheet_info_->height / sheet_info_->sprite_height));
+    }
+  }
+
+
+  /**
+   * Get the number of frames of the sheet
+   * \return Frame count
+   */
+  inline std::uint16_t frame_count() const
+  {
+    return frame_count_;
+  }
+
+
+  /**
+   * Set the rotation of the sprite around an explicit center, see canvas::set_rotation()
+   * The template parameter Rotate must be true
+   * \param angle Rotation angle in degree, math positive (clockwise on screen), 0 to disable rotation
+   * \param center Rotation center in frame coordinates
+   */
+  void set_rotation(std::int16_t angle, vertex_type center)
+  {
+    static_assert(Rotate, "rotation is disabled by the template parameter Rotate");
+    angle_      = static_cast<std::int16_t>(angle % 360);
+    rot_center_ = center;
+    inv_sin_    = util::sin(static_cast<std::int16_t>(-angle_));
+    inv_cos_    = util::cos(static_cast<std::int16_t>(-angle_));
+  }
+
+
+  /**
+   * Set the rotation of the sprite around the center of the sheet frame
+   * \param angle Rotation angle in degree, math positive (clockwise on screen), 0 to disable rotation
+   */
+  void set_rotation(std::int16_t angle)
+  {
+    set_rotation(angle, sheet_info_ ? vertex_type{ static_cast<std::int16_t>(sheet_info_->sprite_width / 2U), static_cast<std::int16_t>(sheet_info_->sprite_height / 2U) } : vertex_type{ 0, 0 });
+  }
+
+
+  /**
+   * Get the rotation angle
+   * \return Rotation angle in degree, 0 if the sprite is not rotated
+   */
+  inline std::int16_t get_rotation() const
+  {
+    return angle_;
+  }
+
+
+  /**
+   * Get the rotation center
+   * \return Rotation center in canvas coordinates
+   */
+  inline vertex_type get_rotation_center() const
+  {
+    return rot_center_;
+  }
+
+
+  /**
+   * Render the sprite rotated around the frame center on the head
+   * \param position Screen vertex where the origin of the sprite is rendered
+   * \param frame Frame of the sheet to render, an invalid frame renders an empty sprite
+   * \param angle Rotation angle in degree, math positive (clockwise on screen)
+   */
+  void render(vertex_type position, std::uint16_t frame, std::int16_t angle)
+  {
+    set_rotation(angle);
+    render(position, frame);
+  }
+
+
+  /**
+   * Render the sprite on the head
+   * \param position Screen vertex where the origin of the sprite is rendered
+   * \param frame Frame of the sheet to render, an invalid frame renders an empty sprite
+   */
+  void render(vertex_type position, std::uint16_t frame = 0U)
+  {
+    // clear the pattern
+    for (std::uint_fast16_t y = 0U; y < Height; ++y) {
+      for (std::uint_fast16_t x = 0U; x < Width; ++x) {
+        pattern_[y][x] = color::none;
+      }
+    }
+
+    if (frame < frame_count_) {
+      // load the sheet frame into the pattern
+      const std::uint32_t bpp = static_cast<std::uint8_t>(sheet_info_->format) >> 4U;     // upper nibble of format is 'bytes/pixel'
+      const std::uint32_t row = (frame / frames_per_row_) * sheet_info_->sprite_height;
+      const std::uint32_t col = (frame % frames_per_row_) * sheet_info_->sprite_width;
+      for (std::uint32_t y = 0U; y < sheet_info_->sprite_height; ++y) {
+        for (std::uint32_t x = 0U; x < sheet_info_->sprite_width; ++x) {
+          const color::value_type c = sheet_pixel_color(*sheet_info_, sheet_info_->data + ((row + y) * sheet_info_->width + (col + x)) * bpp);
+          if (c != sheet_info_->bg_color) {
+            pixel_set({ static_cast<std::int16_t>(x), static_cast<std::int16_t>(y) }, c);
+          }
+        }
+      }
+    }
+
+    // call the base class
+    base::render(position, 0U);
+  }
+
+
+  virtual inline void pattern_it_next(std::uint16_t frame, bool next) final
+  {
+    if (next) {
+      it_pos_.x++;
+    }
+    else {
+      // iterate the box of the (rotated) canvas and take every pixel which maps back into the pattern
+      it_box_ = canvas_box();
+      it_pos_ = it_box_.top_left();
+    }
+    for (; it_pos_.y < it_box_.bottom; ++it_pos_.y, it_pos_.x = it_box_.left) {
+      for (; it_pos_.x < it_box_.right; ++it_pos_.x) {
+        pixel_type p = { it_pos_, color::none };
+        if (pattern_find(frame, p)) {
+          it_color_ = p.color;
+          return;
+        }
+      }
+    }
+    // end reached, it_pos_.y == it_box_.bottom
+  }
+
+  virtual inline bool pattern_it_get(std::uint16_t, pixel_type& pixel) final
+  {
+    if (it_pos_.y < it_box_.bottom) {
+      pixel = { it_pos_, it_color_ };
+      return true;
+    }
+    return false;
+  }
+
+  virtual inline bool pattern_find(std::uint16_t frame, pixel_type& pixel) final
+  {
+    // map the (rotated) destination vertex back to the pattern, x and y are the keys of the pattern
+    const vertex_type source = angle_ ? util::vertex_rotate(pixel.vertex, rot_center_, inv_sin_, inv_cos_) : pixel.vertex;
+    if ((frame != 0U) || (source.x < 0) || (source.x >= Width) || (source.y < 0) || (source.y >= Height)) {
+      // frame invalid or pixel is out of canvas
+      return false;
+    }
+    pixel.color = pattern_[source.y][source.x];
+    return pixel.color != color::none;
+  }
+
+
+  virtual inline void restore_it_next(bool next) final
+  {
+    if (next) {
+      restore_it_.x++;
+    }
+    else {
+      restore_it_ = { 0, 0 };
+    }
+    // take the next used entry
+    for (; restore_it_.y < RESTORE_HEIGHT; ++restore_it_.y, restore_it_.x = 0) {
+      for (; restore_it_.x < RESTORE_WIDTH; ++restore_it_.x) {
+        if (restore_used_[restore_it_.y][restore_it_.x / 8] & (1U << (restore_it_.x % 8))) {
+          return;
+        }
+      }
+    }
+  }
+
+  virtual inline bool restore_it_get(pixel_type& pixel) final
+  {
+    if (restore_it_.y < RESTORE_HEIGHT) {
+      // get the screen position back out of the keys: it's the one inside the box of the buffered pixels
+      pixel.vertex.x = static_cast<std::int16_t>(restore_origin_.x + (restore_it_.x + RESTORE_WIDTH  - static_cast<std::uint16_t>(restore_origin_.x + 32768) % RESTORE_WIDTH)  % RESTORE_WIDTH);
+      pixel.vertex.y = static_cast<std::int16_t>(restore_origin_.y + (restore_it_.y + RESTORE_HEIGHT - static_cast<std::uint16_t>(restore_origin_.y + 32768) % RESTORE_HEIGHT) % RESTORE_HEIGHT);
+      pixel.color    = restore_[restore_it_.y][restore_it_.x];
+      return true;
+    }
+    return false;
+  }
+
+  virtual inline void restore_it_delete() final
+  {
+    restore_used_[restore_it_.y][restore_it_.x / 8] &= static_cast<std::uint8_t>(~(1U << (restore_it_.x % 8)));
+    restore_it_next(true);
+  }
+
+  virtual inline void restore_set(const pixel_type& pixel) final
+  {
+    // the keys are the screen position modulo the buffer size (+ 32768 for positive values)
+    const std::int32_t x = static_cast<std::uint16_t>(pixel.vertex.x + 32768) % RESTORE_WIDTH;
+    const std::int32_t y = static_cast<std::uint16_t>(pixel.vertex.y + 32768) % RESTORE_HEIGHT;
+    restore_[y][x] = pixel.color;
+    restore_used_[y][x / 8] |= static_cast<std::uint8_t>(1U << (x % 8));
+    // pixels are only set while the sprite is at its place: remember it, render() changes the position before it restores
+    restore_origin_ = position_ + it_box_.top_left();
+  }
+
+  virtual inline bool restore_find(pixel_type& pixel) final
+  {
+    const std::int32_t x = static_cast<std::uint16_t>(pixel.vertex.x + 32768) % RESTORE_WIDTH;
+    const std::int32_t y = static_cast<std::uint16_t>(pixel.vertex.y + 32768) % RESTORE_HEIGHT;
+    if (restore_used_[y][x / 8] & (1U << (x % 8))) {
+      pixel.color = restore_[y][x];
+      return true;
+    }
+    return false;
+  }
+
+private:
+  /**
+   * Get the destination box of the (rotated) canvas
+   * \return Box which contains all pixels of the rotated pattern
+   */
+  rect_type canvas_box() const
+  {
+    if (angle_ == 0) {
+      return { 0, 0, static_cast<std::int16_t>(Width), static_cast<std::int16_t>(Height) };
+    }
+    // rotate the four corners forward (sin(angle) = -sin(-angle)) and take the extremes,
+    // one pixel margin on every side covers the rounding
+    const vertex_type corners[4] = { { 0, 0 }, { static_cast<std::int16_t>(Width - 1), 0 },
+                                     { 0, static_cast<std::int16_t>(Height - 1) }, { static_cast<std::int16_t>(Width - 1), static_cast<std::int16_t>(Height - 1) } };
+    rect_type box = { 0, 0, 0, 0 };
+    for (std::size_t n = 0U; n < 4U; ++n) {
+      const vertex_type r = util::vertex_rotate(corners[n], rot_center_, -inv_sin_, inv_cos_);
+      if (n == 0U) {
+        box = { r.x, r.y, static_cast<std::int16_t>(r.x + 1), static_cast<std::int16_t>(r.y + 1) };
+      }
+      else {
+        box.inflate(r);
+      }
+    }
+    return { static_cast<std::int16_t>(box.left - 1), static_cast<std::int16_t>(box.top - 1), static_cast<std::int16_t>(box.right + 1), static_cast<std::int16_t>(box.bottom + 1) };
   }
 };
 
