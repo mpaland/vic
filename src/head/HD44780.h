@@ -41,17 +41,21 @@
 // returns the busy flag (bit 7) and the address counter, in 4 bit mode the io
 // layer assembles the two nibbles.
 // The controller needs Exec_Us after every byte (37 us for the HD44780, 43 us
-// for the ST7066) and 1.52 ms after clear / home, the Wait template parameter
-// selects who waits (see HD44780_wait_type).
+// for the ST7066) and 1.52 ms after clear / home at the typical fOSC of 270 kHz;
+// the times scale with 270 kHz / fOSC, at the datasheet minimum of 190 kHz they
+// are 53 / 61 us and 2.16 ms. The Wait template parameter selects who waits (see
+// HD44780_wait_type). The head's own waits cover the slowest oscillator and rely
+// on io::delay() waiting at least the given time (see io.h).
 //
 // Compatible controllers: the head works unchanged with the Sitronix ST7066 (and
 // ST7066U), Samsung KS0066U, Epson SED1278 and Sunplus SPLC780, they are pin and
 // instruction compatible with the HD44780 (crosschecked against the ST7066
 // datasheet, see doc/HD44780.md section 8). The main difference is the execution
-// time of a data byte, 43 us on the ST7066 instead of 37 us, which is why
-// Exec_Us defaults to 43. ROM code 0A of the ST7066 is the Japanese font
-// (HD44780_ROM_A00), ROM code 0B is a European font of its own (HD44780_ROM_0B),
-// it is not the ISO 8859-1 layout of the HD44780 A02 ROM (see doc/ST7066.md).
+// time of a data byte, 43 us on the ST7066 instead of 37 us; Exec_Us defaults to
+// 61, the ST7066 data byte at the minimum fOSC. ROM code 0A of the ST7066 is the
+// Japanese font (HD44780_ROM_A00), ROM code 0B is a European font of its own
+// (HD44780_ROM_0B), it is not the ISO 8859-1 layout of the HD44780 A02 ROM (see
+// doc/ST7066.md).
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -98,14 +102,15 @@ typedef enum tag_HD44780_rom_type {
  * \param Rom Character ROM for the UNICODE to character code mapping
  * \param Font_5x10 5 x 10 dot font instead of 5 x 8, only possible with one line
  * \param Exec_Us Execution time of an instruction or data byte in us, passed to the io layer in the
- *                option bits 8..23 (HD44780: 37, ST7066: 43, scale by 270 kHz / fOSC for other clocks)
+ *                option bits 8..23 (at fOSC 270 kHz HD44780: 37, ST7066: 43, scale by 270 kHz / fOSC for
+ *                other clocks; the default 61 covers both controllers down to the minimum fOSC of 190 kHz)
  */
 template<std::uint16_t Columns = 16U, std::uint16_t Lines = 2U,    // visible characters per line, lines
          HD44780_bus_type  Bus  = HD44780_BUS8,                    // bus width
          HD44780_wait_type Wait = HD44780_WAIT_DELAY,              // wait strategy
          HD44780_rom_type  Rom  = HD44780_ROM_A00,                 // character ROM
          bool Font_5x10 = false,                                   // 5 x 10 dot font (1 line only)
-         std::uint16_t Exec_Us = 43U                               // execution time per byte in us
+         std::uint16_t Exec_Us = 61U                               // execution time per byte in us
 >
 class HD44780 final : public drv
 {
@@ -144,6 +149,12 @@ class HD44780 final : public drv
 
   // busy flag polls before giving up
   static const std::uint16_t BUSY_POLLS         = 1000U;
+
+  // io::delay() times in ms (io::delay() waits at least the given time)
+  static const std::uint32_t DELAY_POWER_ON_MS  = 50U;      // > 40 ms after VCC rises to 2.7 V
+  static const std::uint32_t DELAY_RESET_MS     = 5U;       // > 4.1 ms after the first function set of the init
+  static const std::uint32_t DELAY_SHORT_MS     = 1U;       // > 100 us init step, any byte (61 us at fOSC 190 kHz)
+  static const std::uint32_t DELAY_SLOW_MS      = 3U;       // clear / home (1.52 ms, 2.16 ms at fOSC 190 kHz)
 
   // vars
   const io::handle_type device_handle_;   // logical device handle
@@ -188,23 +199,23 @@ public:
   virtual void init()
   {
     io::init(device_handle_);
-    io::delay(50U);         // > 40 ms after VCC rises to 2.7 V
+    io::delay(DELAY_POWER_ON_MS);
 
     // the controller is in 8 bit mode after power on, the first three function sets are single transfers
     // (one nibble on the 4 bit bus) and must not wait for the busy flag
     const std::uint8_t  reset8  = CMD_FUNCTION | FUNCTION_8BIT;
     const std::uint32_t opt     = ((Bus == HD44780_BUS4) ? OPT_NIBBLE : OPT_INSTRUCTION) | OPT_EXEC_US;
     io::write(device_handle_, opt, &reset8, 1U, nullptr, 0U);
-    io::delay(5U);          // > 4.1 ms
+    io::delay(DELAY_RESET_MS);
     io::write(device_handle_, opt, &reset8, 1U, nullptr, 0U);
-    io::delay(1U);          // > 100 us
+    io::delay(DELAY_SHORT_MS);
     io::write(device_handle_, opt, &reset8, 1U, nullptr, 0U);
-    io::delay(1U);
+    io::delay(DELAY_SHORT_MS);
     if (Bus == HD44780_BUS4) {
       // switch to the 4 bit bus, one more single nibble transfer
       const std::uint8_t reset4 = CMD_FUNCTION;
       io::write(device_handle_, OPT_NIBBLE | OPT_EXEC_US, &reset4, 1U, nullptr, 0U);
-      io::delay(1U);
+      io::delay(DELAY_SHORT_MS);
     }
 
     // function set: bus width, lines and font can't be changed after this point
@@ -516,7 +527,7 @@ private:
   /**
    * Write an instruction and wait for the controller
    * \param cmd Instruction byte
-   * \param slow True for clear / home (1.52 ms), false for the 37 us instructions
+   * \param slow True for clear / home (1.52 ms), false for the 37 us instructions (at fOSC 270 kHz)
    */
   inline void write_cmd(std::uint8_t cmd, bool slow = false)
   {
@@ -547,7 +558,7 @@ private:
           std::size_t  len    = 1U;
           if (!io::read(device_handle_, OPT_INSTRUCTION, &status, len, 0U) || (len != 1U)) {
             // the io layer can't read the busy flag, fall back to the delay
-            io::delay(slow ? 2U : 1U);
+            io::delay(slow ? DELAY_SLOW_MS : DELAY_SHORT_MS);
             return;
           }
           if (!(status & BUSY_FLAG)) {
@@ -558,12 +569,12 @@ private:
       case HD44780_WAIT_IO :
         // the io layer waits for the short instructions
         if (slow) {
-          io::delay(2U);
+          io::delay(DELAY_SLOW_MS);
         }
         break;
       case HD44780_WAIT_DELAY :
       default :
-        io::delay(slow ? 2U : 1U);
+        io::delay(slow ? DELAY_SLOW_MS : DELAY_SHORT_MS);
         break;
     }
   }

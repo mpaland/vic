@@ -45,8 +45,9 @@ namespace io {
 
 
 /**
- * Delay
- * \param time_to_delay Milliseconds [ms] to delay
+ * Delay, at least the given time - the heads rely on it for the datasheet minimum times
+ * A tick based implementation waits one tick more (a task delay of n ticks can end after n - 1 tick periods)
+ * \param time_to_delay Milliseconds [ms] to delay, 0 = no delay
  */
 void delay(std::uint32_t time_to_delay);
 
