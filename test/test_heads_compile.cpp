@@ -767,7 +767,7 @@ TEST_CASE(heads_HD44780)
   static const std::uint8_t init4[9] = { 0x30U, 0x30U, 0x30U, 0x20U, 0x28U, 0x08U, 0x01U, 0x06U, 0x0CU };
   REQUIRE(io_stub::written_size() == 9U);
   CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), init4, 9U), 0L);
-  CHECK_EQ(io_stub::delay_total(), 50U + 5U + 1U + 1U + 1U + 2U);   // reset waits and the clear, the io layer waits otherwise
+  CHECK_EQ(io_stub::delay_total(), 50U + 5U + 1U + 1U + 1U + 3U);   // reset waits and the clear, the io layer waits otherwise
   // ROM A02: ISO 8859-1 characters pass through
   tc t4(lcd4);
   io_stub::clear();
