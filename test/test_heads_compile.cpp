@@ -1134,6 +1134,17 @@ TEST_CASE(heads_SSD1680)
   REQUIRE(io_stub::written_size() == 6U + 4000U + 6U + 4000U + 3U);
   CHECK_EQ(io_stub::written()[4006U + 5U], 0x26U);
   CHECK_EQ(io_stub::written()[4006U + 6U], 0x80U);
+  // native lines on both planes: red is paper in the black/white plane, black clears the red plane
+  dt.present_lock();
+  dt.line({ 1, 5 }, { 10, 5 });
+  CHECK_EQ(tri.framebuffer()[80], 0xFFU); CHECK_EQ(tri.framebuffer()[81], 0xFFU);
+  CHECK_EQ(dt.pixel_get({ 0, 5 }), color::white); CHECK_EQ(dt.pixel_get({ 1, 5 }), color::red);
+  CHECK_EQ(dt.pixel_get({ 10, 5 }), color::red);  CHECK_EQ(dt.pixel_get({ 11, 5 }), color::white);
+  dt.set_color(color::black);
+  dt.line({ 4, 5 }, { 6, 5 });
+  CHECK_EQ(tri.framebuffer()[80], 0xF1U);
+  CHECK_EQ(dt.pixel_get({ 3, 5 }), color::red); CHECK_EQ(dt.pixel_get({ 4, 5 }), color::black);
+  CHECK_EQ(dt.pixel_get({ 6, 5 }), color::black); CHECK_EQ(dt.pixel_get({ 7, 5 }), color::red);
 
   // 1.54 inch 200 x 200 panel: all 200 sources, X range 25 bytes
   head::SSD1680<200, 200> square(nullptr);
@@ -1141,6 +1152,37 @@ TEST_CASE(heads_SSD1680)
   square.init();
   CHECK_EQ(io_stub::written()[9], 0x18U);
   CHECK_EQ(io_stub::written()[19], 0x00U);
+  // native lines: a run along the sources is a byte fill with partial first and last byte (reversed end points)
+  dc ds(square);
+  ds.present_lock();
+  ds.set_color(color::black);
+  ds.line({ 9, 10 }, { 3, 10 });
+  CHECK_EQ(square.framebuffer()[250], 0xE0U); CHECK_EQ(square.framebuffer()[251], 0x3FU); CHECK_EQ(square.framebuffer()[252], 0xFFU);
+  ds.line({ 1, 11 }, { 2, 11 });                  // inside one byte
+  CHECK_EQ(square.framebuffer()[275], 0x9FU);
+  ds.line({ 8, 12 }, { 23, 12 });                 // exactly two bytes
+  CHECK_EQ(square.framebuffer()[300], 0xFFU); CHECK_EQ(square.framebuffer()[301], 0x00U);
+  CHECK_EQ(square.framebuffer()[302], 0x00U); CHECK_EQ(square.framebuffer()[303], 0xFFU);
+  ds.line({ -5, 13 }, { 2, 13 });                 // clipped left and right
+  ds.line({ 197, 13 }, { 300, 13 });
+  CHECK_EQ(square.framebuffer()[325], 0x1FU); CHECK_EQ(square.framebuffer()[349], 0xF8U); CHECK_EQ(square.framebuffer()[350], 0xFFU);
+  ds.line({ 0, 200 }, { 50, 200 });               // outside
+  ds.line({ 0, -1 }, { 50, -1 });
+  CHECK_EQ(square.framebuffer()[0], 0xFFU); CHECK_EQ(square.framebuffer()[4999], 0xFFU);
+  ds.set_color(color::white);
+  ds.line({ 4, 10 }, { 8, 10 });                  // paper over ink
+  CHECK_EQ(square.framebuffer()[250], 0xEFU); CHECK_EQ(square.framebuffer()[251], 0xBFU);
+  // a run along the gates is one bit per row
+  ds.set_color(color::black);
+  ds.line({ 5, 22 }, { 5, 20 });
+  CHECK_EQ(square.framebuffer()[475], 0xFFU); CHECK_EQ(square.framebuffer()[500], 0xFBU); CHECK_EQ(square.framebuffer()[525], 0xFBU);
+  CHECK_EQ(square.framebuffer()[550], 0xFBU); CHECK_EQ(square.framebuffer()[575], 0xFFU);
+  ds.line({ 6, 198 }, { 6, 250 });                // clipped at the bottom
+  CHECK_EQ(square.framebuffer()[4925], 0xFFU); CHECK_EQ(square.framebuffer()[4950], 0xFDU); CHECK_EQ(square.framebuffer()[4975], 0xFDU);
+  // the box uses the native horizontal line, right and bottom are outside
+  ds.box({ 8, 30, 13, 32 });
+  CHECK_EQ(square.framebuffer()[750], 0xFFU); CHECK_EQ(square.framebuffer()[751], 0x07U);
+  CHECK_EQ(square.framebuffer()[776], 0x07U); CHECK_EQ(square.framebuffer()[801], 0xFFU);
 
   // landscape 2.13 inch: logical (0, 0) is source 121, gate 0
   head::SSD1680<250, 122, drv::orientation_90> land(nullptr);
@@ -1149,6 +1191,14 @@ TEST_CASE(heads_SSD1680)
   dn.set_color(color::black);
   dn.plot({ 0, 0 });
   CHECK_EQ(land.framebuffer()[15], 0xBFU);
+  // a horizontal line runs along the gates (source 121), a vertical line along the sources (gate 0, sources 121 .. 114)
+  dn.present_lock();
+  dn.line({ 0, 0 }, { 3, 0 });
+  CHECK_EQ(land.framebuffer()[15], 0xBFU); CHECK_EQ(land.framebuffer()[31], 0xBFU); CHECK_EQ(land.framebuffer()[47], 0xBFU);
+  CHECK_EQ(land.framebuffer()[63], 0xBFU); CHECK_EQ(land.framebuffer()[79], 0xFFU);
+  dn.line({ 0, 0 }, { 0, 7 });
+  CHECK_EQ(land.framebuffer()[13], 0xFFU); CHECK_EQ(land.framebuffer()[14], 0xC0U); CHECK_EQ(land.framebuffer()[15], 0x3FU);
+  CHECK_EQ(land.framebuffer()[30], 0xFFU);
 }
 
 
