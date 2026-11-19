@@ -1,5 +1,48 @@
 # Changelog
 
+## [2.3.0](https://github.com/mpaland/vic/compare/v2.2.0...v2.3.0) (2026-11-19)
+
+
+### Features
+
+* **head:** Added the JD79667 four color e-paper head ([add6a26](https://github.com/mpaland/vic/commit/add6a26d56a438e6c020ae241c32d636fffbb0f5))
+* **sprite:** Added canvas_sheet_xy, array restore buffer for sheet ([517f78a](https://github.com/mpaland/vic/commit/517f78ad8d4fe3ab7332fb8f542a622791a1ac53))
+
+
+### Bug Fixes
+
+* **demo:** Removed the unused wave function ([1c8d2b3](https://github.com/mpaland/vic/commit/1c8d2b377404aacd79a15dd438853b8c2ac3820f))
+* **HD44780:** Relaxed timing paramter ([bf6340e](https://github.com/mpaland/vic/commit/bf6340e117bdc77f7bb39b7c4be00753b775b779))
+* **shader:** Fixed the uninitialized warning of the gradient distances ([08dd2b5](https://github.com/mpaland/vic/commit/08dd2b5d223a79e7c4206010494b14eda65072ce))
+* **shader:** Limited the gradient weighting to the array size for the GCC uninitialized warning ([4664bb9](https://github.com/mpaland/vic/commit/4664bb9a45e7e29380d70d44c9f800369ad3faf4))
+
+
+### Performance
+
+* **demo:** Used canvas_sheet_xy in the sprite demo ([03fc7a1](https://github.com/mpaland/vic/commit/03fc7a17cc9ce3a2264b455e05d25cdc8c55484a))
+* **head:** Added native horizontal and vertical lines to the JD79667 head ([22897b0](https://github.com/mpaland/vic/commit/22897b0cfb950d68645945e51dad4e5c5c7b8f6d))
+* **head:** Added native horizontal and vertical lines to the SSD1306 head ([86d0eb8](https://github.com/mpaland/vic/commit/86d0eb8b043b3bed125fedb2503802f4debb1582))
+* **head:** Added native horizontal and vertical lines to the SSD1680 head ([cfbc39c](https://github.com/mpaland/vic/commit/cfbc39c42c04f648102ba845396a2d1532adcc43))
+
+
+### Documentation
+
+* **head:** Added the JD79667 native line functions ([a5105e6](https://github.com/mpaland/vic/commit/a5105e6e91dc348534d29d5c0b4079b17a3c71d4))
+* **head:** Added the JD79667 programming summary ([68a6622](https://github.com/mpaland/vic/commit/68a6622386768b25e72612850707d12a450bc9ce))
+* **head:** Added the SSD1306 native line functions ([dbbeda3](https://github.com/mpaland/vic/commit/dbbeda30de6ca8c3b9acba379936f208fca6bf3a))
+* **head:** Added the SSD1680 native line functions ([e96bc36](https://github.com/mpaland/vic/commit/e96bc36505a6c87374bd017c2fb8f48bb8e5eabd))
+* **readme:** Added canvas_sheet_xy ([b655644](https://github.com/mpaland/vic/commit/b6556441293cd3714cc4af07adf9a0e0c8651e96))
+* **readme:** Added the docs badge ([1194264](https://github.com/mpaland/vic/commit/119426464d0e11db1910c0fa45eb085cd1ce068e))
+* **readme:** Added the JD79667 head ([0ddbfa6](https://github.com/mpaland/vic/commit/0ddbfa65fc07628fb0f20f53b4b4e221c227ea39))
+* **site:** Added canvas_sheet_xy and the sprite type comparison ([758301c](https://github.com/mpaland/vic/commit/758301c1238595419c94cc40f8e069a1d9717c3b))
+* **site:** Added the GitHub Pages website ([124eed0](https://github.com/mpaland/vic/commit/124eed0878029c3635e6a34e690e191a7856929c))
+* **site:** Added the JD79667 head ([30d5708](https://github.com/mpaland/vic/commit/30d5708264e5f4b811b6465e6144bc3b4ecc9ded))
+* **site:** Added the JD79667 native line functions ([b502291](https://github.com/mpaland/vic/commit/b502291c096681b4ed975c8c7ae9efd7ea01e6b3))
+* **site:** Added the SSD1306 native line functions ([3c03186](https://github.com/mpaland/vic/commit/3c03186ae4e4a3e7ce6861a58bfbbb9727c2646f))
+* **site:** Added the SSD1680 native line functions ([862dbae](https://github.com/mpaland/vic/commit/862dbae95e26d0b44d51816220649124e8d89511))
+* **site:** Moved the available heads to the top of the heads page ([dbbef6c](https://github.com/mpaland/vic/commit/dbbef6c5b3c634b4fabf2811002d7fadb2626480))
+* **site:** Redesigned the landing page with an animated pipeline hero ([61a0397](https://github.com/mpaland/vic/commit/61a03977f46b0336bff0d3e96d66156232e1657f))
+
 ## [2.2.0](https://github.com/mpaland/vic/compare/v2.1.0...v2.2.0) (2026-11-10)
 
 
