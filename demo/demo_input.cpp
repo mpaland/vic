@@ -150,13 +150,6 @@ label_type::config_type label_cfg(std::int16_t x, std::int16_t y, std::uint16_t 
   return cfg;
 }
 
-std::int16_t wave(std::uint32_t t, std::uint32_t period, std::int16_t phase, std::int16_t lo, std::int16_t hi)
-{
-  const std::int16_t a = static_cast<std::int16_t>((t * 360U / period + static_cast<std::uint32_t>(phase)) % 360U);
-  const std::int32_t s = vic::util::sin(a) + 16384;
-  return static_cast<std::int16_t>(lo + (static_cast<std::int32_t>(hi - lo) * s) / 32768);
-}
-
 } // namespace
 
 
