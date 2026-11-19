@@ -182,7 +182,7 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist[Max_Pixel];            // distance calculation
+    std::uint32_t dist[Max_Pixel] = { };      // distance calculation
 
     // calculate the inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
@@ -230,7 +230,7 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist[Max_Pixel];            // distance calculation
+    std::uint32_t dist[Max_Pixel] = { };      // distance calculation
 
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
     for (std::size_t n = 0U; n < this->size_; n++) {
@@ -279,7 +279,7 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist[Max_Pixel];            // distance calculation
+    std::uint32_t dist[Max_Pixel] = { };      // distance calculation
 
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
     for (std::size_t n = 0U; n < this->size_; n++) {
