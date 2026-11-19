@@ -26,7 +26,9 @@
 // \brief SSD1306 / SSD1309 / SH1106 head, monochrome OLED controller (128 x 64 typical)
 // The controller RAM is organized in pages of 8 vertical pixels. With the (default)
 // framebuffer the pixels are rendered in RAM and the whole buffer is sent with
-// present(), which is the fastest option on a serial bus. Without framebuffer every
+// present(), which is the fastest option on a serial bus; horizontal and vertical
+// lines (and with them boxes and filled primitives) are written directly into the
+// framebuffer. Without framebuffer every
 // pixel is a read-modify-write of one page byte on the display. The GDDRAM can only
 // be read on the parallel buses (not on SPI / I2C) and the controller needs a dummy
 // read first, both is the job of the io layer.
@@ -418,6 +420,65 @@ protected:
       read_data(data);
     }
     return color::L1_to_color(static_cast<std::uint8_t>((data >> (static_cast<unsigned>(vertex.y) & 0x07U)) & 0x01U));
+  }
+
+
+  /**
+   * Horizontal line, written directly into the framebuffer: one bit per column byte
+   */
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    if (!Framebuffer) {
+      drv::line_horz(v0, v1, color);
+      return;
+    }
+    util::min_max_swap(v0.x, v1.x);
+    if ((v0.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y)) || (v1.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X))) {
+      return;
+    }
+    if (v0.x < 0) { v0.x = 0; }
+    if (v1.x >= static_cast<std::int16_t>(Screen_Size_X)) { v1.x = static_cast<std::int16_t>(Screen_Size_X - 1U); }
+    const bool         on   = color::color_to_L1(color) != 0U;
+    const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (static_cast<unsigned>(v0.y) & 0x07U));
+    std::uint8_t* p = &framebuffer_.data[static_cast<std::size_t>(v0.y >> 3U) * Screen_Size_X + static_cast<std::size_t>(v0.x)];
+    for (std::int_fast16_t x = v0.x; x <= v1.x; ++x, ++p) {
+      *p = static_cast<std::uint8_t>(on ? (*p | mask) : (*p & ~mask));
+    }
+  }
+
+
+  /**
+   * Vertical line, written directly into the framebuffer: partial first and last page byte, whole bytes in between
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    if (!Framebuffer) {
+      drv::line_vert(v0, v1, color);
+      return;
+    }
+    util::min_max_swap(v0.y, v1.y);
+    if ((v0.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X)) || (v1.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y))) {
+      return;
+    }
+    if (v0.y < 0) { v0.y = 0; }
+    if (v1.y >= static_cast<std::int16_t>(Screen_Size_Y)) { v1.y = static_cast<std::int16_t>(Screen_Size_Y - 1U); }
+    const bool         on     = color::color_to_L1(color) != 0U;
+    const std::size_t  first  = static_cast<std::size_t>(v0.y >> 3U);
+    const std::size_t  last   = static_cast<std::size_t>(v1.y >> 3U);
+    const std::uint8_t mask_f = static_cast<std::uint8_t>(0xFFU << (static_cast<unsigned>(v0.y) & 0x07U));           // v0.y to the end of its page
+    const std::uint8_t mask_l = static_cast<std::uint8_t>(0xFFU >> (7U - (static_cast<unsigned>(v1.y) & 0x07U)));    // start of its page to v1.y
+    std::uint8_t* p = &framebuffer_.data[first * Screen_Size_X + static_cast<std::size_t>(v0.x)];
+    if (first == last) {
+      const std::uint8_t mask = static_cast<std::uint8_t>(mask_f & mask_l);
+      *p = static_cast<std::uint8_t>(on ? (*p | mask) : (*p & ~mask));
+      return;
+    }
+    *p = static_cast<std::uint8_t>(on ? (*p | mask_f) : (*p & ~mask_f));
+    p += Screen_Size_X;
+    for (std::size_t page = first + 1U; page < last; ++page, p += Screen_Size_X) {
+      *p = on ? 0xFFU : 0x00U;
+    }
+    *p = static_cast<std::uint8_t>(on ? (*p | mask_l) : (*p & ~mask_l));
   }
 
 
