@@ -198,6 +198,7 @@ TEST_CASE(heads_dummy)
 #include "head/ST7565.h"
 #include "head/ST7920.h"
 #include "head/SSD1680.h"
+#include "head/JD79667.h"
 #include "head/SSD1322.h"
 #include "head/SSD1351.h"
 
@@ -1148,6 +1149,87 @@ TEST_CASE(heads_SSD1680)
   dn.set_color(color::black);
   dn.plot({ 0, 0 });
   CHECK_EQ(land.framebuffer()[15], 0xBFU);
+}
+
+
+TEST_CASE(heads_JD79667)
+{
+  io_stub::clear();
+  head::JD79667<> epd(nullptr);
+  epd.init();
+  // init sequence of the reference drivers, resolution 200 x 384, power on (BUSY not readable: fallback delays)
+  static const std::uint8_t init[43] = { 0x4DU, 0x78U,  0x00U, 0x0FU, 0x29U,  0x01U, 0x07U, 0x00U,  0x03U, 0x10U, 0x54U, 0x44U,
+                                         0x06U, 0x05U, 0x00U, 0x3FU, 0x0AU, 0x25U, 0x12U, 0x1AU,  0x50U, 0x37U,  0x60U, 0x02U, 0x02U,
+                                         0x61U, 0x00U, 0xC8U, 0x01U, 0x80U,  0xE7U, 0x1CU,  0xE3U, 0x22U,  0xB4U, 0xD0U,  0xB5U, 0x03U,
+                                         0xE9U, 0x01U,  0x30U, 0x08U,  0x04U };
+  REQUIRE(io_stub::written_size() == sizeof(init));
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), init, sizeof(init)), 0L);
+  CHECK_EQ(io_stub::init_calls(), 1U);
+  CHECK_EQ(io_stub::delay_total(), 10U + 200U + 200U);
+
+  // 1.54 inch 200 x 200 panel, present: 10000 byte white frame, refresh, busy wait
+  head::JD79667<200, 200> square(nullptr);
+  io_stub::clear();
+  square.init();
+  CHECK_EQ(io_stub::written()[26], 0x00U); CHECK_EQ(io_stub::written()[27], 0xC8U);
+  CHECK_EQ(io_stub::written()[28], 0x00U); CHECK_EQ(io_stub::written()[29], 0xC8U);
+  dc d(square);
+  d.present_lock();
+  io_stub::clear();
+  d.present_lock(false);
+  const std::uint8_t* w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 1U + 10000U + 2U);
+  CHECK_EQ(w[0], 0x10U); CHECK_EQ(w[1], 0x55U); CHECK_EQ(w[10000], 0x55U);
+  CHECK_EQ(w[10001], 0x12U); CHECK_EQ(w[10002], 0x00U);
+  CHECK_EQ(io_stub::delay_total(), 25000U);
+  // nothing changed: no refresh
+  io_stub::clear();
+  d.present_lock();
+  d.present_lock(false);
+  CHECK_EQ(io_stub::written_size(), 0U);
+  // 2 bit per pixel, left pixel in bits 7:6: black 00, white 01, yellow 10, red 11
+  d.present_lock();
+  d.set_color(color::black);
+  d.plot({ 0, 0 });
+  d.set_color(color::yellow);
+  d.plot({ 1, 0 });
+  d.set_color(color::red);
+  d.plot({ 2, 0 });
+  d.plot({ 199, 199 });
+  CHECK_EQ(square.framebuffer()[0], 0x2DU);
+  CHECK_EQ(square.framebuffer()[9999], 0x57U);
+  CHECK_EQ(d.pixel_get({ 0, 0 }), color::black);
+  CHECK_EQ(d.pixel_get({ 1, 0 }), color::yellow);
+  CHECK_EQ(d.pixel_get({ 2, 0 }), color::red);
+  CHECK_EQ(d.pixel_get({ 3, 0 }), color::white);
+  d.set_color(color::white);
+  d.plot({ 2, 0 });
+  CHECK_EQ(square.framebuffer()[0], 0x25U);
+  // the BUSY_N pin can be polled: one read when the controller reports idle
+  static const std::uint8_t idle[1] = { 0x00U };
+  io_stub::clear();
+  io_stub::set_read_data(idle, 1U);
+  d.present_lock(false);
+  CHECK_EQ(io_stub::read_calls(), 1U);
+  CHECK_EQ(io_stub::delay_total(), 0U);
+  CHECK_EQ(io_stub::written()[1], 0x25U);
+  // shutdown: power off, deep sleep with the check code
+  io_stub::clear();
+  square.shutdown();
+  static const std::uint8_t off[4] = { 0x02U, 0x00U, 0x07U, 0xA5U };
+  REQUIRE(io_stub::written_size() == sizeof(off));
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), off, sizeof(off)), 0L);
+
+  // landscape 2.66 inch 184 x 360 panel: logical (0, 0) is source 183, gate 0
+  head::JD79667<360, 184, drv::orientation_90> land(nullptr);
+  io_stub::clear();
+  land.init();
+  CHECK_EQ(io_stub::written()[27], 0xB8U); CHECK_EQ(io_stub::written()[28], 0x01U); CHECK_EQ(io_stub::written()[29], 0x68U);
+  dc dn(land);
+  dn.present_lock();
+  dn.set_color(color::black);
+  dn.plot({ 0, 0 });
+  CHECK_EQ(land.framebuffer()[45], 0x54U);
 }
 
 
