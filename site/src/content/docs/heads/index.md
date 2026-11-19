@@ -18,6 +18,7 @@ hardware only through the I/O functions declared in `src/io.h`, which your platf
 | [`digole`](/vic/heads/digole/) | Digole serial graphic modules, up to 256 x 256 | RGB888 (`ESC` color command) | UART, SPI, I²C |
 | [`HD44780`](/vic/heads/hd44780/) | HD44780, ST7066, KS0066U, SED1278, SPLC780 character LCDs | alpha numeric | 4 or 8 bit parallel, I²C expander |
 | [`ILI9325`](/vic/heads/ili9325/) | ILI9325 240 x 320 TFT | RGB565 / RGB666 | SPI, 8 / 9 / 16 / 18 bit memory mapped |
+| [`JD79667`](/vic/heads/jd79667/) | JD79667 black / white / yellow / red e-paper, up to 200 x 384 | 2 bit (4 colors) | SPI + BUSY |
 | [`MAX7219`](/vic/heads/max7219/) | MAX7219 / MAX7221 8 x 8 LED matrix | 1 bit | SPI |
 | [`MIPI_DCS`](/vic/heads/mipi-dcs/) | ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 TFTs | RGB565 / RGB666 | SPI, parallel |
 | [`PCD8544`](/vic/heads/pcd8544/) | Nokia 5110 / 3310 84 x 48 LCD | 1 bit | SPI |
@@ -132,7 +133,7 @@ How a head rotates depends on the controller:
 
 - TFT and RGB OLED controllers (MIPI DCS, ILI9325, SSD1331, SSD1351) use their address mode / remap registers, all
   eight orientations at full speed.
-- Heads with a RAM framebuffer (PCD8544, SSD1322, SSD1680, ST7565, ST7920) map the pixels in software, all eight
+- Heads with a RAM framebuffer (JD79667, PCD8544, SSD1322, SSD1680, ST7565, ST7920) map the pixels in software, all eight
   orientations.
 - The SSD1306 head supports `orientation_0`, `0m`, `180` and `180m` with the controller mirror bits.
 - Alpha numeric heads and the virtual heads have no orientation.
@@ -181,12 +182,13 @@ the level of the D/C (A0, RS) line. A few heads add more values:
 | `SSD1306` | 0 command, 1 data (I²C: the control byte is the first byte of the block) | 1 one GDDRAM byte |
 | `SSD1322`, `PCD8544`, `ST7565`, `ST7920` | 0 command / instruction, 1 data | not used |
 | `SSD1680` | 0 command, 1 data | 2 BUSY pin in bit 0 |
+| `JD79667` | 0 command, 1 data | 2 busy flag in bit 0 (inverted BUSY_N pin) |
 | `HD44780` | low byte: 0 instruction, 1 data, 2 init nibble; bits 8..23: execution time in µs | 0 busy flag and address counter |
 | `MAX7219`, `STPxxP05`, `seven_segment`, `digole` | 0 | not used |
 | `BA6x` | 0 framed command | 0 status answer |
 
 A read which the bus can't do returns `false`, the head then falls back (`pixel_get()` returns `color::none`, the
-HD44780 and SSD1680 heads wait a fixed time). `demo/heads/io_trace.cpp` implements the four functions as a hex
+HD44780, SSD1680 and JD79667 heads wait a fixed time). `demo/heads/io_trace.cpp` implements the four functions as a hex
 dump to stdout and is the template for a real I/O layer. Every function is described in
 [Write your own head: Platform I/O](/vic/heads/skeleton/#platform-io), installation in
 [Installation](/vic/getting-started/installation/).

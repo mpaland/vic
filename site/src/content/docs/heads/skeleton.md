@@ -204,7 +204,7 @@ void delay(std::uint32_t time_to_delay);
 | `time_to_delay` | time to wait in milliseconds |
 
 Used by the init sequences (reset and power up waits), the HD44780 head (`HD44780_WAIT_DELAY`), the SSD1331 head
-(`GAC_Delay`) and the SSD1680 head (BUSY poll interval, `Refresh_Delay`). A busy wait or an RTOS sleep, both are fine.
+(`GAC_Delay`) and the SSD1680 and JD79667 heads (BUSY poll interval, `Refresh_Delay`). A busy wait or an RTOS sleep, both are fine.
 
 ### io::handle_type
 
@@ -228,7 +228,7 @@ void init(handle_type device_handle);
 | `device_handle` | logical device handle of the display |
 
 Called by `init()` of the head before the first command. Configure the bus and the control pins (D/C, CS, BUSY) and
-pulse the reset line of the display: several heads rely on it (ILI9341, GC9A01, ST7565R / ST7567, SSD1680). When
+pulse the reset line of the display: several heads rely on it (ILI9341, GC9A01, ST7565R / ST7567, SSD1680, JD79667). When
 several heads share one bus, it is called once per head.
 
 ### io::write
@@ -257,7 +257,7 @@ message. The option values of the heads:
 
 | Head | Option |
 |---|---|
-| `MIPI_DCS`, `SSD1322`, `SSD1331`, `SSD1351`, `SSD1680`, `PCD8544`, `ST7565` | 0 = command (D/C low), 1 = parameters / data (D/C high) |
+| `MIPI_DCS`, `SSD1322`, `SSD1331`, `SSD1351`, `SSD1680`, `JD79667`, `PCD8544`, `ST7565` | 0 = command (D/C low), 1 = parameters / data (D/C high) |
 | `SSD1306` | 0 = command, 1 = data; on I²C the control byte (00h / 40h) is already the first byte, on 3-wire SPI build the 9 bit frames from the option |
 | `ILI9325` (SPI mode) | 0 = index register, 1 = data; the I/O layer builds the SPI start byte |
 | `ST7920` | 0 = instruction (RS = 0), 1 = data (RS = 1); serial: sync byte F8h / FAh and nibble split by the I/O layer, 72 µs pacing |
@@ -292,6 +292,7 @@ Return `false` if the bus can't read (SPI without MISO, write only modules): the
 | `SSD1306` | 1 | 1 GDDRAM byte (parallel bus, without framebuffer), with the dummy read |
 | `HD44780` | 0 | 1 byte busy flag (bit 7) and address counter (`HD44780_WAIT_BUSY`); `false`: the head waits with `io::delay()` |
 | `SSD1680` | 2 | 1 byte, bit 0 = level of the BUSY pin; `false`: the head waits `Refresh_Delay` |
+| `JD79667` | 2 | 1 byte, bit 0 = 1 while busy (the BUSY_N pin is low, return the inverted level); `false`: the head waits 200 ms resp. `Refresh_Delay` |
 | `BA6x` | 0 | 4 byte status answer with timeout (100 ms, 30 s for the self test); `init()` flushes the receive buffer with timeout 0 |
 
 ### io::mem::write and io::mem::read
