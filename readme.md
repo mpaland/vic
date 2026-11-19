@@ -213,6 +213,7 @@ Available heads are:
 | `MAX7219` | MAX7219 / MAX7221 8 x 8 LED matrices |
 | `Digole` | Digole serial graphic modules |
 | `ILI9325` | ILI9325 TFT controller |
+| `JD79667` | JD79667 black / white / yellow / red e-paper |
 | `MIPI_DCS` | MIPI DCS TFT controllers (ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 ...) |
 | `PCD8544` | Nokia 5110 / 3310 LCD |
 | `SSD1306` | SSD1306 / SSD1309 / SH1106 monochrome OLEDs |
