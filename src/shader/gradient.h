@@ -117,9 +117,12 @@ protected:
    */
   color::value_type weighted_color(const std::uint32_t* dist) const
   {
+    // the count is limited to the array size here again, so that the compiler can prove that 'dist' is not read beyond its end
+    const std::size_t size = (size_ < Max_Pixel) ? size_ : Max_Pixel;
+
     // sum of all inverse distances
     std::uint32_t sd_sum = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
+    for (std::size_t n = 0U; n < size; ++n) {
       sd_sum += dist[n];
     }
     if (sd_sum == 0U) {
@@ -131,8 +134,8 @@ protected:
     // channel can overflow or carry into its neighbor
     std::uint32_t a = 0U, r = 0U, g = 0U, b = 0U;
     std::uint32_t lum_sum = 0U;
-    for (std::size_t n = 0U; n < size_; ++n) {
-      const std::uint32_t lum = (n + 1U < size_) ? (255U * dist[n] / sd_sum) : (255U - lum_sum);
+    for (std::size_t n = 0U; n < size; ++n) {
+      const std::uint32_t lum = (n + 1U < size) ? (255U * dist[n] / sd_sum) : (255U - lum_sum);
       lum_sum += lum;
       const color::value_type c = gradient_color_[n].color;
       a += color::get_alpha(c) * lum;
@@ -182,7 +185,7 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist[Max_Pixel] = { };      // distance calculation
+    std::uint32_t dist[Max_Pixel];            // distance calculation
 
     // calculate the inverse squared distances from pos to all points
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
@@ -230,7 +233,7 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist[Max_Pixel] = { };      // distance calculation
+    std::uint32_t dist[Max_Pixel];            // distance calculation
 
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
     for (std::size_t n = 0U; n < this->size_; n++) {
@@ -279,7 +282,7 @@ public:
    */
   virtual color::value_type mix(vertex_type pos)
   {
-    std::uint32_t dist[Max_Pixel] = { };      // distance calculation
+    std::uint32_t dist[Max_Pixel];            // distance calculation
 
     const std::uint32_t factor = 10000000UL;  // use 10M as factor
     for (std::size_t n = 0U; n < this->size_; n++) {
