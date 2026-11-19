@@ -30,6 +30,8 @@
 // a full refresh with the waveform LUT from the MTP, which takes 12 .. 25 s.
 // present() is skipped when nothing changed since the last refresh; use
 // dc::present_lock() to batch primitives into one refresh.
+// Horizontal and vertical lines (and with them boxes and filled primitives) are
+// written directly into the framebuffer.
 // All orientations are done in software. See doc/JD79667.md for the programming
 // summary.
 //
@@ -297,7 +299,82 @@ protected:
   }
 
 
+  /**
+   * Horizontal line, written directly into the framebuffer (box() and the filled primitives use it)
+   */
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.x, v1.x);
+    if ((v0.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y)) || (v1.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X))) {
+      return;
+    }
+    if (v0.x < 0) { v0.x = 0; }
+    if (v1.x >= static_cast<std::int16_t>(Screen_Size_X)) { v1.x = static_cast<std::int16_t>(Screen_Size_X - 1U); }
+    v1.y = v0.y;
+    fill(to_phys(v0), to_phys(v1), to_pixel(color));
+  }
+
+
+  /**
+   * Vertical line, written directly into the framebuffer
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.y, v1.y);
+    if ((v0.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X)) || (v1.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y))) {
+      return;
+    }
+    if (v0.y < 0) { v0.y = 0; }
+    if (v1.y >= static_cast<std::int16_t>(Screen_Size_Y)) { v1.y = static_cast<std::int16_t>(Screen_Size_Y - 1U); }
+    v1.x = v0.x;
+    fill(to_phys(v0), to_phys(v1), to_pixel(color));
+  }
+
+
 private:
+
+  /**
+   * Fill an axis aligned run of pixels between two physical vertices (both included, inside the panel)
+   * A run along the sources is written as whole bytes, a run along the gates is one pixel per row
+   * \param a First physical vertex
+   * \param b Second physical vertex, same x or same y as a
+   * \param code Pixel code
+   */
+  void fill(vertex_type a, vertex_type b, std::uint8_t code)
+  {
+    dirty_ = true;
+    if (a.y != b.y) {
+      // along the gates
+      util::min_max_swap(a.y, b.y);
+      const unsigned     shift = 6U - ((static_cast<unsigned>(a.x) & 0x03U) << 1U);
+      const std::uint8_t mask  = static_cast<std::uint8_t>(0x03U << shift);
+      const std::uint8_t value = static_cast<std::uint8_t>(static_cast<unsigned>(code) << shift);
+      std::uint8_t* p = &fb_[static_cast<std::size_t>(a.y) * BYTES_X + static_cast<std::size_t>(a.x >> 2U)];
+      for (std::int_fast16_t y = a.y; y <= b.y; ++y, p += BYTES_X) {
+        *p = static_cast<std::uint8_t>((*p & ~mask) | value);
+      }
+      return;
+    }
+    // along the sources: partial first and last byte, whole bytes in between
+    util::min_max_swap(a.x, b.x);
+    std::uint8_t* const row    = &fb_[static_cast<std::size_t>(a.y) * BYTES_X];
+    const std::uint8_t  value  = static_cast<std::uint8_t>(code * 0x55U);
+    const std::size_t   first  = static_cast<std::size_t>(a.x >> 2U);
+    const std::size_t   last   = static_cast<std::size_t>(b.x >> 2U);
+    const std::uint8_t  mask_f = static_cast<std::uint8_t>(0xFFU >> ((static_cast<unsigned>(a.x) & 0x03U) << 1U));          // a.x to the end of its byte
+    const std::uint8_t  mask_l = static_cast<std::uint8_t>(0xFFU << (6U - ((static_cast<unsigned>(b.x) & 0x03U) << 1U)));   // start of its byte to b.x
+    if (first == last) {
+      const std::uint8_t mask = static_cast<std::uint8_t>(mask_f & mask_l);
+      row[first] = static_cast<std::uint8_t>((row[first] & ~mask) | (value & mask));
+      return;
+    }
+    row[first] = static_cast<std::uint8_t>((row[first] & ~mask_f) | (value & mask_f));
+    for (std::size_t i = first + 1U; i < last; ++i) {
+      row[i] = value;
+    }
+    row[last] = static_cast<std::uint8_t>((row[last] & ~mask_l) | (value & mask_l));
+  }
+
 
   /**
    * Map a color to the pixel code: clearly red and yellow colors to their pigment, other dark colors are

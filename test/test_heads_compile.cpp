@@ -1205,6 +1205,38 @@ TEST_CASE(heads_JD79667)
   d.set_color(color::white);
   d.plot({ 2, 0 });
   CHECK_EQ(square.framebuffer()[0], 0x25U);
+  // native lines: a run along the sources is a byte fill with partial first and last byte (reversed end points)
+  d.set_color(color::red);
+  d.line({ 9, 10 }, { 1, 10 });
+  CHECK_EQ(square.framebuffer()[500], 0x7FU); CHECK_EQ(square.framebuffer()[501], 0xFFU);
+  CHECK_EQ(square.framebuffer()[502], 0xF5U); CHECK_EQ(square.framebuffer()[503], 0x55U);
+  CHECK_EQ(d.pixel_get({ 0, 10 }), color::white); CHECK_EQ(d.pixel_get({ 1, 10 }), color::red);
+  CHECK_EQ(d.pixel_get({ 9, 10 }), color::red);   CHECK_EQ(d.pixel_get({ 10, 10 }), color::white);
+  d.set_color(color::yellow);
+  d.line({ 1, 11 }, { 2, 11 });                   // inside one byte
+  CHECK_EQ(square.framebuffer()[550], 0x69U);
+  d.set_color(color::black);
+  d.line({ 4, 12 }, { 7, 12 });                   // exactly one byte
+  CHECK_EQ(square.framebuffer()[600], 0x55U); CHECK_EQ(square.framebuffer()[601], 0x00U); CHECK_EQ(square.framebuffer()[602], 0x55U);
+  d.line({ -5, 13 }, { 2, 13 });                  // clipped left and right
+  d.line({ 197, 13 }, { 300, 13 });
+  CHECK_EQ(square.framebuffer()[650], 0x01U); CHECK_EQ(square.framebuffer()[699], 0x40U); CHECK_EQ(square.framebuffer()[700], 0x55U);
+  d.line({ 0, 200 }, { 50, 200 });                // outside
+  d.line({ 0, -1 }, { 50, -1 });
+  CHECK_EQ(square.framebuffer()[0], 0x25U); CHECK_EQ(square.framebuffer()[9999], 0x57U);
+  // a run along the gates is one pixel per row
+  d.set_color(color::red);
+  d.line({ 5, 22 }, { 5, 20 });
+  CHECK_EQ(square.framebuffer()[951], 0x55U);  CHECK_EQ(square.framebuffer()[1001], 0x75U); CHECK_EQ(square.framebuffer()[1051], 0x75U);
+  CHECK_EQ(square.framebuffer()[1101], 0x75U); CHECK_EQ(square.framebuffer()[1151], 0x55U);
+  d.set_color(color::black);
+  d.line({ 6, 198 }, { 6, 250 });                 // clipped at the bottom
+  CHECK_EQ(square.framebuffer()[9851], 0x55U); CHECK_EQ(square.framebuffer()[9901], 0x51U); CHECK_EQ(square.framebuffer()[9951], 0x51U);
+  // the box uses the native horizontal line, right and bottom are outside
+  d.set_color(color::yellow);
+  d.box({ 8, 30, 13, 32 });
+  CHECK_EQ(square.framebuffer()[1501], 0x55U); CHECK_EQ(square.framebuffer()[1502], 0xAAU); CHECK_EQ(square.framebuffer()[1503], 0x95U);
+  CHECK_EQ(square.framebuffer()[1552], 0xAAU); CHECK_EQ(square.framebuffer()[1553], 0x95U); CHECK_EQ(square.framebuffer()[1602], 0x55U);
   // the BUSY_N pin can be polled: one read when the controller reports idle
   static const std::uint8_t idle[1] = { 0x00U };
   io_stub::clear();
@@ -1230,6 +1262,13 @@ TEST_CASE(heads_JD79667)
   dn.set_color(color::black);
   dn.plot({ 0, 0 });
   CHECK_EQ(land.framebuffer()[45], 0x54U);
+  // a horizontal line runs along the gates (source 183), a vertical line along the sources (gate 0, sources 183 .. 176)
+  dn.line({ 0, 0 }, { 3, 0 });
+  CHECK_EQ(land.framebuffer()[45], 0x54U);  CHECK_EQ(land.framebuffer()[91], 0x54U); CHECK_EQ(land.framebuffer()[137], 0x54U);
+  CHECK_EQ(land.framebuffer()[183], 0x54U); CHECK_EQ(land.framebuffer()[229], 0x55U);
+  dn.line({ 0, 0 }, { 0, 7 });
+  CHECK_EQ(land.framebuffer()[43], 0x55U); CHECK_EQ(land.framebuffer()[44], 0x00U); CHECK_EQ(land.framebuffer()[45], 0x00U);
+  CHECK_EQ(land.framebuffer()[90], 0x55U);
 }
 
 
