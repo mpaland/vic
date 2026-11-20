@@ -25,8 +25,9 @@
 //
 // \brief Multihead driver, this driver combines multiple single displays (heads)
 // to a big screen or video wall.
-// Disadvantage: All rendering is done by the gpr, not in display hardware/firmware (if
-// supported). Only pixel_set() and pixel_get() is used of the display drivers
+// Pixels, horizontal / vertical lines, boxes and pixel blocks are split at the head
+// borders and passed to the heads in their own coordinates, so the heads draw them
+// with their native functions (if supported). All other rendering is done by the gpr.
 //
 // Usage (create a display out of 4 heads in a row):
 // vic::head::memory<200U, 200U> _head1;
@@ -84,6 +85,30 @@ private:
   multihead_head_type head_[Head_Count];  // registered heads
   std::size_t         count_;             // number of registered heads
   bool                is_graphic_;        // true if this is a graphic head, false for alpha numeric multihead
+
+
+  /**
+   * Clip a rect of the multihead screen to the screen of a head
+   * \param idx Head index
+   * \param rect Rect in multihead coordinates, right and bottom are outside the rect
+   * \param r Receives the clipped rect in head coordinates
+   * \param skip_x Receives the count of clipped columns at the left
+   * \param skip_y Receives the count of clipped rows at the top
+   * \return False if the rect is not on the screen of the head
+   */
+  bool head_rect(std::size_t idx, const rect_type& rect, rect_type& r, std::size_t& skip_x, std::size_t& skip_y) const
+  {
+    const drv& head = *head_[idx].head;
+    r = { static_cast<std::int16_t>(rect.left  - head_[idx].viewport.x), static_cast<std::int16_t>(rect.top    - head_[idx].viewport.y),
+          static_cast<std::int16_t>(rect.right - head_[idx].viewport.x), static_cast<std::int16_t>(rect.bottom - head_[idx].viewport.y) };
+    skip_x = 0U;
+    skip_y = 0U;
+    if (r.left < 0) { skip_x = static_cast<std::size_t>(-r.left); r.left = 0; }
+    if (r.top  < 0) { skip_y = static_cast<std::size_t>(-r.top);  r.top  = 0; }
+    if (r.right  > static_cast<std::int16_t>(head.screen_width()))  { r.right  = static_cast<std::int16_t>(head.screen_width()); }
+    if (r.bottom > static_cast<std::int16_t>(head.screen_height())) { r.bottom = static_cast<std::int16_t>(head.screen_height()); }
+    return (r.left < r.right) && (r.top < r.bottom);
+  }
 
 public:
 
@@ -217,6 +242,88 @@ protected:
     }
     // pixel not found
     return color::none;
+  }
+
+
+  /**
+   * Horizontal line: every head gets the part of the line which is on its screen in its own coordinates,
+   * so the heads draw it with their native line function
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, y component is ignored
+   * \param color Line color
+   */
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.x, v1.x);
+    for (std::size_t i = 0U; i < count_; ++i) {
+      drv& head = *head_[i].head;
+      vertex_type a = v0 - head_[i].viewport;
+      vertex_type b = { static_cast<std::int16_t>(v1.x - head_[i].viewport.x), a.y };
+      if ((a.y < 0) || (a.y >= static_cast<std::int16_t>(head.screen_height())) || (b.x < 0) || (a.x >= static_cast<std::int16_t>(head.screen_width()))) {
+        continue;
+      }
+      if (a.x < 0) { a.x = 0; }
+      if (b.x >= static_cast<std::int16_t>(head.screen_width())) { b.x = static_cast<std::int16_t>(head.screen_width() - 1U); }
+      head.line_horz(a, b, color);
+    }
+  }
+
+
+  /**
+   * Vertical line: every head gets the part of the line which is on its screen in its own coordinates
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, x component is ignored
+   * \param color Line color
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.y, v1.y);
+    for (std::size_t i = 0U; i < count_; ++i) {
+      drv& head = *head_[i].head;
+      vertex_type a = v0 - head_[i].viewport;
+      vertex_type b = { a.x, static_cast<std::int16_t>(v1.y - head_[i].viewport.y) };
+      if ((a.x < 0) || (a.x >= static_cast<std::int16_t>(head.screen_width())) || (b.y < 0) || (a.y >= static_cast<std::int16_t>(head.screen_height()))) {
+        continue;
+      }
+      if (a.y < 0) { a.y = 0; }
+      if (b.y >= static_cast<std::int16_t>(head.screen_height())) { b.y = static_cast<std::int16_t>(head.screen_height() - 1U); }
+      head.line_vert(a, b, color);
+    }
+  }
+
+
+  /**
+   * Box: every head gets the part of the box which is on its screen in its own coordinates
+   * \param rect Box bounding, right and bottom are outside the box
+   * \param color Box color
+   */
+  virtual void box(const rect_type& rect, color::value_type color)
+  {
+    for (std::size_t i = 0U; i < count_; ++i) {
+      rect_type r;
+      std::size_t skip_x, skip_y;
+      if (head_rect(i, rect, r, skip_x, skip_y)) {
+        head_[i].head->box(r, color);
+      }
+    }
+  }
+
+
+  /**
+   * Block of pixels: every head gets the part of the block which is on its screen in its own coordinates
+   * \param rect Destination rect, right and bottom are outside the rect
+   * \param pixels Pixel block in ARGB format, row major
+   * \param stride Distance between two rows in pixels
+   */
+  virtual void blit(const rect_type& rect, const color::value_type* pixels, std::size_t stride)
+  {
+    for (std::size_t i = 0U; i < count_; ++i) {
+      rect_type r;
+      std::size_t skip_x, skip_y;
+      if (head_rect(i, rect, r, skip_x, skip_y)) {
+        head_[i].head->blit(r, pixels + skip_y * stride + skip_x, stride);
+      }
+    }
   }
 
 

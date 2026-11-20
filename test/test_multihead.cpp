@@ -117,6 +117,22 @@ TEST_CASE(multihead_graphic)
   CHECK_EQ(h1.pixel({ 1, 2 }), color::red);
   CHECK_EQ(h1.pixel({ 2, 2 }), color::blue);
 
+  // lines and boxes are split at the seam: no head got an out of range pixel since the plot above
+  CHECK_EQ(h0.oob_count(), 1U);
+  CHECK_EQ(h1.oob_count(), 0U);
+
+  // a pixel block over both heads: every head gets its part
+  static const color::value_type block[8] = { color::red,   color::green, color::blue,  color::white,
+                                              color::white, color::blue,  color::green, color::red };
+  d.blit({ 2, 0, 6, 2 }, block, 4U);
+  CHECK_EQ(h0.pixel({ 2, 0 }), color::red);   CHECK_EQ(h0.pixel({ 3, 0 }), color::green);
+  CHECK_EQ(h0.pixel({ 2, 1 }), color::white); CHECK_EQ(h0.pixel({ 3, 1 }), color::blue);
+  CHECK_EQ(h1.pixel({ 0, 0 }), color::blue);  CHECK_EQ(h1.pixel({ 1, 0 }), color::white);
+  CHECK_EQ(h1.pixel({ 0, 1 }), color::green); CHECK_EQ(h1.pixel({ 1, 1 }), color::red);
+  CHECK_EQ(h1.pixel({ 2, 0 }), color::blue);
+  CHECK_EQ(h0.oob_count(), 1U);
+  CHECK_EQ(h1.oob_count(), 0U);
+
   mh.display_enable(true);
   mh.display_brightness(100U);
   mh.display_contrast(100U);
