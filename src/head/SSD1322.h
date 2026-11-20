@@ -282,6 +282,76 @@ protected:
   }
 
 
+  /**
+   * Horizontal line, written directly into the framebuffer (box() and the filled primitives use it)
+   */
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.x, v1.x);
+    if ((v0.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y)) || (v1.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X))) {
+      return;
+    }
+    if (v0.x < 0) { v0.x = 0; }
+    if (v1.x >= static_cast<std::int16_t>(Screen_Size_X)) { v1.x = static_cast<std::int16_t>(Screen_Size_X - 1U); }
+    v1.y = v0.y;
+    fill(to_phys(v0), to_phys(v1), color);
+  }
+
+
+  /**
+   * Vertical line, written directly into the framebuffer
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.y, v1.y);
+    if ((v0.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X)) || (v1.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y))) {
+      return;
+    }
+    if (v0.y < 0) { v0.y = 0; }
+    if (v1.y >= static_cast<std::int16_t>(Screen_Size_Y)) { v1.y = static_cast<std::int16_t>(Screen_Size_Y - 1U); }
+    v1.x = v0.x;
+    fill(to_phys(v0), to_phys(v1), color);
+  }
+
+
+  /**
+   * Fill an axis aligned run of pixels between two physical vertices (both included, inside the panel)
+   * \param a First physical vertex
+   * \param b Second physical vertex, same x or same y as a
+   * \param color Color of the run
+   */
+  void fill(vertex_type a, vertex_type b, color::value_type color)
+  {
+    const std::uint8_t gs = color::color_to_L4(color);
+    if (a.y != b.y) {
+      // along the rows: one nibble per row
+      util::min_max_swap(a.y, b.y);
+      const bool low = (a.x & 1) != 0;
+      std::uint8_t* p = &framebuffer_[static_cast<std::size_t>(a.y) * BYTES_X + static_cast<std::size_t>(a.x >> 1U)];
+      for (std::int_fast16_t y = a.y; y <= b.y; ++y, p += BYTES_X) {
+        *p = static_cast<std::uint8_t>(low ? ((*p & 0xF0U) | gs) : ((*p & 0x0FU) | (static_cast<unsigned>(gs) << 4U)));
+      }
+      return;
+    }
+    // along the columns: single nibbles at the ends, whole bytes (two pixels) in between
+    util::min_max_swap(a.x, b.x);
+    std::uint8_t* p = &framebuffer_[static_cast<std::size_t>(a.y) * BYTES_X + static_cast<std::size_t>(a.x >> 1U)];
+    std::int_fast16_t x = a.x;
+    if (x & 1) {
+      *p = static_cast<std::uint8_t>((*p & 0xF0U) | gs);
+      ++p;
+      ++x;
+    }
+    for (; x < b.x; x += 2) {
+      *p++ = static_cast<std::uint8_t>(gs * 0x11U);
+    }
+    if (x == b.x) {
+      *p = static_cast<std::uint8_t>((*p & 0x0FU) | (static_cast<unsigned>(gs) << 4U));
+    }
+  }
+
+
+
   ///////////////////////////////////////////////////////////////////////////////
   // D I S P L A Y   C O N T R O L
   //

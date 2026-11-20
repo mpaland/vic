@@ -1075,6 +1075,31 @@ TEST_CASE(heads_PCD8544)
 }
 
 
+// native lines of a rotated framebuffer head, checked with pixel_get()
+template<typename Head>
+static void check_rotated_lines(Head& head)
+{
+  dc d(head);
+  d.present_lock();
+  d.set_color(color::white);
+  d.line({ 9, 5 }, { 2, 5 });
+  d.line({ 7, 10 }, { 7, 20 });
+  CHECK_EQ(d.pixel_get({ 2, 5 }), color::white);  CHECK_EQ(d.pixel_get({ 9, 5 }), color::white);
+  CHECK(d.pixel_get({ 1, 5 }) != color::white);   CHECK(d.pixel_get({ 10, 5 }) != color::white);
+  CHECK(d.pixel_get({ 5, 4 }) != color::white);   CHECK(d.pixel_get({ 5, 6 }) != color::white);
+  CHECK_EQ(d.pixel_get({ 7, 10 }), color::white); CHECK_EQ(d.pixel_get({ 7, 20 }), color::white);
+  CHECK(d.pixel_get({ 7, 9 }) != color::white);   CHECK(d.pixel_get({ 7, 21 }) != color::white);
+  CHECK(d.pixel_get({ 6, 15 }) != color::white);  CHECK(d.pixel_get({ 8, 15 }) != color::white);
+  std::size_t count = 0U;
+  for (std::int16_t y = 0; y < static_cast<std::int16_t>(head.screen_height()); ++y) {
+    for (std::int16_t x = 0; x < static_cast<std::int16_t>(head.screen_width()); ++x) {
+      count += (d.pixel_get({ x, y }) == color::white) ? 1U : 0U;
+    }
+  }
+  CHECK_EQ(count, 8U + 11U);
+}
+
+
 TEST_CASE(heads_ST7565)
 {
   io_stub::clear();
@@ -1402,6 +1427,34 @@ TEST_CASE(heads_SSD1322)
   CHECK_EQ(oled.framebuffer()[0], 0xF8U);
   CHECK_EQ(d.pixel_get({ 0, 0 }), color::white);
   CHECK_EQ(d.pixel_get({ 1, 0 }), color::L4_to_color(8U));
+  // native lines: a run along the columns is a byte fill (two pixels) with single nibbles at the ends (reversed end points)
+  d.present_lock();
+  d.set_color(color::white);
+  d.line({ 8, 2 }, { 3, 2 });
+  CHECK_EQ(oled.framebuffer()[256], 0x00U); CHECK_EQ(oled.framebuffer()[257], 0x0FU); CHECK_EQ(oled.framebuffer()[258], 0xFFU);
+  CHECK_EQ(oled.framebuffer()[259], 0xFFU); CHECK_EQ(oled.framebuffer()[260], 0xF0U); CHECK_EQ(oled.framebuffer()[261], 0x00U);
+  d.set_color(color::argb(0x80U, 0x80U, 0x80U));
+  d.line({ 5, 2 }, { 6, 2 });                     // two nibbles in two bytes, gray level 8
+  CHECK_EQ(oled.framebuffer()[258], 0xF8U); CHECK_EQ(oled.framebuffer()[259], 0x8FU);
+  d.line({ 12, 3 }, { 15, 3 });                   // exactly two bytes
+  CHECK_EQ(oled.framebuffer()[384U + 5U], 0x00U); CHECK_EQ(oled.framebuffer()[384U + 6U], 0x88U);
+  CHECK_EQ(oled.framebuffer()[384U + 7U], 0x88U); CHECK_EQ(oled.framebuffer()[384U + 8U], 0x00U);
+  d.set_color(color::white);
+  d.line({ -4, 7 }, { 1, 7 });                    // clipped left and right
+  d.line({ 254, 7 }, { 400, 7 });
+  CHECK_EQ(oled.framebuffer()[896], 0xFFU); CHECK_EQ(oled.framebuffer()[897], 0x00U);
+  CHECK_EQ(oled.framebuffer()[1023], 0xFFU); CHECK_EQ(oled.framebuffer()[1024], 0x00U);
+  // a run along the rows is one nibble per row
+  d.line({ 9, 6 }, { 9, 4 });
+  CHECK_EQ(oled.framebuffer()[3U * 128U + 4U], 0x00U); CHECK_EQ(oled.framebuffer()[4U * 128U + 4U], 0x0FU);
+  CHECK_EQ(oled.framebuffer()[5U * 128U + 4U], 0x0FU); CHECK_EQ(oled.framebuffer()[6U * 128U + 4U], 0x0FU);
+  // the box uses the native horizontal line, right and bottom are outside
+  d.box({ 20, 10, 23, 12 });
+  CHECK_EQ(oled.framebuffer()[10U * 128U + 10U], 0xFFU); CHECK_EQ(oled.framebuffer()[10U * 128U + 11U], 0xF0U);
+  CHECK_EQ(oled.framebuffer()[11U * 128U + 10U], 0xFFU); CHECK_EQ(oled.framebuffer()[12U * 128U + 10U], 0x00U);
+  d.present_lock(false);
+  head::SSD1322<64, 256, drv::orientation_90> rot(nullptr);
+  check_rotated_lines(rot);
   io_stub::clear();
   oled.display_contrast(0x80U);
   oled.display_brightness(0xFFU);
