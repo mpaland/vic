@@ -269,6 +269,79 @@ protected:
   }
 
 
+  /**
+   * Horizontal line, written directly into the framebuffer (box() and the filled primitives use it)
+   */
+  virtual void line_horz(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.x, v1.x);
+    if ((v0.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y)) || (v1.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X))) {
+      return;
+    }
+    if (v0.x < 0) { v0.x = 0; }
+    if (v1.x >= static_cast<std::int16_t>(Screen_Size_X)) { v1.x = static_cast<std::int16_t>(Screen_Size_X - 1U); }
+    v1.y = v0.y;
+    fill(to_phys(v0), to_phys(v1), color);
+  }
+
+
+  /**
+   * Vertical line, written directly into the framebuffer
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.y, v1.y);
+    if ((v0.x < 0) || (v0.x >= static_cast<std::int16_t>(Screen_Size_X)) || (v1.y < 0) || (v0.y >= static_cast<std::int16_t>(Screen_Size_Y))) {
+      return;
+    }
+    if (v0.y < 0) { v0.y = 0; }
+    if (v1.y >= static_cast<std::int16_t>(Screen_Size_Y)) { v1.y = static_cast<std::int16_t>(Screen_Size_Y - 1U); }
+    v1.x = v0.x;
+    fill(to_phys(v0), to_phys(v1), color);
+  }
+
+
+  /**
+   * Fill an axis aligned run of pixels between two physical vertices (both included, inside the panel)
+   * \param a First physical vertex
+   * \param b Second physical vertex, same x or same y as a
+   * \param color Color of the run
+   */
+  void fill(vertex_type a, vertex_type b, color::value_type color)
+  {
+    const bool on = color::color_to_L1(color) != 0U;
+    if (a.x != b.x) {
+      // along the columns: one bit per column byte
+      util::min_max_swap(a.x, b.x);
+      const std::uint8_t mask = static_cast<std::uint8_t>(0x01U << (static_cast<unsigned>(a.y) & 0x07U));
+      std::uint8_t* p = &framebuffer_[static_cast<std::size_t>(a.y >> 3U) * PHYS_X + static_cast<std::size_t>(a.x)];
+      for (std::int_fast16_t x = a.x; x <= b.x; ++x, ++p) {
+        *p = static_cast<std::uint8_t>(on ? (*p | mask) : (*p & ~mask));
+      }
+      return;
+    }
+    // along the rows: partial first and last page byte, whole bytes in between
+    util::min_max_swap(a.y, b.y);
+    const std::size_t  first  = static_cast<std::size_t>(a.y >> 3U);
+    const std::size_t  last   = static_cast<std::size_t>(b.y >> 3U);
+    const std::uint8_t mask_f = static_cast<std::uint8_t>(0xFFU << (static_cast<unsigned>(a.y) & 0x07U));           // a.y to the end of its page
+    const std::uint8_t mask_l = static_cast<std::uint8_t>(0xFFU >> (7U - (static_cast<unsigned>(b.y) & 0x07U)));    // start of its page to b.y
+    std::uint8_t* p = &framebuffer_[first * PHYS_X + static_cast<std::size_t>(a.x)];
+    if (first == last) {
+      const std::uint8_t mask = static_cast<std::uint8_t>(mask_f & mask_l);
+      *p = static_cast<std::uint8_t>(on ? (*p | mask) : (*p & ~mask));
+      return;
+    }
+    *p = static_cast<std::uint8_t>(on ? (*p | mask_f) : (*p & ~mask_f));
+    p += PHYS_X;
+    for (std::size_t page = first + 1U; page < last; ++page, p += PHYS_X) {
+      *p = on ? 0xFFU : 0x00U;
+    }
+    *p = static_cast<std::uint8_t>(on ? (*p | mask_l) : (*p & ~mask_l));
+  }
+
+
+
   ///////////////////////////////////////////////////////////////////////////////
   // D I S P L A Y   C O N T R O L
   //

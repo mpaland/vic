@@ -1118,6 +1118,35 @@ TEST_CASE(heads_ST7565)
   d.set_color(color::white);
   d.plot({ 3, 5 });
   CHECK_EQ(lcd.framebuffer()[3], 0x20U);
+  // native lines: a vertical line is a byte fill with partial first and last page (reversed end points)
+  d.present_lock();
+  d.line({ 20, 21 }, { 20, 3 });
+  CHECK_EQ(lcd.framebuffer()[20], 0xF8U); CHECK_EQ(lcd.framebuffer()[128U + 20U], 0xFFU);
+  CHECK_EQ(lcd.framebuffer()[256U + 20U], 0x3FU); CHECK_EQ(lcd.framebuffer()[384U + 20U], 0x00U);
+  CHECK_EQ(lcd.framebuffer()[19], 0x00U); CHECK_EQ(lcd.framebuffer()[21], 0x00U);
+  d.line({ 21, 9 }, { 21, 10 });                  // inside one page
+  CHECK_EQ(lcd.framebuffer()[128U + 21U], 0x06U);
+  d.line({ 22, -5 }, { 22, 2 });                  // clipped at the top and at the bottom
+  d.line({ 22, 61 }, { 22, 100 });
+  CHECK_EQ(lcd.framebuffer()[22], 0x07U); CHECK_EQ(lcd.framebuffer()[7U * 128U + 22U], 0xE0U);
+  d.set_color(color::black);
+  d.line({ 20, 6 }, { 20, 17 });                  // pixels off
+  CHECK_EQ(lcd.framebuffer()[20], 0x38U); CHECK_EQ(lcd.framebuffer()[128U + 20U], 0x00U); CHECK_EQ(lcd.framebuffer()[256U + 20U], 0x3CU);
+  // a horizontal line is one bit per column
+  d.set_color(color::white);
+  d.line({ 34, 42 }, { 30, 42 });
+  CHECK_EQ(lcd.framebuffer()[5U * 128U + 29U], 0x00U); CHECK_EQ(lcd.framebuffer()[5U * 128U + 30U], 0x04U);
+  CHECK_EQ(lcd.framebuffer()[5U * 128U + 34U], 0x04U); CHECK_EQ(lcd.framebuffer()[5U * 128U + 35U], 0x00U);
+  d.line({ 125, 43 }, { 300, 43 });               // clipped at the right, no wrap into the next page
+  CHECK_EQ(lcd.framebuffer()[5U * 128U + 127U], 0x08U); CHECK_EQ(lcd.framebuffer()[5U * 128U + 124U], 0x00U);
+  CHECK_EQ(lcd.framebuffer()[6U * 128U + 0U], 0x00U);
+  // the box uses the native horizontal line, right and bottom are outside
+  d.box({ 40, 6, 43, 10 });
+  CHECK_EQ(lcd.framebuffer()[39], 0x00U); CHECK_EQ(lcd.framebuffer()[40], 0xC0U); CHECK_EQ(lcd.framebuffer()[42], 0xC0U);
+  CHECK_EQ(lcd.framebuffer()[43], 0x00U); CHECK_EQ(lcd.framebuffer()[128U + 40U], 0x03U);
+  d.present_lock(false);
+  head::ST7565<head::ST7565_ST7565, 64, 128, drv::orientation_90> rot(nullptr);
+  check_rotated_lines(rot);
   io_stub::clear();
   lcd.display_contrast(0x80U);
   CHECK_EQ(io_stub::written()[1], 0x20U);
