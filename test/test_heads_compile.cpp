@@ -1157,6 +1157,32 @@ TEST_CASE(heads_ST7920)
   const std::size_t n = io_stub::written_size();
   CHECK_EQ(w[n - 1088U + 2U], 0x80U);
   CHECK_EQ(w[n - 1U], 0x01U);
+  // native lines: a run along the columns is a byte fill with partial first and last byte (reversed end points)
+  d.present_lock();
+  d.line({ 9, 10 }, { 3, 10 });
+  CHECK_EQ(lcd.framebuffer()[160], 0x1FU); CHECK_EQ(lcd.framebuffer()[161], 0xC0U); CHECK_EQ(lcd.framebuffer()[162], 0x00U);
+  d.line({ 1, 11 }, { 2, 11 });                   // inside one byte
+  CHECK_EQ(lcd.framebuffer()[176], 0x60U);
+  d.line({ 8, 12 }, { 23, 12 });                  // exactly two bytes
+  CHECK_EQ(lcd.framebuffer()[192], 0x00U); CHECK_EQ(lcd.framebuffer()[193], 0xFFU);
+  CHECK_EQ(lcd.framebuffer()[194], 0xFFU); CHECK_EQ(lcd.framebuffer()[195], 0x00U);
+  d.line({ -5, 13 }, { 2, 13 });                  // clipped left and right
+  d.line({ 125, 13 }, { 300, 13 });
+  CHECK_EQ(lcd.framebuffer()[208], 0xE0U); CHECK_EQ(lcd.framebuffer()[223], 0x07U); CHECK_EQ(lcd.framebuffer()[224], 0x00U);
+  d.set_color(color::black);
+  d.line({ 4, 10 }, { 8, 10 });                   // pixels off
+  CHECK_EQ(lcd.framebuffer()[160], 0x10U); CHECK_EQ(lcd.framebuffer()[161], 0x40U);
+  // a run along the rows is one bit per row
+  d.set_color(color::white);
+  d.line({ 5, 22 }, { 5, 20 });
+  CHECK_EQ(lcd.framebuffer()[304], 0x00U); CHECK_EQ(lcd.framebuffer()[320], 0x04U); CHECK_EQ(lcd.framebuffer()[336], 0x04U);
+  CHECK_EQ(lcd.framebuffer()[352], 0x04U); CHECK_EQ(lcd.framebuffer()[368], 0x00U);
+  // the box uses the native horizontal line, right and bottom are outside
+  d.box({ 8, 30, 13, 32 });
+  CHECK_EQ(lcd.framebuffer()[480], 0x00U); CHECK_EQ(lcd.framebuffer()[481], 0xF8U);
+  CHECK_EQ(lcd.framebuffer()[497], 0xF8U); CHECK_EQ(lcd.framebuffer()[513], 0x00U);
+  head::ST7920<64, 128, drv::orientation_90> rot(nullptr);
+  check_rotated_lines(rot);
 }
 
 
