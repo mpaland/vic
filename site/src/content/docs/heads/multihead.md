@@ -37,14 +37,15 @@ multihead(const std::initializer_list<head_type>& il);
 |---|---|
 | `init()`, `shutdown()`, `cls()`, `present()` | called on every head |
 | `pixel_set()` | every head gets the vertex in its own coordinates (vertex - position) and clips it itself |
+| `line_horz()`, `line_vert()`, `box()`, `blit()` | split at the head borders: every head gets its (clipped) part in its own coordinates and draws it with its native function |
 | `pixel_get()` | read from the first head which covers the vertex, `color::none` if no head covers it |
 | text functions | `text_set_pos()` is translated into the coordinates of every head, `text_out()` and the clear functions are called on every head, so every head renders its own part |
 | `display_enable()`, `display_brightness()`, `display_contrast()` | forwarded to every head |
 | `is_graphic()` | `true` if at least one head is graphic |
 
 :::note
-The multihead implements only `pixel_set()` and `pixel_get()`: lines, boxes, `move()` and `blit()` use the `drv`
-fallbacks pixel by pixel, the native hooks of the heads (window streams, accelerator commands) are not used.
+Pixels, lines, boxes and pixel blocks reach the native hooks of the heads (window streams, accelerator commands).
+`move()` uses the `drv` fallback pixel by pixel, a block can cross a head border.
 :::
 
 Whether `pixel_get()` really reads back depends on the heads; a write only head returns `color::none` for its area.
