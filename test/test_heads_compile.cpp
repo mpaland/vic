@@ -383,6 +383,35 @@ TEST_CASE(heads_ILI9325)
   io_stub::clear();
   d.plot({ 8, 6 });
   CHECK_EQ(io_stub::write_calls(), 4U + 2U);
+  // a box is one GRAM window (4 regs), the start address (2 regs), the data index, one stream and the window restore (4 regs)
+  io_stub::clear();
+  d.box({ 10, 20, 14, 23 });
+  CHECK_EQ(io_stub::write_calls(), 21U + 12U);
+  static const std::uint8_t box_window[16] = { 0x00U, 0x50U, 0x00U, 0x0AU,  0x00U, 0x51U, 0x00U, 0x0DU,
+                                               0x00U, 0x52U, 0x00U, 0x14U,  0x00U, 0x53U, 0x00U, 0x16U };
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), box_window, sizeof(box_window)), 0L);
+  CHECK_EQ(io_stub::written()[26], 0xF8U);
+  // a vertical line is a box of one column
+  io_stub::clear();
+  d.line_vert({ 7, 29 }, { 7, 10 });
+  CHECK_EQ(io_stub::write_calls(), 21U + 20U);
+  CHECK_EQ(io_stub::written()[3], 0x07U); CHECK_EQ(io_stub::written()[7], 0x07U);
+  CHECK_EQ(io_stub::written()[11], 0x0AU); CHECK_EQ(io_stub::written()[15], 0x1DU);
+  // clipped at the bottom: 4 pixels
+  io_stub::clear();
+  d.line_vert({ 7, 316 }, { 7, 400 });
+  CHECK_EQ(io_stub::write_calls(), 21U + 4U);
+  // short vertical lines are single pixels (address, index, pixel each)
+  io_stub::clear();
+  d.line_vert({ 7, 10 }, { 7, 11 });
+  CHECK_EQ(io_stub::write_calls(), 2U * 6U);
+  // a box of one row is a horizontal line, a box outside of the screen is nothing
+  io_stub::clear();
+  d.box({ 10, 5, 20, 6 });
+  CHECK_EQ(io_stub::write_calls(), 4U + 1U + 10U);
+  io_stub::clear();
+  d.box({ 240, 0, 250, 10 });
+  CHECK_EQ(io_stub::write_calls(), 0U);
   // 256k color variant with the 8 bit memory interface compiles
   std::uint8_t reg = 0U, data = 0U;
   head::ILI9325<240, 320, drv::orientation_0, 8U, true> mem(nullptr, &reg, &data, false);

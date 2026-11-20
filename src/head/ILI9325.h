@@ -460,6 +460,67 @@ protected:
   }
 
 
+  /**
+   * Draw a vertical line, width is one pixel: a box of one column, so the line is one stream in a GRAM window.
+   * Lines up to 3 pixels are cheaper as single pixels (the window costs 8 register writes).
+   * \param v0 Start vertex, included in line
+   * \param v1 End vertex, included in line, x component is ignored
+   * \param color Line color - only RGB, no alpha channel
+   */
+  virtual void line_vert(vertex_type v0, vertex_type v1, color::value_type color)
+  {
+    util::min_max_swap(v0.y, v1.y);
+    if (v1.y - v0.y < 3) {
+      drv::line_vert(v0, v1, color);
+      return;
+    }
+    box({ v0.x, v0.y, static_cast<std::int16_t>(v0.x + 1), static_cast<std::int16_t>(v1.y + 1) }, color);
+  }
+
+
+  /**
+   * Draw a box (filled rectangle): the GRAM window is set to the (clipped) box and the color is streamed,
+   * the address counter wraps inside the window
+   * \param rect Box bounding, right and bottom are outside the box
+   * \param color Box color - only RGB, no alpha channel
+   */
+  virtual void box(const rect_type& rect, color::value_type color)
+  {
+    // clip to the screen
+    rect_type r = rect;
+    if (r.left < 0) { r.left = 0; }
+    if (r.top  < 0) { r.top  = 0; }
+    if (r.right  > static_cast<std::int16_t>(Screen_Size_X)) { r.right  = static_cast<std::int16_t>(Screen_Size_X); }
+    if (r.bottom > static_cast<std::int16_t>(Screen_Size_Y)) { r.bottom = static_cast<std::int16_t>(Screen_Size_Y); }
+    if ((r.left >= r.right) || (r.top >= r.bottom)) {
+      return;
+    }
+    if (r.bottom - r.top == 1) {
+      // one row: no window needed
+      line_horz({ r.left, r.top }, { static_cast<std::int16_t>(r.right - 1), r.top }, color);
+      return;
+    }
+
+    // set the GRAM window to the box, the address counter wraps inside the window
+    const vertex_type g0 = to_gram({ r.left, r.top });
+    const vertex_type g1 = to_gram({ static_cast<std::int16_t>(r.right - 1), static_cast<std::int16_t>(r.bottom - 1) });
+    set_window(static_cast<std::uint16_t>(g0.x < g1.x ? g0.x : g1.x), static_cast<std::uint16_t>(g0.x < g1.x ? g1.x : g0.x),
+               static_cast<std::uint16_t>(g0.y < g1.y ? g0.y : g1.y), static_cast<std::uint16_t>(g0.y < g1.y ? g1.y : g0.y));
+    set_gram_pos({ r.left, r.top });
+    write_idx(REG_GRAM_DATA);
+
+    // stream the box
+    const std::uint32_t pixel = COLOR_18 ? color::color_to_RGB666(color) : color::color_to_RGB565(color);
+    for (std::uint32_t i = static_cast<std::uint32_t>(r.right - r.left) * static_cast<std::uint32_t>(r.bottom - r.top); i != 0U; --i) {
+      write_pixel(pixel);
+    }
+
+    // restore the full GRAM window
+    set_window(0U, static_cast<std::uint16_t>(GRAM_SIZE_X - 1U), 0U, static_cast<std::uint16_t>(GRAM_SIZE_Y - 1U));
+    gram_pos_ = { 0x7FFF, 0x7FFF };   // the GRAM pointer is undefined now
+  }
+
+
 public:
 
   /**
