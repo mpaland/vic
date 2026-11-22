@@ -2,7 +2,7 @@
 title: spinner
 description: A ring segment which rotates on every step(), a busy indicator.
 sidebar:
-  order: 15
+  order: 16
 ---
 
 `spinner` is a ring segment which rotates by a fixed angle on every `step()`, a busy indicator. A step draws only the

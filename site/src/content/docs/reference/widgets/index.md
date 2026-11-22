@@ -18,7 +18,7 @@ All widgets derive from `vic::widget::base` (`widget/widget.h`) and follow the s
 
 1. Fill a `config_type` struct. It is a plain aggregate without defaults, every member is set in declaration order.
 2. Construct the widget with the head and the config: `widget(drv& head, const config_type& config)`. The config is
-   copied, pointers inside it (fonts, captions, bands, markers, XPM images) must stay valid.
+   copied, pointers inside it (fonts, captions, bands, markers, colors, XPM images) must stay valid.
 3. Call `init()` to draw the widget the first time.
 4. Change it with its setters (`set_value()`, `set_text()`, `set_state()`, ...). A setter draws only if something
    changed, so it can be called every frame.
@@ -37,8 +37,9 @@ prog.set_pos(50);                         // delta draw: only the changed part o
 
 - Every widget (except `bitmap`) has a public `redraw()` which draws it completely. `init()` calls it.
 - A widget draws within a `present_lock()` of its drawing context, so the head is presented once per change.
-- Setters draw as little as possible: `progress`, `arc`, `spinner` and the fill of `bargauge` are delta drawn,
-  `label`, `checkbox`, `led`, `toggle`, `slider`, `spinbox` and `compass` redraw only on a changed value.
+- Setters draw as little as possible: `progress`, `arc`, `spinner`, `vumeter` and the fill of `bargauge` are delta
+  drawn, `label`, `checkbox`, `led`, `toggle`, `slider`, `spinbox`, `compass` and `battery` redraw only on a changed
+  value.
 - Colors with `color::none` (for example `color_bg` or `color_border`) mean "don't draw this part", the background
   below is left untouched.
 - Widgets with `anti_aliasing_enable()` need a head which can read its pixels back (or a background color set in the
@@ -148,6 +149,7 @@ The [input example](/vic/examples/input/) operates a complete settings page with
 |---|---|---|
 | [`arc`](/vic/reference/widgets/arc/) | `widget/arc.h` | Ring which fills with the value, a round progress bar |
 | [`bargauge`](/vic/reference/widgets/bargauge/) | `widget/bargauge.h` | Linear scale with bands, ticks, fill bar and up to two markers |
+| [`battery`](/vic/reference/widgets/battery/) | `widget/battery.h` | Battery symbol with a level from 0 to 100 %, low level color and charging symbol |
 | [`bitmap`](/vic/reference/widgets/bitmap/) | `widget/bitmap.h` | Raw bitmaps (L1, RGB332, RGB555, RGB565, RGB888, ARGB8888) and XPM3 images |
 | [`button`](/vic/reference/widgets/button/) | `widget/button.h` | Push button with a caption |
 | [`checkbox`](/vic/reference/widgets/checkbox/) | `widget/checkbox.h` | Box with a check mark and a caption |
@@ -163,3 +165,4 @@ The [input example](/vic/examples/input/) operates a complete settings page with
 | [`spinner`](/vic/reference/widgets/spinner/) | `widget/spinner.h` | Rotating ring segment, a busy indicator |
 | [`toggle`](/vic/reference/widgets/switch/) | `widget/switch.h` | On / off switch with a sliding knob |
 | [`textbox`](/vic/reference/widgets/textbox/) | `widget/textbox.h` | Multi line text with word wrap and scrolling |
+| [`vumeter`](/vic/reference/widgets/vumeter/) | `widget/vumeter.h` | Segmented level meter with color zones or a gradient |

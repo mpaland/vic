@@ -47,6 +47,11 @@
 // - compass:  a heading up compass rose with a turning heading
 // - imagebutton: soft keys with icon and caption, the tapped one is the active one
 // - checkbox, switch, button, slider, spinbox operated by the simulated touch cursor
+// The fourth page shows the level indicators:
+// - vumeter:  a stereo pair with a three color gradient, a single colored and a two color meter,
+//   an upright pair with four hard color zones, all four orientations
+// - battery:  a phone size battery, the low level color, the charging symbol, the level as blocks
+//   and upright batteries
 //
 // Link this file together with windows/main.cpp (see demo/CMakeLists.txt)
 //
@@ -72,6 +77,8 @@
 #include "widget/spinbox.h"
 #include "widget/imagebutton.h"
 #include "widget/compass.h"
+#include "widget/vumeter.h"
+#include "widget/battery.h"
 #include "sprite.h"
 
 // fonts
@@ -813,6 +820,138 @@ void page3(std::uint32_t frames)
 }
 
 
+namespace {
+
+// V U   M E T E R   C O L O R S
+const vic::color::value_type vu_gradient[] = { COL_GREEN, COL_YELLOW, COL_RED };              // blended
+const vic::color::value_type vu_zones[]    = { COL_GREEN, COL_YELLOW, COL_ORANGE, COL_RED };  // hard zones
+const vic::color::value_type vu_single[]   = { COL_CYAN };
+const vic::color::value_type vu_two[]      = { COL_BLUE, COL_CYAN };
+
+typedef vic::widget::vumeter vu_type;
+typedef vic::widget::battery battery_type;
+
+vu_type::config_type vu_cfg(std::int16_t x, std::int16_t y, std::uint16_t w, std::uint16_t h, vu_type::orientation_type o,
+                            std::uint8_t segments, std::uint8_t gap, const vic::color::value_type* colors, std::uint8_t color_count, bool gradient)
+{
+  const vu_type::config_type cfg = { { x, y }, w, h, o, segments, gap, 0, 100, colors, color_count, gradient, 48U, COL_BG };
+  return cfg;
+}
+
+battery_type::config_type battery_cfg(std::int16_t x, std::int16_t y, std::uint16_t w, std::uint16_t h, battery_type::orientation_type o,
+                                      std::uint8_t segments, vic::color::value_type color)
+{
+  const battery_type::config_type cfg = { { x, y }, w, h, o, segments, 20U, color, COL_RED, COL_TEXT, COL_TEXT, COL_BG };
+  return cfg;
+}
+
+
+/**
+ * Audio like level: random peaks below an envelope, fast attack and slow decay
+ * \param level Actual level
+ * \param envelope Maximum of the next peak
+ * \param seed Random seed
+ * \return New level
+ */
+std::int16_t vu_level(std::int16_t level, std::int16_t envelope, std::uint32_t& seed)
+{
+  seed = seed * 1103515245U + 12345U;
+  const std::int16_t peak = static_cast<std::int16_t>(static_cast<std::int32_t>(envelope) * static_cast<std::int32_t>((seed >> 16U) % 100U) / 100);
+  return peak > level ? peak : static_cast<std::int16_t>(level > 4 ? level - 4 : 0);
+}
+
+} // namespace
+
+
+/**
+ * Page 4: vumeter and battery
+ * \param frames Frames to show the page
+ */
+void page4(std::uint32_t frames)
+{
+  // G R O U P   B O X E S
+  group_type grp_vu (head(), group_cfg(2,   8, 318,  92, "vumeter"));
+  group_type grp_bat(head(), group_cfg(2, 100, 318, 196, "battery"));
+
+  // V U   M E T E R  -  a stereo pair with a gradient, one color, two colors right to left
+  label_type vu_txt_l(head(), label_cfg(10, 18, 8U, 10U, font_lcd, label_type::align_left, COL_NAME));
+  label_type vu_txt_r(head(), label_cfg(10, 32, 8U, 10U, font_lcd, label_type::align_left, COL_NAME));
+  vu_type vu_l  (head(), vu_cfg(22, 18, 167U, 10U, vu_type::left_to_right, 24U, 1U, vu_gradient, 3U, true));
+  vu_type vu_r  (head(), vu_cfg(22, 32, 167U, 10U, vu_type::left_to_right, 24U, 1U, vu_gradient, 3U, true));
+  vu_type vu_one(head(), vu_cfg(22, 48, 166U,  8U, vu_type::left_to_right, 12U, 2U, vu_single,   1U, false));
+  vu_type vu_rtl(head(), vu_cfg(22, 60, 167U,  8U, vu_type::right_to_left, 24U, 1U, vu_two,      2U, true));
+  label_type vu_txt (head(), label_cfg(22, 74, 167U, 12U, font_lcd, label_type::align_center, COL_NAME));
+  // an upright pair with four hard zones and a meter from top to bottom
+  vu_type vu_vl (head(), vu_cfg(204, 18, 10U, 63U, vu_type::bottom_to_top, 16U, 1U, vu_zones,  4U, false));
+  vu_type vu_vr (head(), vu_cfg(218, 18, 10U, 63U, vu_type::bottom_to_top, 16U, 1U, vu_zones,  4U, false));
+  vu_type vu_ttb(head(), vu_cfg(236, 18, 10U, 63U, vu_type::top_to_bottom, 16U, 1U, vu_two,    2U, true));
+  label_type vu_val (head(), label_cfg(252, 30, 60U, 18U, font_16,  label_type::align_center, COL_TEXT));
+  label_type vu_txt2(head(), label_cfg(252, 54, 60U, 12U, font_lcd, label_type::align_center, COL_NAME));
+
+  // B A T T E R Y  -  phone size, big with the low level color, charging, blocks and upright
+  battery_type bat_phone(head(), battery_cfg( 10, 110, 24U, 11U, battery_type::left_to_right, 0U, COL_GREEN));
+  battery_type bat_small(head(), battery_cfg( 98, 110, 24U, 11U, battery_type::left_to_right, 0U, COL_GREEN));
+  battery_type bat_big  (head(), battery_cfg( 10, 128, 76U, 34U, battery_type::left_to_right, 0U, COL_GREEN));
+  battery_type bat_chg  (head(), battery_cfg( 98, 128, 76U, 34U, battery_type::left_to_right, 0U, COL_GREEN));
+  battery_type bat_seg  (head(), battery_cfg(188, 110, 56U, 22U, battery_type::left_to_right, 5U, COL_GREEN));
+  battery_type bat_rtl  (head(), battery_cfg(188, 140, 56U, 22U, battery_type::right_to_left, 4U, COL_CYAN));
+  battery_type bat_btt  (head(), battery_cfg(258, 110, 20U, 52U, battery_type::bottom_to_top, 0U, COL_GREEN));
+  battery_type bat_ttb  (head(), battery_cfg(288, 110, 20U, 52U, battery_type::top_to_bottom, 5U, COL_ORANGE));
+  label_type bat_val (head(), label_cfg( 38, 110, 44U, 12U, font_lcd, label_type::align_left, COL_TEXT));
+  label_type bat_val2(head(), label_cfg(126, 110, 44U, 12U, font_lcd, label_type::align_left, COL_TEXT));
+  label_type bat_txt1(head(), label_cfg( 10, 168, 76U, 12U, font_lcd, label_type::align_center, COL_NAME));
+  label_type bat_txt2(head(), label_cfg( 98, 168, 76U, 12U, font_lcd, label_type::align_center, COL_NAME));
+  label_type bat_txt3(head(), label_cfg(188, 168, 56U, 12U, font_lcd, label_type::align_center, COL_NAME));
+  label_type bat_txt4(head(), label_cfg(252, 168, 62U, 12U, font_lcd, label_type::align_center, COL_NAME));
+
+  // I N I T
+  grp_vu.init(); grp_bat.init();
+  vu_txt_l.init(); vu_txt_r.init(); vu_l.init(); vu_r.init(); vu_one.init(); vu_rtl.init(); vu_txt.init();
+  vu_vl.init(); vu_vr.init(); vu_ttb.init(); vu_val.init(); vu_txt2.init();
+  bat_phone.init(); bat_small.init(); bat_big.init(); bat_chg.init(); bat_seg.init(); bat_rtl.init(); bat_btt.init(); bat_ttb.init();
+  bat_val.init(); bat_val2.init(); bat_txt1.init(); bat_txt2.init(); bat_txt3.init(); bat_txt4.init();
+  vu_txt_l.set_text("L");
+  vu_txt_r.set_text("R");
+  vu_txt.set_text("gradient / 1 color / 2 colors");
+  vu_txt2.set_text("4 zones");
+  bat_txt1.set_text("low color");
+  bat_txt2.set_text("charging");
+  bat_txt3.set_text("blocks");
+  bat_txt4.set_text("upright");
+  bat_small.set_charging();
+  bat_chg.set_charging();
+
+  // A N I M A T I O N
+  std::int16_t  lvl_l = 0, lvl_r = 0;
+  std::uint32_t seed  = 1U;
+  for (std::uint32_t t = 0U; t < frames; ++t) {
+    // vumeter: the stereo pair and the upright pair show the same two channels
+    lvl_l = vu_level(lvl_l, wave(t, 120U,  0, 40, 100), seed);
+    lvl_r = vu_level(lvl_r, wave(t, 150U, 90, 30, 100), seed);
+    vu_l.set_value(lvl_l);  vu_vl.set_value(lvl_l);
+    vu_r.set_value(lvl_r);  vu_vr.set_value(lvl_r);
+    vu_one.set_value(wave(t, 100U,   0, 0, 100));
+    vu_rtl.set_value(wave(t, 140U, 180, 0, 100));
+    vu_ttb.set_value(wave(t,  80U,  90, 0, 100));
+    vu_val.set_value(lvl_l, 0U, " %");
+
+    // battery: one half discharges from 100 to 0 over the page, the other half charges
+    const std::uint8_t down = static_cast<std::uint8_t>(100U - t * 100U / (frames > 1U ? frames - 1U : 1U));
+    const std::uint8_t up   = static_cast<std::uint8_t>(100U - down);
+    bat_phone.set_level(down); bat_val.set_value(down, 0U, " %");
+    bat_big.set_level(down);
+    bat_seg.set_level(down);
+    bat_btt.set_level(down);
+    bat_small.set_level(up);   bat_val2.set_value(up, 0U, " %");
+    bat_chg.set_level(up);
+    bat_rtl.set_level(up);
+    bat_ttb.set_level(up);
+
+    vic::io::delay(FRAME_MS);
+  }
+}
+
+
 void demo()
 {
   head().init();
@@ -826,5 +965,7 @@ void demo()
     page2(250U);
     _dc.cls(COL_BG);
     page3(250U);
+    _dc.cls(COL_BG);
+    page4(250U);
   }
 }

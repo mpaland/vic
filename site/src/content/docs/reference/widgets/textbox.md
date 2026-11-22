@@ -2,7 +2,7 @@
 title: textbox
 description: A multi line text with word wrap, explicit line breaks and line scrolling.
 sidebar:
-  order: 17
+  order: 18
 ---
 
 `textbox` renders a multi line text in a fixed cell. The text is wrapped at spaces to the cell width, `'\n'` forces a

@@ -266,6 +266,9 @@ and a needle), `widget::bargauge` (linear band strip with up to two triangle mar
 (rotating ring segment as busy indicator). The needle and the markers are canvas sprites, so a value change
 costs only their pixels and the background restores itself. 
 `widget::compass` is a heading up compass rose with a fixed pointer. 
+`widget::vumeter` is a segmented level meter in four orientations, its colors are an array used as hard zones or
+as gradient, `widget::battery` is a battery symbol with a level from 0 to 100 %, a low level color, a charging
+symbol and an optional level in blocks. 
   
 Input routing is one function: the application calls `widget::base::event({x, y}, widget::event_tap)` from
 its touch, mouse or button driver with the position and the event (`event_down`, `event_up`, `event_tap`,
@@ -279,9 +282,13 @@ focus, no styles and no theme engine, full featured GUIs belong to a library on 
 
 `demo/demo_widget.cpp` shows every widget with its specific features (orientations, border, bitmap formats,
 alignment, color escapes, bands, ticks, fill mode, dual markers, anti aliasing, the input widgets operated by
-a simulated touch) on three pages, 30 s recording:
+a simulated touch) on four pages, 30 s recording of the first three pages:
 
 ![](doc/demo_widget.gif)
+
+The fourth page shows the VU meters and the batteries:
+
+![](doc/demo_widget_page4.png)
 
 `demo/demo_gauges.cpp` shows the gauge widgets on an aircraft engine page:
 
@@ -574,6 +581,8 @@ Every widget takes the head and a `config_type` struct, `init()` draws it.
 | `arc` | `set_value()`, `set_range()`, `set_color()`, `anti_aliasing_enable()` |
 | `spinner` | `step()`, `set_pos()`, `anti_aliasing_enable()` |
 | `compass` | `set_heading()`, `anti_aliasing_enable()` |
+| `vumeter` | `set_value()`, `set_range()` |
+| `battery` | `set_level()`, `set_color()`, `set_charging()` |
 | `button`, `imagebutton` | pressed look on down / up, `set_caption()`, `set_active()` (imagebutton) |
 | `checkbox` | `set_checked()`, `toggle()`, toggles on tap |
 | `toggle` (switch) | `set_state()`, `toggle_state()`, toggles on tap |

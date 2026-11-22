@@ -2,7 +2,7 @@
 title: bitmap
 description: Renders raw bitmaps in several color formats and XPM3 images.
 sidebar:
-  order: 3
+  order: 4
 ---
 
 `bitmap` renders raw bitmaps (L1, RGB332, RGB555, RGB565, RGB888 and ARGB8888) and XPM3 images. The raw data is read

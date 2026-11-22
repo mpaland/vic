@@ -2,7 +2,7 @@
 title: compass
 description: A heading up compass rose which rotates below a fixed pointer.
 sidebar:
-  order: 6
+  order: 7
 ---
 
 `compass` is a heading up compass rose: the rose rotates below a fixed pointer at the top. It has ticks every 10

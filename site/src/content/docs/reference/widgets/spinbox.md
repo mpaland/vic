@@ -2,7 +2,7 @@
 title: spinbox
 description: A numeric value with a minus and a plus button, changed by taps and long taps.
 sidebar:
-  order: 14
+  order: 15
 ---
 
 `spinbox` shows a numeric value between a minus and a plus button. A tap on a button changes the value by `step`, a

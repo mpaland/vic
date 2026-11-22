@@ -2,7 +2,7 @@
 title: slider
 description: A track with a knob, the value is set by tapping or dragging on the track.
 sidebar:
-  order: 13
+  order: 14
 ---
 
 `slider` is a track with a knob. The value is set by tapping on the track, a touch driver which sends `event_down` on

@@ -2,7 +2,7 @@
 title: checkbox
 description: A box with a check mark and a caption at the right, toggled by a tap.
 sidebar:
-  order: 5
+  order: 6
 ---
 
 `checkbox` is a square box with a check mark and a caption at the right. A tap toggles the state.

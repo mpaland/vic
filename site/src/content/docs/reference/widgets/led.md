@@ -2,7 +2,7 @@
 title: led
 description: A round or square indicator with an on and an off color.
 sidebar:
-  order: 11
+  order: 12
 ---
 
 `led` is a round or square indicator with an on and an off color.

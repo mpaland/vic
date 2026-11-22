@@ -2,7 +2,7 @@
 title: imagebutton
 description: An XPM icon with a caption below, a soft key or icon button with a pressed and a latched look.
 sidebar:
-  order: 9
+  order: 10
 ---
 
 `imagebutton` is an XPM icon with a caption below it, a soft key or icon label. Like `button` it shows the pressed look

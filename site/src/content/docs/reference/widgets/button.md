@@ -2,7 +2,7 @@
 title: button
 description: A push button with a centered caption and a pressed look.
 sidebar:
-  order: 4
+  order: 5
 ---
 
 `button` is a push button with a centered caption. It shows the pressed look between `event_down` and `event_up`, the

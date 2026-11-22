@@ -2,7 +2,7 @@
 title: progress
 description: A progress bar in four orientations with delta drawing.
 sidebar:
-  order: 12
+  order: 13
 ---
 
 `progress` is a progress bar in four orientations. A position change draws only the changed part of the bar.

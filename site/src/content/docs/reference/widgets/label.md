@@ -2,7 +2,7 @@
 title: label
 description: A text or numeric readout in a fixed cell, redrawn only when the text changes.
 sidebar:
-  order: 10
+  order: 11
 ---
 
 `label` is a text or numeric readout in a fixed cell. The text is redrawn only when it changes, so `set_text()` and

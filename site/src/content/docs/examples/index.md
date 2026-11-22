@@ -87,7 +87,7 @@ The Windows `main.cpp` contains a multihead variant too, see [Multiple heads](/v
 | `demo_input.cpp` | A settings page with input widgets and a compass, operated by a simulated touch |
 | `demo_aa.cpp` | The same scene without and with anti aliasing side by side, with a magnifier |
 | `demo_clock.cpp` | An analog clock with gradient face and sprite hands drawn with a brush |
-| `demo_widget.cpp` | Every widget with its features on three alternating pages |
+| `demo_widget.cpp` | Every widget with its features on four alternating pages |
 
 `demo/heads/` holds one small portable program per head (`vic_head_<name>`) which draws a test scene and dumps the
 command / data stream of the head to stdout, see [Heads](/vic/heads/).

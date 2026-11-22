@@ -2,7 +2,7 @@
 title: toggle
 description: An on / off switch with a sliding knob, the class toggle in widget/switch.h.
 sidebar:
-  order: 16
+  order: 17
 ---
 
 `toggle` is an on / off switch: a rounded track with a knob at the left (off) or right (on) end. A tap toggles the

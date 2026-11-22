@@ -2,7 +2,7 @@
 title: groupbox
 description: A rectangular or rounded frame with a title cut into the top border.
 sidebar:
-  order: 8
+  order: 9
 ---
 
 `groupbox` is a (rounded) frame with a title cut into the top border. It is static, draw it before the widgets inside

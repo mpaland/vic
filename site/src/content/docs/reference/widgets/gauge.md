@@ -2,7 +2,7 @@
 title: gauge
 description: A round gauge with an arc scale, colored bands, major ticks and a sprite needle.
 sidebar:
-  order: 7
+  order: 8
 ---
 
 `gauge` is a round gauge: an arc scale with colored bands and major ticks and a needle. The needle is a canvas sprite
