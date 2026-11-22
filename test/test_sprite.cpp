@@ -1235,3 +1235,112 @@ TEST_CASE(sprite_canvas_sheet_xy_memory)
   // without rotation the restore buffer doesn't grow: pattern and restore buffer of 24 x 24 colors, one bit per restore color
   CHECK(sizeof(sprite::canvas_sheet_xy<24, 24, false>) <= 2U * 24U * 24U * 4U + 24U * 24U / 8U + 256U);
 }
+
+
+TEST_CASE(sprite_hide)
+{
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+  h.reset_counters();
+
+  // canvas: a sprite which was never rendered has nothing to hide
+  sprite::canvas<64, 1> c(h, 0);
+  draw_box(c, 3, 2, color::white);
+  c.hide();
+  CHECK_EQ(h.pixel_set_count(), 0U);
+
+  // hide() restores the background and keeps the position, the next render() shows the sprite again
+  c.render({ 2, 3 });
+  CHECK_EQ(vic_test::count_pixels(h, color::white), 6U);
+  c.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  CHECK((c.get_position() == vertex_type{ 2, 3 }));
+  c.hide();   // hiding twice is harmless
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  c.render({ 5, 4 });
+  CHECK_EQ(vic_test::count_pixels(h, color::white), 6U);
+  CHECK_EQ(h.pixel({ 5, 4 }), color::white);
+  c.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+
+  // sheet
+  sprite::sheet<2, 2> s(h, &info565, 0);
+  s.render({ 3, 3 }, 0U);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 3U);
+  s.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  s.render({ 3, 3 }, 1U);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 2U);
+  s.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+
+  // canvas sheet, rotated
+  sprite::canvas_sheet<16> cs(h, &info565, 0);
+  cs.render({ 4, 4 }, 0U, 90);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 3U);
+  cs.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  cs.render({ 4, 4 }, 0U, 0);
+  CHECK_EQ(h.pixel({ 4, 4 }), 0xFFF80000UL);
+  cs.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+
+  // canvas sheet xy, rotated
+  sprite::canvas_sheet_xy<2, 2> xy(h, &info565, 0);
+  xy.render({ 4, 4 }, 0U, 90);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 3U);
+  xy.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+  xy.render({ 4, 4 }, 0U, 0);
+  CHECK_EQ(h.pixel({ 4, 4 }), 0xFFF80000UL);
+  xy.hide();
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+}
+
+
+TEST_CASE(sprite_hide_overlap)
+{
+  // a hidden sprite neither covers the sprites below nor is it a collision partner
+  head_type h;
+  dc d(h);
+  d.cls(color::blue);
+  collision_log log;
+
+  sprite::canvas<64, 1> below(h, 0);
+  sprite::canvas<64, 1> above(h, 1);
+  draw_box(below, 4, 4, color::red);
+  draw_box(above, 4, 4, color::white);
+  below.set_collision_handler(on_collision, &log);
+
+  above.render({ 2, 2 });
+  below.render({ 4, 4 });
+  CHECK_EQ(log.count, 1U);
+  CHECK_EQ(h.pixel({ 4, 4 }), color::white);    // covered by 'above'
+
+  // hiding 'above' uncovers 'below'
+  above.hide();
+  CHECK_EQ(h.pixel({ 4, 4 }), color::red);
+  CHECK_EQ(vic_test::count_pixels(h, color::red),  16U);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U - 16U);
+
+  // no collision with the hidden sprite
+  log.reset();
+  below.render({ 3, 3 });
+  CHECK_EQ(log.count, 0U);
+  CHECK_EQ(static_cast<const void*>(below.get_collision()), static_cast<const void*>(nullptr));
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 16U);
+
+  // hiding a sprite with a handler reports nothing
+  below.hide();
+  CHECK_EQ(log.count, 0U);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 16U * 12U);
+
+  // both are back with the next render
+  above.render({ 2, 2 });
+  below.render({ 4, 4 });
+  CHECK_EQ(log.count, 1U);
+  CHECK_EQ(h.pixel({ 4, 4 }), color::white);
+  CHECK_EQ(vic_test::count_pixels(h, color::white), 16U);
+  CHECK_EQ(vic_test::count_pixels(h, color::red),   12U);
+}

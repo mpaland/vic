@@ -573,7 +573,8 @@ sheet<Width, Height>(drv& head, const sheet_info_type* sheet, std::int16_t z_ind
 canvas_sheet<Pixel>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // sheet frames, rotatable
 canvas_sheet_xy<Width, Height, Rotate = true>(drv& head, const sheet_info_type* sheet, std::int16_t z_index = 0);   // like canvas_sheet with array buffers, about half of the RAM, less without rotation
 
-void render(vertex_type position, std::uint16_t frame = 0);   // move / show, an invalid frame (0xFFFF) hides
+void render(vertex_type position, std::uint16_t frame = 0);   // move / show
+void hide();                                              // hide the sprite, restore the background
 vertex_type get_position() const;
 std::int16_t get_z_index() const;
 void set_rotation(std::int16_t angle, vertex_type center = { 0, 0 });   // canvas, degree, clockwise

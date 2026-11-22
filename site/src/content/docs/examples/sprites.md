@@ -126,8 +126,8 @@ for (std::uint32_t t = 0U; ; ++t) {
 - `canvas_sheet_xy::render(position, frame, angle)` (like the one of `canvas_sheet`) rotates around the center of the sheet frame,
   `canvas::set_rotation(angle, center)` around a center in canvas coordinates. The angle is in degree, clockwise on
   screen. The pattern itself is not modified.
-- Rendering an invalid frame (`0xFFFF`) hides a sprite and restores its background. The demo ends its one shot burst
-  animations this way: `burst.render(pos, 0xFFFFU);`
+- `hide()` hides a sprite and restores its background, the next `render()` shows it again. The demo ends its one
+  shot burst animations this way: `burst.hide();`
 
 ## Collision detection
 

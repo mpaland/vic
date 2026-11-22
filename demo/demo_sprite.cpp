@@ -33,7 +33,7 @@
 // - semi transparent sprites which are alpha blended with the background (ghosts, burst)
 // - pixel exact collision detection: the ghosts turn red (tint shader) while they overlap
 // - background restoring when sprites move
-// - one shot animations (the star burst) by rendering an invalid frame to hide the sprite
+// - one shot animations (the star burst) which hide() the sprite at the end
 // The background is rendered once with gradient shaders and text, afterwards only
 // the sprites touch the screen.
 //
@@ -348,8 +348,8 @@ void demo()
           burst_tick[b]++;
         }
         else {
-          // animation done: render an invalid frame to hide the sprite and restore the background
-          bursts[b]->render(burst_pos[b], 0xFFFFU);
+          // animation done: hide the sprite and restore the background
+          bursts[b]->hide();
           burst_tick[b] = -1;
         }
       }

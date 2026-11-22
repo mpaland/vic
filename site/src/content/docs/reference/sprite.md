@@ -92,13 +92,22 @@ void render(vertex_type position, std::uint16_t frame = 0U);
 
 Renders the sprite on the head: restores the background of the old position and renders the frame at the new
 position. A frame which doesn't exist (e.g. `0xFFFF`) renders nothing, so the sprite is hidden and its background
-is restored. A new sprite has no frame rendered until the first `render()`. Runs the collision detection if a
-handler is set. Presents the head.
+is restored, see [`hide()`](#hide). A new sprite has no frame rendered until the first `render()`. Runs the
+collision detection if a handler is set. Presents the head.
 
 | Parameter | Description |
 |---|---|
 | `position` | Screen vertex where the origin (0, 0) of the sprite is rendered |
 | `frame` | Frame to render |
+
+### `hide()`
+
+```cpp
+void hide();
+```
+
+Hides the sprite: its background is restored and nothing is rendered. A hidden sprite doesn't cover other sprites
+and is no collision partner. The position is kept, the next `render()` shows the sprite again. Presents the head.
 
 ### `get_position()`
 

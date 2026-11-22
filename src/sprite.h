@@ -254,6 +254,16 @@ public:
 
 
   /**
+   * Hide the sprite: the background is restored, nothing is rendered
+   * The sprite is shown again by the next render()
+   */
+  inline void hide()
+  {
+    render(position_, 0xFFFFU);   // an invalid frame renders an empty sprite
+  }
+
+
+  /**
    * Render the sprite on the head
    * \param position Screen vertex where the origin of the sprite is rendered
    * \param frame Frame of the sprite to render
