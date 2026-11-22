@@ -47,6 +47,13 @@ h1#_top {
 	width: 100%;
 	font-size: var(--sl-text-sm);
 }
+/* wide tables scroll in their own box on narrow screens */
+@media (max-width: 72rem) {
+	.sl-markdown-content table {
+		display: block;
+		overflow-x: auto;
+	}
+}
 .sl-markdown-content th {
 	background: #0b0c0f;
 }

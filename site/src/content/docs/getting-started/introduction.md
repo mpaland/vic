@@ -49,6 +49,8 @@ tool. vic is made for the other cases:
 - heterogeneous multihead setups,
 - MCUs with a few KB of RAM.
 
+See the [comparison](/vic/getting-started/comparison/) of vic with LVGL, LovyanGFX, TFT_eSPI, Adafruit GFX and U8g2.
+
 ## Next steps
 
 - [Installation](/vic/getting-started/installation/): add vic to your CMake or PlatformIO project.
