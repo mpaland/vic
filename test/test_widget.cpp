@@ -21,6 +21,7 @@
 #include "widget/spinbox.h"
 #include "widget/imagebutton.h"
 #include "widget/compass.h"
+#include "widget/vumeter.h"
 #include "font/LCD_6x8.h"
 #include <string.h>
 #include "head/memory.h"
@@ -1369,3 +1370,193 @@ TEST_CASE(widget_compass)
   CHECK(cr.find({ 20, 30 }) == &cr);
   CHECK(cr.find({ 38, 38 }) == nullptr);
 }
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// V U   M E T E R
+//
+
+TEST_CASE(widget_vumeter_segments)
+{
+  // one color, five segments of 3 pixel with one pixel gap, unlit segments are dimmed
+  head_type h;
+  static const color::value_type colors[] = { color::green };
+  const color::value_type dimmed = color::dim(color::green, 64U);
+  const vic_test::palette pal = { { { 'G', color::green }, { 'd', dimmed } }, 2U, color::none };
+  const widget::vumeter::config_type cfg = { { 2, 1 }, 19U, 3U, widget::vumeter::left_to_right, 5U, 1U, 0, 100, colors, 1U, false, 64U, color::none };
+  widget::vumeter vu(h, cfg);
+  vu.init();
+  CHECK_EQ(vu.get_value(), 0);
+  CHECK_RASTER(h, pal,
+    "........................",
+    "..ddd.ddd.ddd.ddd.ddd...",
+    "..ddd.ddd.ddd.ddd.ddd...",
+    "..ddd.ddd.ddd.ddd.ddd...",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................");
+  CHECK_EQ(h.present_count(), 1U);
+
+  vu.set_value(60);
+  CHECK_EQ(vu.get_value(), 60);
+  CHECK_RASTER(h, pal,
+    "........................",
+    "..GGG.GGG.GGG.ddd.ddd...",
+    "..GGG.GGG.GGG.ddd.ddd...",
+    "..GGG.GGG.GGG.ddd.ddd...",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................",
+    "........................");
+  CHECK_EQ(h.present_count(), 2U);
+
+  // out of range values are clamped
+  vu.set_value(150);
+  CHECK_EQ(vu.get_value(), 100);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 45U);
+  CHECK_EQ(vic_test::count_pixels(h, dimmed), 0U);
+  vu.set_value(-5);
+  CHECK_EQ(vu.get_value(), 0);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 0U);
+  CHECK_EQ(vic_test::count_pixels(h, dimmed), 45U);
+
+  // nothing is drawn if no segment changes, the value is taken
+  h.reset_counters();
+  vu.set_value(5);
+  CHECK_EQ(vu.get_value(), 5);
+  CHECK_EQ(h.present_count(), 0U);
+  CHECK_EQ(h.pixel_set_count(), 0U);
+  // only the changed segment is drawn
+  vu.set_value(20);
+  CHECK_EQ(h.pixel_set_count(), 9U);
+
+  // a new range resets the value
+  vu.set_range(0, 10);
+  CHECK_EQ(vu.get_value(), 0);
+  vu.set_value(10);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 45U);
+
+  CHECK(vu.find({ 2, 1 }) == &vu);
+  CHECK(vu.find({ 21, 1 }) == nullptr);
+}
+
+
+TEST_CASE(widget_vumeter_hard_zones)
+{
+  // four colors on eight segments: two segments per color (off_lum 255 shows the colors of the unlit segments)
+  head::memory<24, 2> h;
+  static const color::value_type colors[] = { color::red, color::green, color::blue, color::white };
+  widget::vumeter::config_type cfg = { { 0, 0 }, 24U, 2U, widget::vumeter::left_to_right, 8U, 0U, 0, 100, colors, 4U, false, 255U, color::none };
+  widget::vumeter vu(h, cfg);
+  vu.init();
+  CHECK_RASTER(h, vic_test::PAL_RG,
+    "RRRRRRGGGGGGBBBBBBWWWWWW",
+    "RRRRRRGGGGGGBBBBBBWWWWWW");
+
+  // a repeated color widens its zone
+  head::memory<24, 2> w;
+  static const color::value_type wide[] = { color::red, color::red, color::red, color::green };
+  cfg.colors = wide;
+  widget::vumeter vw(w, cfg);
+  vw.init();
+  CHECK_RASTER(w, vic_test::PAL_RG,
+    "RRRRRRRRRRRRRRRRRRGGGGGG",
+    "RRRRRRRRRRRRRRRRRRGGGGGG");
+
+  // no colors: nothing is drawn
+  head::memory<24, 2> n;
+  cfg.colors = nullptr;
+  widget::vumeter vn(n, cfg);
+  vn.init();
+  vn.set_value(100);
+  CHECK_EQ(vic_test::count_pixels_not(n, color::none), 0U);
+}
+
+
+TEST_CASE(widget_vumeter_gradient)
+{
+  // three colors on five segments (4 pixel each): the first, the middle and the last segment hit the stops
+  head::memory<20, 1> h;
+  static const color::value_type colors[] = { color::red, color::green, color::blue };
+  widget::vumeter::config_type cfg = { { 0, 0 }, 20U, 1U, widget::vumeter::left_to_right, 5U, 0U, 0, 100, colors, 3U, true, 255U, color::none };
+  widget::vumeter vu(h, cfg);
+  vu.init();
+  CHECK_EQ(h.pixel({ 0, 0 }),  color::red);
+  CHECK_EQ(h.pixel({ 8, 0 }),  color::green);
+  CHECK_EQ(h.pixel({ 19, 0 }), color::blue);
+  // the segments between are blends of their two neighbour stops
+  const color::value_type rg = h.pixel({ 4, 0 }), gb = h.pixel({ 12, 0 });
+  CHECK((color::get_red(rg) > 0U) && (color::get_green(rg) > 0U) && (color::get_blue(rg) == 0U));
+  CHECK((color::get_red(gb) == 0U) && (color::get_green(gb) > 0U) && (color::get_blue(gb) > 0U));
+
+  // two colors: start and end are exact, the red falls and the blue rises from segment to segment
+  head::memory<20, 1> t;
+  static const color::value_type two[] = { color::red, color::blue };
+  cfg.colors      = two;
+  cfg.color_count = 2U;
+  widget::vumeter vt(t, cfg);
+  vt.init();
+  CHECK_EQ(t.pixel({ 0, 0 }),  color::red);
+  CHECK_EQ(t.pixel({ 19, 0 }), color::blue);
+  for (std::int16_t x = 4; x < 20; x = static_cast<std::int16_t>(x + 4)) {
+    CHECK(color::get_red(t.pixel({ x, 0 }))  < color::get_red(t.pixel({ static_cast<std::int16_t>(x - 4), 0 })));
+    CHECK(color::get_blue(t.pixel({ x, 0 })) > color::get_blue(t.pixel({ static_cast<std::int16_t>(x - 4), 0 })));
+  }
+
+  // the same three colors without gradient are hard zones
+  head::memory<24, 1> z;
+  const widget::vumeter::config_type zcfg = { { 0, 0 }, 24U, 1U, widget::vumeter::left_to_right, 6U, 0U, 0, 100, colors, 3U, false, 255U, color::none };
+  widget::vumeter vz(z, zcfg);
+  vz.init();
+  CHECK_RASTER(z, vic_test::PAL_RG, "RRRRRRRRGGGGGGGGBBBBBBBB");
+
+  // a single segment works in gradient mode
+  head::memory<4, 1> s;
+  const widget::vumeter::config_type scfg = { { 0, 0 }, 4U, 1U, widget::vumeter::left_to_right, 1U, 0U, 0, 100, colors, 3U, true, 255U, color::none };
+  widget::vumeter vs(s, scfg);
+  vs.init();
+  CHECK_RASTER(s, vic_test::PAL_RG, "RRRR");
+}
+
+
+TEST_CASE(widget_vumeter_delta_equals_redraw)
+{
+  static const color::value_type colors[] = { color::red, color::green, color::blue };
+  for (int o = 0; o < 4; ++o) {
+    for (int gradient = 0; gradient < 2; ++gradient) {
+      // four segments: 4 pixel long (horizontal) or 1 pixel long (vertical) with one pixel gap
+      const bool horizontal = o < 2;
+      const widget::vumeter::config_type cfg = { { 1, 1 }, static_cast<std::uint16_t>(horizontal ? 19U : 4U), static_cast<std::uint16_t>(horizontal ? 4U : 7U),
+                                                 static_cast<widget::vumeter::orientation_type>(o), 4U, 1U, 0, 100, colors, 3U, gradient != 0, 64U, color::black };
+      head_type a, b;
+      widget::vumeter va(a, cfg);
+      widget::vumeter vb(b, cfg);
+      va.init();
+      vb.init();
+      va.set_value(80);
+      va.set_value(30);
+      va.set_value(55);
+      vb.set_value(55);
+      vb.redraw();
+      CHECK_SAME_BUFFER(a, b);
+
+      // one lit segment: it is at the start of the orientation and has the first color
+      va.set_value(25);
+      vb.set_value(25);
+      vb.redraw();
+      CHECK_SAME_BUFFER(a, b);
+      CHECK_EQ(vic_test::count_pixels(a, color::red), horizontal ? 16U : 4U);
+      const vertex_type first[4] = { { 1, 1 }, { 19, 1 }, { 1, 7 }, { 1, 1 } };
+      const vertex_type gap[4]   = { { 5, 1 }, { 15, 1 }, { 1, 6 }, { 1, 2 } };
+      CHECK_EQ(a.pixel(first[o]), color::red);
+      CHECK_EQ(a.pixel(gap[o]),   color::black);
+    }
+  }
+}
+
