@@ -282,13 +282,9 @@ focus, no styles and no theme engine, full featured GUIs belong to a library on 
 
 `demo/demo_widget.cpp` shows every widget with its specific features (orientations, border, bitmap formats,
 alignment, color escapes, bands, ticks, fill mode, dual markers, anti aliasing, the input widgets operated by
-a simulated touch) on four pages, 30 s recording of the first three pages:
+a simulated touch, the level meters and the batteries) on four pages, 40 s recording:
 
 ![](doc/demo_widget.gif)
-
-The fourth page shows the VU meters and the batteries:
-
-![](doc/demo_widget_page4.png)
 
 `demo/demo_gauges.cpp` shows the gauge widgets on an aircraft engine page:
 

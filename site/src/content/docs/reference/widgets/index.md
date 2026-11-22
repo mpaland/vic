@@ -37,8 +37,8 @@ prog.set_pos(50);                         // delta draw: only the changed part o
 
 - Every widget (except `bitmap`) has a public `redraw()` which draws it completely. `init()` calls it.
 - A widget draws within a `present_lock()` of its drawing context, so the head is presented once per change.
-- Setters draw as little as possible: `progress`, `arc`, `spinner`, `vumeter` and the fill of `bargauge` are delta
-  drawn, `label`, `checkbox`, `led`, `toggle`, `slider`, `spinbox`, `compass` and `battery` redraw only on a changed
+- Setters draw as little as possible: `progress`, `arc`, `spinner`, `vumeter`, `battery` and the fill of `bargauge`
+  are delta drawn, `label`, `checkbox`, `led`, `toggle`, `slider`, `spinbox` and `compass` redraw only on a changed
   value.
 - Colors with `color::none` (for example `color_bg` or `color_border`) mean "don't draw this part", the background
   below is left untouched.

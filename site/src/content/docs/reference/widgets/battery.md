@@ -90,7 +90,9 @@ Draw the widget (empty).
 void set_level(std::uint8_t level);
 ```
 
-Set the level. The inside of the body is redrawn only if the level changed.
+Set the level. Only the changed part of the level is drawn: the new columns or blocks if the level rises, the
+erased ones if it falls. If the level crosses `level_low` the complete level is drawn in its new color. Nothing is
+drawn if the level shows the same pixels as before.
 
 | Parameter | Description |
 |---|---|
@@ -110,7 +112,8 @@ Returns the actual level in percent.
 void set_color(color::value_type color);
 ```
 
-Set a new level color, drawn only on change. The low level color stays.
+Set a new level color, only the level is drawn in the new color. The low level color stays, so nothing is drawn while
+the level is equal or below `level_low`.
 
 | Parameter | Description |
 |---|---|
@@ -123,6 +126,8 @@ void set_charging(bool charging = true);
 ```
 
 Show or hide the charging symbol, an upright bolt in `color_charge` in the middle of the body, drawn over the level.
+Showing it draws only the symbol, hiding it restores the part of the level below it. While it is shown, a level change
+draws it again only if the changed part of the level touches it.
 
 | Parameter | Description |
 |---|---|
