@@ -44,6 +44,7 @@
 // - level_low: the level is drawn in color_low if it is equal or below this threshold, 0 for none
 // - set_charging() draws a bolt in color_charge over the level
 // - color_bg: the inside of the body is cleared with it, color::none leaves it untouched
+// - a change of the level draws only the changed part of the level
 //
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -115,15 +116,24 @@ public:
 
 
   /**
-   * Set the level, drawn only on change
+   * Set the level, only the changed part of the level is drawn
    * \param level New level in percent, 0 is empty, 100 is full, bigger values are clamped to 100
    */
   void set_level(std::uint8_t level)
   {
     level = level > 100U ? static_cast<std::uint8_t>(100U) : level;
     if (level != level_) {
+      const std::int16_t      length_old = level_length();
+      const color::value_type color_old  = level_color();
       level_ = level;
-      render();
+      const std::int16_t      length_new = level_length();
+      if (color_old != level_color()) {
+        // the low level threshold is crossed: the complete level changes its color
+        render(0, length_old > length_new ? length_old : length_new);
+      }
+      else if (length_old != length_new) {
+        render(length_old < length_new ? length_old : length_new, length_old < length_new ? length_new : length_old);
+      }
     }
   }
 
@@ -145,8 +155,11 @@ public:
   void set_color(color::value_type color)
   {
     if (color != config_.color_level) {
+      const color::value_type color_old = level_color();
       config_.color_level = color;
-      render();
+      if (color_old != level_color()) {
+        render(0, level_length());
+      }
     }
   }
 
@@ -159,7 +172,10 @@ public:
   {
     if (charging != charging_) {
       charging_ = charging;
-      render();
+      // on: only the symbol is drawn, off: the part of the level below the symbol is restored
+      const std::int16_t mid   = static_cast<std::int16_t>(level_area() / 2);
+      const std::int16_t reach = static_cast<std::int16_t>(charging ? 0 : bolt_reach());
+      render(static_cast<std::int16_t>(mid - reach), static_cast<std::int16_t>(mid + reach));
     }
   }
 
@@ -180,16 +196,22 @@ public:
   void redraw()
   {
     const std::int16_t across = size_across();
+    const std::int16_t body   = body_length();
     // the terminal is half as wide as the body and centered
     std::int16_t width = static_cast<std::int16_t>(across / 2);
     width = static_cast<std::int16_t>(width + ((across - width) & 1));
     const std::int16_t start = static_cast<std::int16_t>((across - width) / 2);
 
     dc_.present_lock();
+    if (config_.color_bg != color::none) {
+      // the one pixel clearance between the outline and the level
+      dc_.set_color(config_.color_bg);
+      dc_.rectangle(axis_rect(1, static_cast<std::int16_t>(body - 1), 1, static_cast<std::int16_t>(across - 1)));
+    }
     dc_.set_color(config_.color_frame);
-    dc_.rectangle(axis_rect(0, body_length(), 0, across), radius());
-    dc_.box(axis_rect(body_length(), size_along(), start, static_cast<std::int16_t>(start + width)));
-    render();
+    dc_.rectangle(axis_rect(0, body, 0, across), radius());
+    dc_.box(axis_rect(body, size_along(), start, static_cast<std::int16_t>(start + width)));
+    render(0, level_area());
     dc_.present_lock(false);
   }
 
@@ -274,49 +296,102 @@ private:
   }
 
 
-  /**
-   * Render the inside of the body: background, level and charging symbol
-   */
-  void render()
+  // length of the level area along the fill axis: two pixel inside the body at both ends
+  inline std::int16_t level_area() const
   {
-    const std::int16_t across = size_across();
-    const std::int16_t body   = body_length();
-    const std::int16_t length = static_cast<std::int16_t>(body - 4);    // level area: two pixel inside the body
-    const std::int16_t a1     = static_cast<std::int16_t>(across - 2);
+    return static_cast<std::int16_t>(body_length() - 4);
+  }
+
+
+  // the level color of the actual level
+  inline color::value_type level_color() const
+  {
+    return level_ <= config_.level_low ? config_.color_low : config_.color_level;
+  }
+
+
+  /**
+   * Calculate the lit length of the level area for the actual level
+   * The length is rounded up, any level above 0 is visible
+   * \return Lit length in pixel, with blocks the end of the last lit block
+   */
+  std::int16_t level_length() const
+  {
+    const std::int32_t length = level_area();
+    if (config_.segment_count > 1U) {
+      const std::int32_t lit = (level_ * config_.segment_count + 99) / 100;
+      return static_cast<std::int16_t>(lit > 0 ? lit * (length + 1) / config_.segment_count - 1 : 0);
+    }
+    return static_cast<std::int16_t>((length * level_ + 99) / 100);
+  }
+
+
+  // half height of the charging symbol
+  inline std::int16_t bolt_height() const
+  {
+    return static_cast<std::int16_t>(((body_length() < size_across() ? body_length() : size_across()) - 5) / 2);
+  }
+
+
+  // half width of the charging symbol
+  inline std::int16_t bolt_width() const
+  {
+    const std::int16_t hw = static_cast<std::int16_t>(bolt_height() * 2 / 3);
+    return static_cast<std::int16_t>(hw > 0 ? hw : 1);
+  }
+
+
+  // reach of the charging symbol along the fill axis, seen from the middle of the level area
+  inline std::int16_t bolt_reach() const
+  {
+    return static_cast<std::int16_t>((horizontal() ? bolt_width() : bolt_height()) + 2);
+  }
+
+
+  /**
+   * Render the level area between two lengths along the fill axis: level, background and charging symbol
+   * \param from Start length in pixel (inclusive), 0 is the empty end of the level area
+   * \param to End length in pixel (exclusive)
+   */
+  void render(std::int16_t from, std::int16_t to)
+  {
+    const std::int16_t length = level_area();
+    const std::int16_t a1     = static_cast<std::int16_t>(size_across() - 2);
     if ((length <= 0) || (a1 <= 2)) {
       return;
     }
+    const std::int32_t lit   = level_length();
+    const std::int32_t count = config_.segment_count > 1U ? config_.segment_count : 1;
+    const std::int32_t end   = to < length ? to : length;
 
     dc_.present_lock();
-    if (config_.color_bg != color::none) {
-      // the corners of the outline are left out
-      const std::uint16_t r = radius();
-      dc_.set_color(config_.color_bg);
-      dc_.box(axis_rect(1, static_cast<std::int16_t>(body - 1), 1, static_cast<std::int16_t>(across - 1)), static_cast<std::uint16_t>(r > 0U ? r - 1U : 0U));
-    }
-
-    // level, rounded up: any level above 0 is visible
-    dc_.set_color(level_ <= config_.level_low ? config_.color_low : config_.color_level);
-    if (config_.segment_count > 1U) {
-      const std::int32_t count = config_.segment_count;
-      const std::int32_t lit   = (level_ * count + 99) / 100;
-      for (std::int32_t n = 0; n < lit; ++n) {
-        // blocks with one pixel gap
-        dc_.box(axis_rect(static_cast<std::int16_t>(2 + n * (length + 1) / count), static_cast<std::int16_t>(1 + (n + 1) * (length + 1) / count), 2, a1));
+    for (std::int32_t n = 0; n < count; ++n) {
+      // a block and the one pixel gap behind it, a continuous level is one block
+      std::int32_t c0 = n * (length + 1) / count;         // start of the block
+      std::int32_t c1 = (n + 1) * (length + 1) / count;   // end of the gap
+      std::int32_t l1 = c1 - 1 < lit ? c1 - 1 : lit;      // end of the lit part
+      c0 = c0 > from ? c0 : from;
+      c1 = c1 < end  ? c1 : end;
+      l1 = l1 < c1   ? l1 : c1;
+      if (c0 < l1) {
+        dc_.set_color(level_color());
+        dc_.box(axis_rect(static_cast<std::int16_t>(2 + c0), static_cast<std::int16_t>(2 + l1), 2, a1));
+      }
+      l1 = l1 > c0 ? l1 : c0;
+      if ((l1 < c1) && (config_.color_bg != color::none)) {
+        dc_.set_color(config_.color_bg);
+        dc_.box(axis_rect(static_cast<std::int16_t>(2 + l1), static_cast<std::int16_t>(2 + c1), 2, a1));
       }
     }
-    else {
-      dc_.box(axis_rect(2, static_cast<std::int16_t>(2 + (length * level_ + 99) / 100), 2, a1));
-    }
 
-    if (charging_) {
-      // upright bolt out of two triangles, point symmetric to the center of the body
-      const rect_type    b  = axis_rect(0, body, 0, across);
+    if (charging_ && (from <= length / 2 + bolt_reach()) && (to >= length / 2 - bolt_reach())) {
+      // the rendered part touches the symbol: an upright bolt out of two triangles, point symmetric to the center of the body
+      const rect_type    b  = axis_rect(0, body_length(), 0, size_across());
       const std::int16_t cx = static_cast<std::int16_t>((b.left + b.right - 1) / 2);
       const std::int16_t cy = static_cast<std::int16_t>((b.top + b.bottom - 1) / 2);
-      const std::int16_t hh = static_cast<std::int16_t>(((b.width() < b.height() ? b.width() : b.height()) - 5) / 2);   // half height
-      const std::int16_t hw = static_cast<std::int16_t>(hh * 2 / 3 > 0 ? hh * 2 / 3 : 1);                               // half width
-      const std::int16_t ax = static_cast<std::int16_t>((hw + 1) / 2);                                                  // x offset of the tips
+      const std::int16_t hh = bolt_height();
+      const std::int16_t hw = bolt_width();
+      const std::int16_t ax = static_cast<std::int16_t>((hw + 1) / 2);    // x offset of the tips
       dc_.set_color(config_.color_charge);
       dc_.triangle_solid({ static_cast<std::int16_t>(cx + ax), static_cast<std::int16_t>(cy - hh) }, { static_cast<std::int16_t>(cx - hw), cy }, { cx, cy });
       dc_.triangle_solid({ static_cast<std::int16_t>(cx - ax), static_cast<std::int16_t>(cy + hh) }, { static_cast<std::int16_t>(cx + hw), cy }, { cx, cy });

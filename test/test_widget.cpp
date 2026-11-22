@@ -1729,3 +1729,94 @@ TEST_CASE(widget_battery_segments_and_charging)
   CHECK_EQ(vic_test::count_pixels(h, color::yellow), 0U);
   CHECK_EQ(vic_test::count_pixels(h, color::green), 18U);
 }
+
+
+TEST_CASE(widget_battery_delta)
+{
+  // only the changed part of the level is drawn: 15 columns of 3 pixel
+  head_type h;
+  widget::battery bat(h, battery_config(widget::battery::left_to_right, 0U));
+  bat.init();
+  bat.set_level(50U);                       // 8 columns
+  h.reset_counters();
+  bat.set_level(60U);                       // 9 columns: one new column
+  CHECK_EQ(h.pixel_set_count(), 3U);
+  CHECK_EQ(h.present_count(), 1U);
+  h.reset_counters();
+  bat.set_level(50U);                       // one column erased
+  CHECK_EQ(h.pixel_set_count(), 3U);
+  h.reset_counters();
+  bat.set_level(48U);                       // still 8 columns: nothing to draw
+  CHECK_EQ(bat.get_level(), 48U);
+  CHECK_EQ(h.pixel_set_count(), 0U);
+  CHECK_EQ(h.present_count(), 0U);
+  // crossing the low level threshold draws the complete level in the new color
+  bat.set_level(21U);                       // 4 columns
+  h.reset_counters();
+  bat.set_level(20U);                       // 3 columns in the low color, one erased
+  CHECK_EQ(h.pixel_set_count(), 12U);
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 9U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 0U);
+  // a new level color draws the level only, not if the low color is shown
+  h.reset_counters();
+  bat.set_color(color::blue);
+  CHECK_EQ(h.pixel_set_count(), 0U);
+  bat.set_level(40U);                       // 6 columns
+  h.reset_counters();
+  bat.set_color(color::green);
+  CHECK_EQ(h.pixel_set_count(), 18U);
+  // the charging symbol is drawn alone (5 pixel, the two triangles share one), a level change far away leaves it
+  h.reset_counters();
+  bat.set_charging();
+  CHECK(h.pixel_set_count() <= 6U);
+  CHECK_EQ(vic_test::count_pixels(h, color::yellow), 5U);
+  bat.set_level(20U);                       // 3 columns
+  h.reset_counters();
+  bat.set_level(10U);                       // 2 columns
+  CHECK_EQ(h.pixel_set_count(), 3U);
+  CHECK_EQ(vic_test::count_pixels(h, color::yellow), 5U);
+  // a level change below the symbol draws it again
+  bat.set_level(60U);
+  CHECK_EQ(vic_test::count_pixels(h, color::yellow), 5U);
+  bat.set_level(40U);
+  CHECK_EQ(vic_test::count_pixels(h, color::yellow), 5U);
+
+  // blocks: a new block is drawn alone (with the gap in front of it)
+  head_type s;
+  widget::battery bs(s, battery_config(widget::battery::left_to_right, 4U));
+  bs.init();
+  bs.set_level(50U);
+  s.reset_counters();
+  bs.set_level(75U);
+  CHECK_EQ(s.pixel_set_count(), 12U);
+  s.reset_counters();
+  bs.set_level(60U);                        // still three blocks
+  CHECK_EQ(s.pixel_set_count(), 0U);
+}
+
+
+TEST_CASE(widget_battery_delta_equals_redraw)
+{
+  // the delta drawing must produce the same pixels as a full redraw
+  const std::uint8_t levels[] = { 80U, 30U, 55U, 20U, 21U, 5U, 0U, 100U, 1U, 60U };
+  for (int o = 0; o < 4; ++o) {
+    for (std::uint8_t segments = 0U; segments <= 2U; segments = static_cast<std::uint8_t>(segments + 2U)) {
+      head_type a, b;
+      widget::battery ba(a, battery_config(static_cast<widget::battery::orientation_type>(o), segments));
+      widget::battery bb(b, battery_config(static_cast<widget::battery::orientation_type>(o), segments));
+      ba.init();
+      bb.init();
+      for (std::size_t n = 0U; n < sizeof(levels) / sizeof(levels[0]); ++n) {
+        // the charging symbol and the level color change on the way
+        ba.set_charging((n % 3U) == 1U);
+        ba.set_color((n % 4U) == 2U ? color::blue : color::green);
+        ba.set_level(levels[n]);
+        bb.set_charging((n % 3U) == 1U);
+        bb.set_color((n % 4U) == 2U ? color::blue : color::green);
+        bb.set_level(levels[n]);
+        bb.redraw();
+        CHECK_SAME_BUFFER(a, b);
+      }
+    }
+  }
+}
