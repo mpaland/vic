@@ -22,6 +22,7 @@
 #include "widget/imagebutton.h"
 #include "widget/compass.h"
 #include "widget/vumeter.h"
+#include "widget/battery.h"
 #include "font/LCD_6x8.h"
 #include <string.h>
 #include "head/memory.h"
@@ -1560,3 +1561,171 @@ TEST_CASE(widget_vumeter_delta_equals_redraw)
   }
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// B A T T E R Y
+//
+
+namespace {
+
+// W = frame, K = background, G = level, R = low level, Y = charging symbol
+const vic_test::palette PAL_BAT = { { { 'W', color::white }, { 'K', color::black }, { 'G', color::green }, { 'R', color::red }, { 'Y', color::yellow } }, 5U, color::none };
+
+// 20 x 7 battery (or 7 x 9 upright): terminal 1 x 3, level area 15 x 3 (or 3 x 4)
+widget::battery::config_type battery_config(widget::battery::orientation_type o, std::uint8_t segments)
+{
+  const bool horizontal = (o == widget::battery::left_to_right) || (o == widget::battery::right_to_left);
+  const widget::battery::config_type cfg = { { 1, static_cast<std::int16_t>(horizontal ? 1 : 0) }, static_cast<std::uint16_t>(horizontal ? 20U : 7U), static_cast<std::uint16_t>(horizontal ? 7U : 9U),
+                                             o, segments, 20U, color::green, color::red, color::white, color::yellow, color::black };
+  return cfg;
+}
+
+} // namespace
+
+
+TEST_CASE(widget_battery_level)
+{
+  head_type h;
+  widget::battery bat(h, battery_config(widget::battery::left_to_right, 0U));
+  bat.init();
+  CHECK_EQ(bat.get_level(), 0U);
+  // empty: outline with cut corners, terminal on the right, background inside
+  CHECK_RASTER(h, PAL_BAT,
+    "........................",
+    "..WWWWWWWWWWWWWWWWW.....",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    ".WKKKKKKKKKKKKKKKKKWW...",
+    ".WKKKKKKKKKKKKKKKKKWW...",
+    ".WKKKKKKKKKKKKKKKKKWW...",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    "..WWWWWWWWWWWWWWWWW.....",
+    "........................",
+    "........................");
+  CHECK_EQ(h.present_count(), 1U);
+
+  // half: 8 of 15 columns, one pixel clearance to the outline
+  bat.set_level(50U);
+  CHECK_EQ(bat.get_level(), 50U);
+  CHECK_RASTER(h, PAL_BAT,
+    "........................",
+    "..WWWWWWWWWWWWWWWWW.....",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    ".WKGGGGGGGGKKKKKKKKWW...",
+    ".WKGGGGGGGGKKKKKKKKWW...",
+    ".WKGGGGGGGGKKKKKKKKWW...",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    "..WWWWWWWWWWWWWWWWW.....",
+    "........................",
+    "........................");
+  CHECK_EQ(h.present_count(), 2U);
+
+  // full, levels above 100 are clamped
+  bat.set_level(100U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 45U);
+  bat.set_level(200U);
+  CHECK_EQ(bat.get_level(), 100U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 45U);
+
+  // only 0 is empty, 1 % shows one column
+  bat.set_level(21U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 12U);
+  bat.set_level(0U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 0U);
+  bat.set_level(1U);
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 3U);
+
+  // the low color is used up to the threshold
+  bat.set_level(20U);
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 9U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 0U);
+  bat.set_level(21U);
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 0U);
+
+  // a new level color
+  bat.set_color(color::blue);
+  CHECK_EQ(vic_test::count_pixels(h, color::blue), 12U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 0U);
+
+  // no redraw without change, the frame was never touched
+  h.reset_counters();
+  bat.set_level(21U);
+  bat.set_color(color::blue);
+  bat.set_charging(false);
+  CHECK_EQ(h.present_count(), 0U);
+  CHECK_EQ(vic_test::count_pixels(h, color::white), 47U);
+  CHECK(bat.find({ 20, 4 }) == &bat);
+  CHECK(bat.find({ 21, 4 }) == nullptr);
+}
+
+
+TEST_CASE(widget_battery_orientations)
+{
+  // the terminal is at the full end, the level starts at the other end
+  const vertex_type terminal[4] = { { 20, 4 }, {  1, 4 }, { 4, 0 }, { 4, 8 } };
+  const vertex_type first[4]    = { {  3, 4 }, { 18, 4 }, { 4, 6 }, { 4, 2 } };
+  const vertex_type last[4]     = { { 17, 4 }, {  4, 4 }, { 4, 3 }, { 4, 5 } };
+  for (int o = 0; o < 4; ++o) {
+    head_type h;
+    widget::battery bat(h, battery_config(static_cast<widget::battery::orientation_type>(o), 0U));
+    bat.init();
+    CHECK_EQ(h.pixel(terminal[o]), color::white);
+    CHECK_EQ(vic_test::count_pixels(h, color::white), o < 2 ? 47U : 25U);
+    bat.set_level(21U);
+    CHECK_EQ(h.pixel(first[o]), color::green);
+    CHECK_EQ(h.pixel(last[o]),  color::black);
+    bat.set_level(100U);
+    CHECK_EQ(h.pixel(last[o]),  color::green);
+    CHECK_EQ(vic_test::count_pixels(h, color::green), o < 2 ? 45U : 12U);
+  }
+}
+
+
+TEST_CASE(widget_battery_segments_and_charging)
+{
+  // four blocks of 3 x 3 pixel with one pixel gap, any level shows the first block
+  head_type h;
+  widget::battery bat(h, battery_config(widget::battery::left_to_right, 4U));
+  bat.init();
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 0U);
+  bat.set_level(1U);
+  CHECK_EQ(vic_test::count_pixels(h, color::red), 9U);
+  bat.set_level(25U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 9U);
+  bat.set_level(26U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 18U);
+  bat.set_level(75U);
+  CHECK_RASTER(h, PAL_BAT,
+    "........................",
+    "..WWWWWWWWWWWWWWWWW.....",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    ".WKGGGKGGGKGGGKKKKKWW...",
+    ".WKGGGKGGGKGGGKKKKKWW...",
+    ".WKGGGKGGGKGGGKKKKKWW...",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    "..WWWWWWWWWWWWWWWWW.....",
+    "........................",
+    "........................");
+  bat.set_level(100U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 36U);
+
+  // the charging symbol is drawn over the level in the middle of the body and vanishes again
+  bat.set_charging();
+  CHECK(bat.is_charging());
+  CHECK_RASTER(h, PAL_BAT,
+    "........................",
+    "..WWWWWWWWWWWWWWWWW.....",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    ".WKGGGKGGGKYGGKGGGKWW...",
+    ".WKGGGKGGYYYGGKGGGKWW...",
+    ".WKGGGKGGYKGGGKGGGKWW...",
+    ".WKKKKKKKKKKKKKKKKKW....",
+    "..WWWWWWWWWWWWWWWWW.....",
+    "........................",
+    "........................");
+  bat.set_level(50U);
+  CHECK(vic_test::count_pixels(h, color::yellow) > 0U);
+  bat.set_charging(false);
+  CHECK(!bat.is_charging());
+  CHECK_EQ(vic_test::count_pixels(h, color::yellow), 0U);
+  CHECK_EQ(vic_test::count_pixels(h, color::green), 18U);
+}
