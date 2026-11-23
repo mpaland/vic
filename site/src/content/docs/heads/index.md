@@ -18,7 +18,7 @@ hardware only through the I/O functions declared in `src/io.h`, which your platf
 | [`digole`](/vic/heads/digole/) | Digole serial graphic modules, up to 256 x 256 | RGB888 (`ESC` color command) | UART, SPI, I²C |
 | [`HD44780`](/vic/heads/hd44780/) | HD44780, ST7066, KS0066U, SED1278, SPLC780 character LCDs | alpha numeric | 4 or 8 bit parallel, I²C expander |
 | [`ILI9325`](/vic/heads/ili9325/) | ILI9325 240 x 320 TFT | RGB565 / RGB666 | SPI, 8 / 9 / 16 / 18 bit memory mapped |
-| [`IT8951`](/vic/heads/it8951/) | IT8951 e-paper timing controller, up to 2047 x 2047 (6" 800 x 600 .. 10.3" 1872 x 1404) | 4 bit (16 gray levels) | SPI + HRDY |
+| [`IT8951`](/vic/heads/it8951/) | IT8951 e-paper timing controller, up to 2047 x 2047 (6" 800 x 600 .. 10.3" 1872 x 1404) | 4 bit (16 gray levels, 4096 colors on color filter panels) | SPI + HRDY |
 | [`JD79667`](/vic/heads/jd79667/) | JD79667 black / white / yellow / red e-paper, up to 200 x 384 | 2 bit (4 colors) | SPI + BUSY |
 | [`MAX7219`](/vic/heads/max7219/) | MAX7219 / MAX7221 8 x 8 LED matrix | 1 bit | SPI |
 | [`MIPI_DCS`](/vic/heads/mipi-dcs/) | ILI9341, ILI9488, ST7735, ST7789, ST7796, GC9A01, JD9853 TFTs | RGB565 / RGB666 | SPI, parallel |

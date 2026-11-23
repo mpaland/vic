@@ -35,6 +35,10 @@
 // pixel blocks are one load each.
 // All orientations are done in software. See doc/IT8951.md for the programming
 // summary.
+// Color panels with a color filter array (E Ink Kaleido, 4096 colors) are gray
+// level panels for the controller: every pixel lies under a red, green or blue
+// filter. With the Filter parameter the head loads for each pixel the level of
+// the color channel of its filter.
 //
 // io layer convention (SPI, mode 0, max. 24 MHz, 12 MHz recommended):
 // every io::write() is one packet = one CS low period, the head sends the 16 bit
@@ -76,11 +80,16 @@ namespace head {
  *             the mode numbers depend on the waveform of the panel firmware, see doc/IT8951.md
  * \param VCOM VCOM voltage of the panel as magnitude in mV (2000 = -2.00 V, printed on the panel cable),
  *             0 = keep the value of the controller
+ * \param Filter Color filter array of the panel: 0 = none (gray level panel), 1 .. 12 = diagonal red / green / blue filter
+ *               of the physical panel: 1 .. 3 = the first row starts with R G B, G B R, B R G and every row is shifted one
+ *               pixel to the left, 4 .. 6 = the same, shifted to the right, 7 .. 12 = as 1 .. 6 with red and blue swapped.
+ *               The layout is in the panel specification; with the right value a red cls() gives a red screen
  */
 template<std::uint16_t Screen_Size_X = 800U, std::uint16_t Screen_Size_Y = 600U,   // X, Y size, must match the orientation
          drv::orientation_type Orientation = drv::orientation_0,                    // orientation of the display
          std::uint8_t Mode = 2U,                                                    // waveform mode of present(), GC16
-         std::uint16_t VCOM = 0U                                                    // mV, 0 = don't touch
+         std::uint16_t VCOM = 0U,                                                   // mV, 0 = don't touch
+         std::uint8_t Filter = 0U                                                   // color filter array, 0 = gray level panel
 >
 class IT8951 final : public drv
 {
@@ -127,6 +136,14 @@ class IT8951 final : public drv
   static const std::uint16_t PHYS_Y  = ROTATED ? Screen_Size_X : Screen_Size_Y;
 
   static_assert((PHYS_X <= 2047U) && (PHYS_Y <= 2047U), "IT8951: width and height of a load must be less than 2048");
+
+  // color filter array: the filter of the physical pixel (x, y) is (x + FILTER_STEP * y + FILTER_PHASE) % 3
+  // with 0 = red, 1 = green, 2 = blue (0 = blue, 2 = red if FILTER_BGR)
+  static const std::uint8_t  FILTER_PHASE = (Filter + 2U) % 3U;
+  static const std::uint8_t  FILTER_STEP  = 2U - (((Filter + 2U) / 3U) % 2U);
+  static const bool          FILTER_BGR   = (Filter > 6U);
+
+  static_assert(Filter <= 12U, "IT8951: the color filter is 0 (none) or 1 .. 12");
 
 public:
 
@@ -324,7 +341,7 @@ protected:
   virtual void cls(color::value_type bg_color = color::none)
   {
     const rect_type full = { 0, 0, static_cast<std::int16_t>(PHYS_X), static_cast<std::int16_t>(PHYS_Y) };
-    fill(full, to_gray(bg_color));
+    fill(full, bg_color);
   }
 
 
@@ -352,7 +369,7 @@ protected:
     }
     const vertex_type p = to_phys(vertex);
     const rect_type   r = { p.x, p.y, static_cast<std::int16_t>(p.x + 1), static_cast<std::int16_t>(p.y + 1) };
-    fill(r, to_gray(color));
+    fill(r, color);
   }
 
 
@@ -415,7 +432,7 @@ protected:
     if (!clip(r)) {
       return;
     }
-    fill(phys_rect(r), to_gray(color));
+    fill(phys_rect(r), color);
   }
 
 
@@ -441,7 +458,7 @@ protected:
       }
       for (std::int16_t x = p.left; x < p.right; ++x, ++n) {
         const vertex_type v = from_phys({ x, y });
-        stream_pixel(to_gray(pixels[static_cast<std::size_t>(v.y - rect.top) * stride + static_cast<std::size_t>(v.x - rect.left)]));
+        stream_pixel(to_gray(pixels[static_cast<std::size_t>(v.y - rect.top) * stride + static_cast<std::size_t>(v.x - rect.left)], channel(x, y)));
       }
       // pad the row to a whole word
       for (; (n & 0x03U) != 0U; ++n) {
@@ -455,11 +472,28 @@ protected:
 private:
 
   /**
-   * Gray level of a color: 0 = black .. 15 = white, color::none is white paper
+   * Color channel of the filter above a physical pixel
+   * \return 0 = red, 1 = green, 2 = blue
    */
-  static inline std::uint8_t to_gray(color::value_type c)
+  static inline std::uint_fast8_t channel(std::int16_t x, std::int16_t y)
   {
-    return (c == color::none) ? GRAY_WHITE : color::color_to_L4(c);
+    const std::uint_fast8_t i = static_cast<std::uint_fast8_t>((static_cast<std::uint32_t>(x) + FILTER_STEP * static_cast<std::uint32_t>(y) + FILTER_PHASE) % 3U);
+    return FILTER_BGR ? static_cast<std::uint_fast8_t>(2U - i) : i;
+  }
+
+
+  /**
+   * Gray level of a color: 0 = black .. 15 = white, color::none is white paper.
+   * On a color filter panel it is the level of the color channel of the pixel
+   * \param c Color
+   * \param ch Color channel of the pixel, see channel(); not used on gray level panels
+   */
+  static inline std::uint8_t to_gray(color::value_type c, std::uint_fast8_t ch)
+  {
+    if ((c == color::none) || (Filter == 0U)) {
+      return (c == color::none) ? GRAY_WHITE : color::color_to_L4(c);
+    }
+    return static_cast<std::uint8_t>(((ch == 0U) ? color::get_red(c) : (ch == 1U) ? color::get_green(c) : color::get_blue(c)) >> 4U);
   }
 
 
@@ -534,17 +568,23 @@ private:
 
 
   /**
-   * Fill a physical rect of the image buffer with one gray level
+   * Fill a physical rect of the image buffer with one color
    */
-  void fill(const rect_type& p, std::uint8_t gray)
+  void fill(const rect_type& p, color::value_type color)
   {
     // bytes of a row: dummy pixels in front of an unaligned start, padded to a whole word
-    const std::size_t  row   = ((static_cast<std::size_t>(p.left) & 0x03U) + static_cast<std::size_t>(p.right - p.left) + 3U) / 4U * 2U;
-    const std::uint8_t value = static_cast<std::uint8_t>(gray * 0x11U);
+    const std::size_t  row     = ((static_cast<std::size_t>(p.left) & 0x03U) + static_cast<std::size_t>(p.right - p.left) + 3U) / 4U * 2U;
+    const std::uint8_t gray[3] = { to_gray(color, 0U), to_gray(color, 1U), to_gray(color, 2U) };    // level per color channel
     load_begin(p);
     for (std::int16_t y = p.top; y < p.bottom; ++y) {
-      for (std::size_t i = 0U; i < row; ++i) {
-        stream_byte(value);
+      // the color filter repeats after 3 pixels, so a row is a sequence of 3 bytes (6 pixels) from the aligned start
+      std::uint8_t seq[3];
+      for (std::int16_t i = 0; i < 3; ++i) {
+        const std::int16_t x = static_cast<std::int16_t>((p.left & ~3) + i * 2);
+        seq[i] = static_cast<std::uint8_t>((gray[channel(x, y)] << 4U) | gray[channel(static_cast<std::int16_t>(x + 1), y)]);
+      }
+      for (std::size_t i = 0U, k = 0U; i < row; ++i, k = (k == 2U) ? 0U : k + 1U) {
+        stream_byte(seq[k]);
       }
     }
     load_end(p);

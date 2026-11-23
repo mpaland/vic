@@ -1643,6 +1643,76 @@ TEST_CASE(heads_IT8951)
   REQUIRE(io_stub::written_size() == 24U + 2U + 4U + 4U);
   CHECK_EQ(w[11], 0x1DU); CHECK_EQ(w[15], 0x00U); CHECK_EQ(w[19], 0x01U); CHECK_EQ(w[23], 0x02U);
   CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[28], 0xFFU);
+
+  // color filter panel, layout 1: the first row is R G B .., every row is shifted one pixel to the left. A red box of
+  // 6 x 2: level 15 for the pixels under a red filter, 0 for the others, the rows are padded to 2 words with the pattern
+  static const color::value_type rgb[3] = { color::argb(0xFFU, 0x00U, 0x00U), color::argb(0x00U, 0xFFU, 0x00U), color::argb(0x00U, 0x00U, 0xFFU) };
+  head::IT8951<32, 16, drv::orientation_0, 2U, 0U, 1U> cf(nullptr);
+  cf.init();
+  dc dcf(cf);
+  dcf.present_lock();
+  dcf.set_color(rgb[0]);
+  io_stub::clear();
+  dcf.box({ 0, 0, 6, 2 });
+  static const std::uint8_t red_box[8] = { 0xF0U, 0x0FU, 0x00U, 0xF0U,  0x00U, 0xF0U, 0x0FU, 0x00U };
+  REQUIRE(io_stub::written_size() == 24U + 2U + 8U + 4U);
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), red_box, sizeof(red_box)), 26L);
+  // a green pixel under a green filter (4, 3) is level 15, under a blue filter (5, 3) level 0 (low nibble of the first byte)
+  dcf.set_color(rgb[1]);
+  io_stub::clear();
+  dcf.plot({ 4, 3 });
+  w = io_stub::written();
+  CHECK_EQ(w[11], 0x04U); CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[27], 0x0FU);
+  io_stub::clear();
+  dcf.plot({ 5, 3 });
+  w = io_stub::written();
+  CHECK_EQ(w[11], 0x05U); CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[27], 0x0FU);
+  // a gray has the same level under every filter
+  dcf.set_color(color::argb(0x80U, 0x80U, 0x80U));
+  io_stub::clear();
+  dcf.box({ 0, 0, 4, 1 });
+  w = io_stub::written();
+  CHECK_EQ(w[26], 0x88U); CHECK_EQ(w[27], 0x88U);
+  // a block of a red, a green and a blue pixel: all on at (0, 0), where the filters match, all off one pixel to the right
+  io_stub::clear();
+  dcf.blit({ 0, 0, 3, 1 }, rgb, 3U);
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 2U + 2U + 4U);
+  CHECK_EQ(w[26], 0xFFU); CHECK_EQ(w[27], 0xFFU);
+  io_stub::clear();
+  dcf.blit({ 1, 0, 4, 1 }, rgb, 3U);
+  w = io_stub::written();
+  CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[27], 0x00U);
+  // layout 5: the first row is G B R .., every row is shifted to the right; a red box of 4 x 2
+  head::IT8951<32, 16, drv::orientation_0, 2U, 0U, 5U> cf5(nullptr);
+  cf5.init();
+  dc dcf5(cf5);
+  dcf5.present_lock();
+  dcf5.set_color(rgb[0]);
+  io_stub::clear();
+  dcf5.box({ 0, 0, 4, 2 });
+  w = io_stub::written();
+  CHECK_EQ(w[26], 0x00U); CHECK_EQ(w[27], 0xF0U); CHECK_EQ(w[28], 0xF0U); CHECK_EQ(w[29], 0x0FU);
+  // layout 12: red and blue swapped, the first row is R B G .., shifted to the right
+  head::IT8951<32, 16, drv::orientation_0, 2U, 0U, 12U> cf12(nullptr);
+  cf12.init();
+  dc dcf12(cf12);
+  dcf12.present_lock();
+  dcf12.set_color(rgb[0]);
+  io_stub::clear();
+  dcf12.box({ 0, 0, 4, 2 });
+  w = io_stub::written();
+  CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[27], 0x0FU); CHECK_EQ(w[28], 0x0FU); CHECK_EQ(w[29], 0x00U);
+  // the filter belongs to the physical panel: in portrait the logical pixel (0, 0) is the physical (31, 0), a green filter
+  head::IT8951<16, 32, drv::orientation_90, 2U, 0U, 1U> cfr(nullptr);
+  cfr.init();
+  dc dcfr(cfr);
+  dcfr.present_lock();
+  dcfr.set_color(rgb[1]);
+  io_stub::clear();
+  dcfr.plot({ 0, 0 });
+  w = io_stub::written();
+  CHECK_EQ(w[11], 0x1FU); CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[27], 0x0FU);
 }
 
 
