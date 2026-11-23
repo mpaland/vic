@@ -147,7 +147,7 @@ The [input example](/vic/examples/input/) operates a complete settings page with
 
 | Widget | Header | Description |
 |---|---|---|
-| [`arc`](/vic/reference/widgets/arc/) | `widget/arc.h` | Ring which fills with the value, a round progress bar |
+| [`arc`](/vic/reference/widgets/arc/) | `widget/arc.h` | Ring which fills with the value, a round progress bar, continuous or segmented |
 | [`bargauge`](/vic/reference/widgets/bargauge/) | `widget/bargauge.h` | Linear scale with bands, ticks, fill bar and up to two markers |
 | [`battery`](/vic/reference/widgets/battery/) | `widget/battery.h` | Battery symbol with a level from 0 to 100 %, low level color and charging symbol |
 | [`bitmap`](/vic/reference/widgets/bitmap/) | `widget/bitmap.h` | Raw bitmaps (L1, RGB332, RGB555, RGB565, RGB888, ARGB8888) and XPM3 images |

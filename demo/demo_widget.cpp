@@ -37,7 +37,7 @@
 // - bargauge: all four orientations with bands, ticks, fill mode and one or two markers
 // - groupbox: the frames around all of them
 // The second page (the pages alternate every 15 s) shows:
-// - arc:      a full ring and a 270 degree arc filling with the value, anti aliased
+// - arc:      a full ring and a knob ring with 10 segments filling with the value, anti aliased
 // - led:      round and square LEDs, running light and bit patterns
 // - spinner:  three rotating ring segments with different sweep, speed and direction
 // - textbox:  word wrapped multi line text with a color escape, scrolled line by line
@@ -471,9 +471,9 @@ void page2(std::uint32_t frames)
   group_type grp_text   (head(), group_cfg(  2, 100, 160, 196, "textbox"));
   group_type grp_input  (head(), group_cfg(164, 100, 318, 196, "input"));
 
-  // A R C  -  a full ring (anti aliased) and a 270 degree arc
-  const vic::widget::arc::config_type a_full_cfg = { { 30, 52 }, 27U, 8U, -180, 180, 0, 100, COL_GREEN, COL_RING, COL_BG };
-  const vic::widget::arc::config_type a_part_cfg = { { 80, 52 }, 22U, 6U, -135, 135, 0, 100, COL_CYAN,  COL_RING, COL_BG };
+  // A R C  -  a full ring (anti aliased) and the ring of a rotary knob with 10 segments
+  const vic::widget::arc::config_type a_full_cfg = { { 30, 52 }, 27U, 8U, -180, 180, 0, 100, COL_GREEN, COL_RING, COL_BG,  0U, 0U };
+  const vic::widget::arc::config_type a_part_cfg = { { 80, 52 }, 22U, 6U, -150, 150, 0, 100, COL_CYAN,  COL_RING, COL_BG, 10U, 6U };
   vic::widget::arc a_full(head(), a_full_cfg);
   vic::widget::arc a_part(head(), a_part_cfg);
   a_full.anti_aliasing_enable();
@@ -549,7 +549,7 @@ void page2(std::uint32_t frames)
   btn_a.init(); btn_b.init(); btn_c.init(); btn_txt_a.init(); btn_txt_b.init(); btn_txt_c.init(); report.init(); in_txt.init();
 
   // static texts
-  a_txt.set_text("ring / 270deg");
+  a_txt.set_text("ring / segments");
   led_txt.set_text("round / square");
   sp_txt.set_text("step()");
   tb.set_text(textbox_text);

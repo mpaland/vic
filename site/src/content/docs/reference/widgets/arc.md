@@ -5,8 +5,9 @@ sidebar:
   order: 1
 ---
 
-`arc` is a ring (or a part of it) which fills clockwise with the value, a round progress bar. A value change draws only
-the changed ring sector.
+`arc` is a ring (or a part of it) which fills clockwise with the value, a round progress bar. The ring is continuous or
+divided into discrete segments, like the LED ring of a rotary knob. A value change draws only the changed ring sector
+or the segments which change their state.
 
 ![Widget demo](/vic/media/demo_widget.gif)
 
@@ -23,11 +24,18 @@ the changed ring sector.
 
 // 270 degree arc from the lower left over the top to the lower right
 vic::widget::arc::config_type cfg = { { 60, 60 }, 30U, 8U, -135, 135, 0, 100,
-                                      vic::color::green, vic::color::gray04, vic::color::black };
+                                      vic::color::green, vic::color::gray04, vic::color::black, 0U, 0U };
 vic::widget::arc a(_head, cfg);
 a.anti_aliasing_enable();   // optional, full redraw on every change
 a.init();
 a.set_value(42);
+
+// ring of a rotary knob: 10 segments from -150 to 150 degree, 4 degree apart, the value is the number of lit segments
+vic::widget::arc::config_type knob_cfg = { { 140, 60 }, 30U, 8U, -150, 150, 0, 10,
+                                           vic::color::green, vic::color::gray04, vic::color::black, 10U, 4U };
+vic::widget::arc knob(_head, knob_cfg);
+knob.init();
+knob.set_value(7);
 ```
 
 ## Configuration
@@ -47,8 +55,14 @@ Angles are compass degrees: 0 is 12 o'clock, positive is clockwise, `angle_start
 | `color_arc` | `color::value_type` | Arc (value) color |
 | `color_track` | `color::value_type` | Color of the unfilled part of the ring. Use the background color for an invisible track, it is needed to erase the arc when the value decreases |
 | `color_bg` | `color::value_type` | Background around the ring, used to erase the anti aliased edges, `color::none` for none |
+| `segment_count` | `std::uint8_t` | Number of discrete segments, 0 for a continuous ring |
+| `segment_gap` | `std::uint8_t` | Gap between two segments in degrees |
 
 The initial value is `range_lower`.
+
+With `segment_count > 0` the ring is divided into segments of equal size from `angle_start` to `angle_end`. The value is
+rounded to the number of lit segments: they are drawn in `color_arc`, the unlit ones in `color_track`. The gaps are not
+drawn, they keep the background. With a range of `0 .. segment_count` the value is the number of lit segments.
 
 ## Member functions
 
@@ -78,7 +92,8 @@ void set_value(std::int16_t value);
 ```
 
 Set a new value, only the changed part of the ring is drawn (the sector between the old and the new angle in
-`color_arc` or `color_track`).
+`color_arc` or `color_track`). A segmented ring draws only the segments which change their state, nothing is drawn if
+the number of lit segments stays the same.
 
 | Parameter | Description |
 |---|---|

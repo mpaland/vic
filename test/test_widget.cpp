@@ -761,7 +761,7 @@ TEST_CASE(widget_arc_delta_equals_redraw)
 {
   // a full ring from 0 to 100, delta drawing must give the same pixels as a redraw
   head::memory<40, 40> a, b;
-  const widget::arc::config_type cfg = { { 20, 20 }, 16U, 5U, -180, 180, 0, 100, color::green, color::gray, color::none };
+  const widget::arc::config_type cfg = { { 20, 20 }, 16U, 5U, -180, 180, 0, 100, color::green, color::gray, color::none, 0U, 0U };
   widget::arc pa(a, cfg);
   widget::arc pb(b, cfg);
   pa.init();
@@ -808,7 +808,7 @@ TEST_CASE(widget_arc_partial_and_aa)
   dc d(h);
   d.cls(color::black);
   // 270 degree arc from the lower left over the top to the lower right
-  const widget::arc::config_type cfg = { { 20, 20 }, 16U, 5U, -135, 135, 0, 100, color::green, color::gray, color::black };
+  const widget::arc::config_type cfg = { { 20, 20 }, 16U, 5U, -135, 135, 0, 100, color::green, color::gray, color::black, 0U, 0U };
   widget::arc a(h, cfg);
   a.init();
   // the gap at the bottom stays black
@@ -844,6 +844,87 @@ TEST_CASE(widget_arc_partial_and_aa)
     for (std::int16_t x = 0; x < 40; ++x) {
       const color::value_type c = h.pixel({ x, y });
       if (color::get_green(c) > color::get_red(c) + 8U) {
+        ++greenish;
+      }
+    }
+  }
+  CHECK_EQ(greenish, 0U);
+}
+
+
+TEST_CASE(widget_arc_segments)
+{
+  // the LED ring of a rotary knob: 10 segments from -150 to 150 degree, 8 degree apart, the value is the lit count
+  head::memory<40, 40> a, b;
+  dc da(a), db(b);
+  da.cls(color::black);
+  db.cls(color::black);
+  const widget::arc::config_type cfg = { { 20, 20 }, 16U, 5U, -150, 150, 0, 10, color::green, color::gray, color::none, 10U, 8U };
+  widget::arc pa(a, cfg);
+  widget::arc pb(b, cfg);
+  pa.init();
+  pb.init();
+  // empty: only track pixels, the gap at 12 o'clock (between segment 4 and 5) and the open bottom are not drawn
+  CHECK_EQ(vic_test::count_pixels(a, color::green), 0U);
+  const std::size_t ring = vic_test::count_pixels(a, color::gray);
+  CHECK(ring > 0U);
+  CHECK_EQ(a.pixel({ 20, 6 }), color::black);
+  CHECK_EQ(a.pixel({ 20, 34 }), color::black);
+  CHECK_EQ(a.pixel({ 10, 10 }), color::gray);
+
+  // delta drawing must give the same pixels as a redraw
+  pa.set_value(3);
+  pa.set_value(8);
+  pa.set_value(5);
+  pb.set_value(5);
+  CHECK_SAME_BUFFER(a, b);
+  CHECK_EQ(vic_test::count_pixels(a, color::green) + vic_test::count_pixels(a, color::gray), ring);
+  CHECK_EQ(a.pixel({ 10, 10 }), color::green);   // -45 degree is segment 3, lit
+  CHECK_EQ(a.pixel({ 30, 10 }), color::gray);    //  45 degree is segment 6, unlit
+  CHECK_EQ(a.pixel({ 20, 6 }), color::black);
+
+  // full and empty
+  pa.set_value(10);
+  CHECK_EQ(vic_test::count_pixels(a, color::gray), 0U);
+  CHECK_EQ(vic_test::count_pixels(a, color::green), ring);
+  pa.set_value(0);
+  CHECK_EQ(vic_test::count_pixels(a, color::green), 0U);
+  CHECK_EQ(vic_test::count_pixels(a, color::gray), ring);
+
+  // a value change within one segment draws nothing
+  head::memory<40, 40> c;
+  widget::arc::config_type ccfg = cfg;
+  ccfg.range_upper = 100;
+  widget::arc pc(c, ccfg);
+  pc.init();
+  pc.set_value(20);
+  const std::size_t two = vic_test::count_pixels(c, color::green);
+  c.reset_counters();
+  pc.set_value(24);
+  CHECK_EQ(c.present_count(), 0U);
+  CHECK_EQ(pc.get_value(), 24);
+  CHECK_EQ(vic_test::count_pixels(c, color::green), two);
+  pc.set_value(25);   // rounds to the third segment
+  CHECK(vic_test::count_pixels(c, color::green) > two);
+
+  // anti aliasing: lowering the value must leave no green remnants
+  head::memory<40, 40> h;
+  dc d(h);
+  d.cls(color::black);
+  widget::arc::config_type acfg = cfg;
+  acfg.color_bg = color::black;
+  widget::arc s(h, acfg);
+  s.init();
+  s.anti_aliasing_enable();
+  s.set_value(10);
+  CHECK_EQ(h.pixel({ 10, 10 }), color::green);
+  CHECK_EQ(h.pixel({ 20, 6 }), color::black);
+  s.set_value(0);
+  std::size_t greenish = 0U;
+  for (std::int16_t y = 0; y < 40; ++y) {
+    for (std::int16_t x = 0; x < 40; ++x) {
+      const color::value_type col = h.pixel({ x, y });
+      if (color::get_green(col) > color::get_red(col) + 8U) {
         ++greenish;
       }
     }

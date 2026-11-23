@@ -297,7 +297,7 @@ delta drawing. For instrument style displays there are `widget::gauge` (round ar
 and a needle), `widget::bargauge` (linear band strip with up to two triangle markers and an optional fill bar),
 `widget::label` (text or fixed point numeric readout in a cell, redrawn only when the text changes),
 `widget::textbox` (multi line text with word wrap and line scrolling), `widget::groupbox` (titled frame),
-`widget::led` (round or square indicator), `widget::arc` (ring progress, delta drawn) and `widget::spinner`
+`widget::led` (round or square indicator), `widget::arc` (ring progress, continuous or segmented, delta drawn) and `widget::spinner`
 (rotating ring segment as busy indicator). The needle and the markers are canvas sprites, so a value change
 costs only their pixels and the background restores itself. 
 `widget::compass` is a heading up compass rose with a fixed pointer. 

@@ -27,7 +27,7 @@
 //
 // Usage:
 // vic::widget::arc::config_type _cfg = { { 60, 60 }, 30, 8, -135, 135, 0, 100,
-//                                        vic::color::green, vic::color::gray04, vic::color::black };
+//                                        vic::color::green, vic::color::gray04, vic::color::black, 0, 0 };
 // vic::widget::arc a(_head, _cfg);
 // a.init();
 // a.set_value(42);
@@ -38,7 +38,11 @@
 // - the ring spans from radius - ring_width to radius
 // - color_track is the color of the unfilled part of the ring, use the background color for an
 //   invisible track (it is needed to erase the arc when the value decreases)
-// - a value change draws only the changed sector, with anti_aliasing_enable() the complete ring is
+// - segment_count > 0 divides the ring into discrete segments, segment_gap degrees apart, like the
+//   LED ring of a rotary knob, e.g. 10 segments from -150 to 150: the lit segments are drawn in
+//   color_arc, the unlit ones in color_track, the gaps are not drawn; 0 is a continuous ring
+// - a value change draws only the changed sector (or the segments which change their state), with
+//   anti_aliasing_enable() the complete ring is
 //   redrawn on every change (the anti aliased edges can't be delta drawn): the ring and two pixel
 //   around it are erased with color_bg first, so keep two pixel clearance to other content
 //
@@ -69,6 +73,8 @@ public:
     color::value_type color_arc;      // arc (value) color
     color::value_type color_track;    // track color (unfilled part of the ring)
     color::value_type color_bg;       // background around the ring, used to erase the anti aliased edges, color::none for none
+    std::uint8_t      segment_count;  // number of discrete segments, 0 for a continuous ring
+    std::uint8_t      segment_gap;    // gap between two segments in degrees
   } config_type;
 
 private:
@@ -110,6 +116,23 @@ public:
   {
     value = clamp(value);
     if (value == value_) {
+      return;
+    }
+    if (!!config_.segment_count) {
+      // segments: only the ones which change their state are drawn
+      const std::uint_fast8_t lit_old = lit_count(value_);
+      const std::uint_fast8_t lit_new = lit_count(value);
+      value_ = value;
+      if (lit_old == lit_new) {
+        return;
+      }
+      if (aa_) {
+        redraw();
+        return;
+      }
+      dc_.present_lock();
+      render_segments(lit_old < lit_new ? lit_old : lit_new, lit_old < lit_new ? lit_new : lit_old);
+      dc_.present_lock(false);
       return;
     }
     const std::int16_t a_old = value_to_angle(value_);
@@ -186,10 +209,15 @@ public:
     const std::int16_t a = value_to_angle(value_);
     dc_.present_lock();
     erase_edges(dc_, config_.center, inner_radius(), config_.radius, aa_, config_.color_bg);
-    dc_.set_color(config_.color_track);
-    sector_cw(dc_, config_.center, inner_radius(), config_.radius, a, config_.angle_end);
-    dc_.set_color(config_.color_arc);
-    sector_cw(dc_, config_.center, inner_radius(), config_.radius, config_.angle_start, a);
+    if (!!config_.segment_count) {
+      render_segments(0U, config_.segment_count);
+    }
+    else {
+      dc_.set_color(config_.color_track);
+      sector_cw(dc_, config_.center, inner_radius(), config_.radius, a, config_.angle_end);
+      dc_.set_color(config_.color_arc);
+      sector_cw(dc_, config_.center, inner_radius(), config_.radius, config_.angle_start, a);
+    }
     dc_.present_lock(false);
   }
 
@@ -224,6 +252,40 @@ private:
   inline std::int16_t value_to_angle(std::int16_t value) const
   {
     return widget::value_to_angle(value, config_.range_lower, config_.range_upper, config_.angle_start, config_.angle_end);
+  }
+
+
+  /**
+   * Calculate the number of lit segments for a value
+   * \param value Value within the range
+   * \return Lit segments, 0 to segment_count
+   */
+  std::uint_fast8_t lit_count(std::int16_t value) const
+  {
+    const std::int32_t range = static_cast<std::int32_t>(config_.range_upper) - config_.range_lower;
+    if (range <= 0) {
+      return 0U;
+    }
+    return static_cast<std::uint_fast8_t>((static_cast<std::int32_t>(config_.segment_count) * (value - config_.range_lower) + range / 2) / range);
+  }
+
+
+  /**
+   * Render the segments in their actual state, lit or unlit, the rounding of the segment angles is
+   * spread evenly so the last segment ends at angle_end
+   * \param from First segment (inclusive), 0 is the segment at angle_start
+   * \param to Last segment (exclusive)
+   */
+  void render_segments(std::uint_fast8_t from, std::uint_fast8_t to)
+  {
+    const std::uint_fast8_t lit    = lit_count(value_);
+    const std::int32_t      length = static_cast<std::int32_t>(config_.angle_end) - config_.angle_start + config_.segment_gap;
+    for (std::uint_fast8_t n = from; n < to; ++n) {
+      dc_.set_color(n < lit ? config_.color_arc : config_.color_track);
+      sector_cw(dc_, config_.center, inner_radius(), config_.radius,
+                config_.angle_start + length * static_cast<std::int32_t>(n) / config_.segment_count,
+                config_.angle_start + length * static_cast<std::int32_t>(n + 1U) / config_.segment_count - config_.segment_gap);
+    }
   }
 };
 
