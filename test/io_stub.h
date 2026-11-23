@@ -28,6 +28,9 @@ void clear();
 // make the next read calls return this data (copied), max 256 bytes
 void set_read_data(const std::uint8_t* data, std::size_t length);
 
+// serve the read data only to io::read() calls with this option, reads with another option fail (reset by clear())
+void set_read_option(std::uint32_t option);
+
 } // namespace io_stub
 
 #endif  // _VIC_TEST_IO_STUB_H_

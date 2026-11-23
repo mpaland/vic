@@ -17,6 +17,7 @@ namespace {
   std::uint32_t g_delay_total  = 0U;
   std::uint8_t  g_read_data[256];
   std::size_t   g_read_size    = 0U;
+  std::uint32_t g_read_option  = 0xFFFFFFFFUL;   // any
 }
 
 
@@ -37,6 +38,13 @@ void clear()
   g_init_calls   = 0U;
   g_delay_total  = 0U;
   g_read_size    = 0U;
+  g_read_option  = 0xFFFFFFFFUL;
+}
+
+
+void set_read_option(std::uint32_t option)
+{
+  g_read_option = option;
 }
 
 void set_read_data(const std::uint8_t* data, std::size_t length)
@@ -90,8 +98,12 @@ bool read(handle_type device_handle,
           std::uint8_t* data_in, std::size_t& data_in_length,
           std::uint32_t timeout)
 {
-  (void)device_handle; (void)option; (void)timeout;
+  (void)device_handle; (void)timeout;
   ++g_read_calls;
+  if ((g_read_option != 0xFFFFFFFFUL) && (option != g_read_option)) {
+    data_in_length = 0U;
+    return false;
+  }
   const std::size_t n = data_in_length < g_read_size ? data_in_length : g_read_size;
   if (data_in && n) {
     std::memcpy(data_in, g_read_data, n);

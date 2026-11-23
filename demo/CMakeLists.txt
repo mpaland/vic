@@ -7,7 +7,7 @@
 # head demos: one small portable program per head (heads/<head>.cpp with its own main()),
 # the io layer heads/io_trace.cpp has no hardware behind it and dumps the command / data
 # stream to stdout; it is the template for a real io layer
-set(VIC_HEAD_DEMOS BA6x Digole HD44780 ILI9325 JD79667 MAX7219 MIPI_DCS PCD8544 SSD1306 SSD1322 SSD1331 SSD1351
+set(VIC_HEAD_DEMOS BA6x Digole HD44780 ILI9325 IT8951 JD79667 MAX7219 MIPI_DCS PCD8544 SSD1306 SSD1322 SSD1331 SSD1351
                    SSD1680 ST7565 ST7920 STPxxP05 seven_segment dummy framebuffer memory multihead)
 
 foreach(demo ${VIC_HEAD_DEMOS})

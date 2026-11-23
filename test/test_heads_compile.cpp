@@ -198,6 +198,7 @@ TEST_CASE(heads_dummy)
 #include "head/ST7565.h"
 #include "head/ST7920.h"
 #include "head/SSD1680.h"
+#include "head/IT8951.h"
 #include "head/JD79667.h"
 #include "head/SSD1322.h"
 #include "head/SSD1351.h"
@@ -1460,6 +1461,188 @@ TEST_CASE(heads_JD79667)
   dn.line({ 0, 0 }, { 0, 7 });
   CHECK_EQ(land.framebuffer()[43], 0x55U); CHECK_EQ(land.framebuffer()[44], 0x00U); CHECK_EQ(land.framebuffer()[45], 0x00U);
   CHECK_EQ(land.framebuffer()[90], 0x55U);
+}
+
+
+TEST_CASE(heads_IT8951)
+{
+  // 32 x 16 panel, no read support: no HRDY wait, no device info, fixed refresh delays
+  io_stub::clear();
+  head::IT8951<32, 16> epd(nullptr);
+  CHECK(epd.is_graphic());
+  epd.init();
+  // run, device info, packed parameters, clear load (16 rows of 16 bytes white), end, INIT refresh of the screen, status read
+  static const std::uint8_t init_head[48] = { 0x60U, 0x00U, 0x00U, 0x01U,  0x60U, 0x00U, 0x03U, 0x02U,
+                                              0x60U, 0x00U, 0x00U, 0x11U,  0x00U, 0x00U, 0x00U, 0x04U,  0x00U, 0x00U, 0x00U, 0x01U,
+                                              0x60U, 0x00U, 0x00U, 0x21U,  0x00U, 0x00U, 0x01U, 0x20U,  0x00U, 0x00U, 0x00U, 0x00U,
+                                              0x00U, 0x00U, 0x00U, 0x00U,  0x00U, 0x00U, 0x00U, 0x20U,  0x00U, 0x00U, 0x00U, 0x10U,
+                                              0x00U, 0x00U, 0xFFU, 0xFFU };
+  static const std::uint8_t init_tail[38] = { 0xFFU, 0xFFU,  0x60U, 0x00U, 0x00U, 0x22U,
+                                              0x60U, 0x00U, 0x00U, 0x34U,  0x00U, 0x00U, 0x00U, 0x00U,  0x00U, 0x00U, 0x00U, 0x00U,
+                                              0x00U, 0x00U, 0x00U, 0x20U,  0x00U, 0x00U, 0x00U, 0x10U,  0x00U, 0x00U, 0x00U, 0x00U,
+                                              0x60U, 0x00U, 0x00U, 0x10U,  0x00U, 0x00U, 0x12U, 0x24U };
+  REQUIRE(io_stub::written_size() == 20U + 24U + 258U + 4U + 24U + 8U);
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), init_head, sizeof(init_head)), 0L);
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), init_tail, sizeof(init_tail)), 338L - 38L);
+  CHECK_EQ(io_stub::init_calls(), 1U);
+  CHECK_EQ(io_stub::delay_total(), 200U + 2000U);
+  CHECK(!epd.device_info().valid);
+
+  // a pixel is a load of 1 x 1: one dummy pixel in front (x % 4), padded to one word
+  dc d(epd);
+  d.present_lock();
+  d.set_color(color::black);
+  io_stub::clear();
+  d.plot({ 5, 3 });
+  static const std::uint8_t pixel[32] = { 0x60U, 0x00U, 0x00U, 0x21U,  0x00U, 0x00U, 0x01U, 0x20U,  0x00U, 0x00U, 0x00U, 0x05U,
+                                          0x00U, 0x00U, 0x00U, 0x03U,  0x00U, 0x00U, 0x00U, 0x01U,  0x00U, 0x00U, 0x00U, 0x01U,
+                                          0x00U, 0x00U, 0x00U, 0x00U,  0x60U, 0x00U, 0x00U, 0x22U };
+  REQUIRE(io_stub::written_size() == sizeof(pixel));
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), pixel, sizeof(pixel)), 0L);
+  CHECK_EQ(io_stub::write_calls(), 8U);
+  // an unaligned horizontal line in gray level 8: 3 dummy pixels + 7 pixels, padded to 3 words (reversed end points)
+  d.set_color(color::argb(0x80U, 0x80U, 0x80U));
+  io_stub::clear();
+  d.line({ 9, 2 }, { 3, 2 });
+  const std::uint8_t* w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 8U + 4U);
+  CHECK_EQ(w[11], 0x03U); CHECK_EQ(w[15], 0x02U); CHECK_EQ(w[19], 0x07U); CHECK_EQ(w[23], 0x01U);
+  CHECK_EQ(w[26], 0x88U); CHECK_EQ(w[31], 0x88U); CHECK_EQ(w[35], 0x22U);
+  // present: the changed area (3, 2) 7 x 2 is refreshed with GC16, the status can't be read: fixed delay
+  io_stub::clear();
+  d.present_lock(false);
+  static const std::uint8_t dpy[24] = { 0x60U, 0x00U, 0x00U, 0x34U,  0x00U, 0x00U, 0x00U, 0x03U,  0x00U, 0x00U, 0x00U, 0x02U,
+                                        0x00U, 0x00U, 0x00U, 0x07U,  0x00U, 0x00U, 0x00U, 0x02U,  0x00U, 0x00U, 0x00U, 0x02U };
+  REQUIRE(io_stub::written_size() == sizeof(dpy) + 8U);
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), dpy, sizeof(dpy)), 0L);
+  CHECK_EQ(io_stub::delay_total(), 500U);
+  // nothing changed: no refresh
+  io_stub::clear();
+  d.present_lock();
+  d.present_lock(false);
+  CHECK_EQ(io_stub::written_size(), 0U);
+  // a vertical line and a box are one load each, clipped to the screen; the box is 5 x 2 at (30, 14) -> 2 x 2
+  d.present_lock();
+  io_stub::clear();
+  d.line({ 8, 10 }, { 8, 40 });
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 2U + 6U * 2U + 4U);
+  CHECK_EQ(w[11], 0x08U); CHECK_EQ(w[15], 0x0AU); CHECK_EQ(w[19], 0x01U); CHECK_EQ(w[23], 0x06U);
+  io_stub::clear();
+  d.box({ 30, 14, 35, 20 });
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 2U + 2U * 2U + 4U);
+  CHECK_EQ(w[11], 0x1EU); CHECK_EQ(w[15], 0x0EU); CHECK_EQ(w[19], 0x02U); CHECK_EQ(w[23], 0x02U);
+  io_stub::clear();
+  d.box({ 32, 0, 40, 8 });
+  d.line({ 0, 16 }, { 31, 16 });
+  CHECK_EQ(io_stub::written_size(), 0U);
+  // a pixel block: one dummy pixel in front, the rows are padded to a word
+  static const color::value_type block[4] = { color::black, color::white, color::white, color::black };
+  io_stub::clear();
+  d.blit({ 1, 0, 3, 2 }, block, 2U);
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 2U + 4U + 4U);
+  CHECK_EQ(w[11], 0x01U); CHECK_EQ(w[15], 0x00U); CHECK_EQ(w[19], 0x02U); CHECK_EQ(w[23], 0x02U);
+  CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[27], 0xFFU); CHECK_EQ(w[28], 0xFFU); CHECK_EQ(w[29], 0x0FU);
+  // the waveform mode of present() can be changed, the area is the union of the loads above: (1, 0) .. (31, 15)
+  epd.refresh_mode(epd.MODE_DU);
+  io_stub::clear();
+  d.present_lock(false);
+  w = io_stub::written();
+  CHECK_EQ(w[7], 0x01U); CHECK_EQ(w[11], 0x00U); CHECK_EQ(w[15], 0x1FU); CHECK_EQ(w[19], 0x10U); CHECK_EQ(w[23], 0x01U);
+  // the data of a load is sent in packets of 128 words: 16 rows of 16 bytes are one packet
+  d.present_lock();
+  io_stub::clear();
+  d.cls();
+  CHECK_EQ(io_stub::write_calls(), 6U + 1U + 1U);
+  // without device info (image buffer address) there is no read back
+  io_stub::clear();
+  CHECK_EQ(d.pixel_get({ 0, 0 }), color::none);
+  CHECK_EQ(io_stub::read_calls(), 0U);
+  // shutdown: sleep
+  io_stub::clear();
+  epd.shutdown();
+  static const std::uint8_t sleep[4] = { 0x60U, 0x00U, 0x00U, 0x03U };
+  REQUIRE(io_stub::written_size() == sizeof(sleep));
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), sleep, sizeof(sleep)), 0L);
+
+  // device info: 800 x 600, image buffer 001236E0h, versions (low byte of a word first); the load address is set
+  static const std::uint8_t info[40] = { 0x03U, 0x20U,  0x02U, 0x58U,  0x36U, 0xE0U,  0x00U, 0x12U,
+                                         '6', 'M', '1', '4', 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U,
+                                         '8', 'M', '1', '4', 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U, 0U };
+  head::IT8951<32, 16> dev(nullptr);
+  io_stub::clear();
+  io_stub::set_read_option(1U);
+  io_stub::set_read_data(info, sizeof(info));
+  dev.init();
+  CHECK(dev.device_info().valid);
+  CHECK_EQ(dev.device_info().width, 800U);
+  CHECK_EQ(dev.device_info().height, 600U);
+  CHECK(dev.device_info().image_buffer == 0x001236E0UL);
+  CHECK_EQ(dev.device_info().firmware[0], 'M'); CHECK_EQ(dev.device_info().firmware[1], '6');
+  CHECK_EQ(dev.device_info().firmware[3], '1'); CHECK_EQ(dev.device_info().firmware[4], '\0');
+  CHECK_EQ(dev.device_info().lut[1], '8');
+  static const std::uint8_t lisar[24] = { 0x60U, 0x00U, 0x00U, 0x11U,  0x00U, 0x00U, 0x02U, 0x0AU,  0x00U, 0x00U, 0x00U, 0x12U,
+                                          0x60U, 0x00U, 0x00U, 0x11U,  0x00U, 0x00U, 0x02U, 0x08U,  0x00U, 0x00U, 0x36U, 0xE0U };
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), lisar, sizeof(lisar)), 20L);
+  // read back of pixel (5, 1): one word at buffer + 1 * 32 + 4, the odd pixel is the high byte, gray level in the upper nibble
+  static const std::uint8_t mem[2] = { 0xA0U, 0x30U };
+  dc dd(dev);
+  io_stub::clear();
+  io_stub::set_read_option(1U);
+  io_stub::set_read_data(mem, sizeof(mem));
+  CHECK_EQ(dd.pixel_get({ 5, 1 }), color::L4_to_color(10U));
+  static const std::uint8_t burst[28] = { 0x60U, 0x00U, 0x00U, 0x12U,  0x00U, 0x00U, 0x37U, 0x04U,  0x00U, 0x00U, 0x00U, 0x12U,
+                                          0x00U, 0x00U, 0x00U, 0x01U,  0x00U, 0x00U, 0x00U, 0x00U,  0x60U, 0x00U, 0x00U, 0x13U,
+                                          0x60U, 0x00U, 0x00U, 0x15U };
+  REQUIRE(io_stub::written_size() == sizeof(burst));
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), burst, sizeof(burst)), 0L);
+  io_stub::set_read_option(1U);
+  io_stub::set_read_data(mem, sizeof(mem));
+  CHECK_EQ(dd.pixel_get({ 4, 1 }), color::L4_to_color(3U));
+
+  // HRDY: one busy read in front of every packet when the controller is ready (the stub answers one read)
+  static const std::uint8_t ready[1] = { 0x00U };
+  head::IT8951<32, 16> rdy(nullptr);
+  io_stub::clear();
+  io_stub::set_read_data(ready, 1U);
+  rdy.shutdown();
+  CHECK_EQ(io_stub::read_calls(), 1U);
+  CHECK_EQ(io_stub::delay_total(), 0U);
+
+  // VCOM -1.50 V: the value can't be read, so it is set
+  head::IT8951<32, 16, drv::orientation_0, 2U, 1500U> vc(nullptr);
+  io_stub::clear();
+  vc.init();
+  static const std::uint8_t vcom[24] = { 0x60U, 0x00U, 0x00U, 0x39U,  0x00U, 0x00U, 0x00U, 0x00U,
+                                         0x60U, 0x00U, 0x00U, 0x39U,  0x00U, 0x00U, 0x00U, 0x01U,  0x00U, 0x00U, 0x05U, 0xDCU,
+                                         0x60U, 0x00U, 0x00U, 0x21U };
+  CHECK_EQ(find_bytes(io_stub::written(), io_stub::written_size(), vcom, sizeof(vcom)), 20L);
+
+  // portrait on the 32 x 16 panel: logical (0, 0) is physical (31, 0), a vertical line runs along the physical row 0
+  head::IT8951<16, 32, drv::orientation_90> rot(nullptr);
+  rot.init();
+  dc dr(rot);
+  dr.present_lock();
+  dr.set_color(color::black);
+  io_stub::clear();
+  dr.plot({ 0, 0 });
+  w = io_stub::written();
+  CHECK_EQ(w[11], 0x1FU); CHECK_EQ(w[15], 0x00U); CHECK_EQ(w[19], 0x01U); CHECK_EQ(w[23], 0x01U);
+  io_stub::clear();
+  dr.line({ 0, 7 }, { 0, 0 });
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 2U + 4U + 4U);
+  CHECK_EQ(w[11], 0x18U); CHECK_EQ(w[15], 0x00U); CHECK_EQ(w[19], 0x08U); CHECK_EQ(w[23], 0x01U);
+  // a block of 2 x 1 logical pixels (black, white) at logical (0, 2): physical column 29, rows 0 .. 1
+  static const color::value_type pair[2] = { color::black, color::white };
+  io_stub::clear();
+  dr.blit({ 0, 2, 2, 3 }, pair, 2U);
+  w = io_stub::written();
+  REQUIRE(io_stub::written_size() == 24U + 2U + 4U + 4U);
+  CHECK_EQ(w[11], 0x1DU); CHECK_EQ(w[15], 0x00U); CHECK_EQ(w[19], 0x01U); CHECK_EQ(w[23], 0x02U);
+  CHECK_EQ(w[26], 0xF0U); CHECK_EQ(w[28], 0xFFU);
 }
 
 
