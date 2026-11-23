@@ -1,5 +1,65 @@
 # Changelog
 
+## [2.3.0](https://github.com/mpaland/vic/compare/v2.2.0...v2.3.0) (2026-11-23)
+
+
+### Features
+
+* **head:** Added a color filter mode to the IT8951 head for Kaleido panels, with test and docs ([d7b14ef](https://github.com/mpaland/vic/commit/d7b14ef34c42339f228f31ddbfb409bf596094e1))
+* **head:** Added the IT8951 e-paper controller head ([d87cf8c](https://github.com/mpaland/vic/commit/d87cf8ce55b0f04e0e61ce105bca624287c1a259))
+* **head:** Added the JD79667 four color e-paper head ([add6a26](https://github.com/mpaland/vic/commit/add6a26d56a438e6c020ae241c32d636fffbb0f5))
+* **sprite:** Added canvas_sheet_xy, array restore buffer for sheet ([517f78a](https://github.com/mpaland/vic/commit/517f78ad8d4fe3ab7332fb8f542a622791a1ac53))
+* **sprite:** Added hide() to switch a sprite off and restore its background ([4bda7e1](https://github.com/mpaland/vic/commit/4bda7e198046b2a06ef7df456d9e91cabf7fd4d4))
+* **widget:** Added a segment mode to the arc for knob rings, with test, demo and docs ([ed76428](https://github.com/mpaland/vic/commit/ed76428d676df3db49c3bf387cf264a032b9ddac))
+* **widget:** Added the battery widget ([ac5263f](https://github.com/mpaland/vic/commit/ac5263fa76d64a1507c901b219e162e0aa9cb303))
+* **widget:** Added the vumeter widget ([ca6fb1e](https://github.com/mpaland/vic/commit/ca6fb1ed2c1f2fae569af03d3c54c71a3e793994))
+
+
+### Bug Fixes
+
+* **demo:** Removed the unused wave function ([1c8d2b3](https://github.com/mpaland/vic/commit/1c8d2b377404aacd79a15dd438853b8c2ac3820f))
+* **HD44780:** Relaxed timing paramter ([bf6340e](https://github.com/mpaland/vic/commit/bf6340e117bdc77f7bb39b7c4be00753b775b779))
+* **shader:** Fixed the uninitialized warning of the gradient distances ([08dd2b5](https://github.com/mpaland/vic/commit/08dd2b5d223a79e7c4206010494b14eda65072ce))
+* **shader:** Limited the gradient weighting to the array size for the GCC uninitialized warning ([4664bb9](https://github.com/mpaland/vic/commit/4664bb9a45e7e29380d70d44c9f800369ad3faf4))
+
+
+### Performance
+
+* **demo:** Used canvas_sheet_xy in the sprite demo ([03fc7a1](https://github.com/mpaland/vic/commit/03fc7a17cc9ce3a2264b455e05d25cdc8c55484a))
+* **head:** Added native horizontal and vertical lines to the JD79667 head ([22897b0](https://github.com/mpaland/vic/commit/22897b0cfb950d68645945e51dad4e5c5c7b8f6d))
+* **head:** Added native horizontal and vertical lines to the SSD1306 head ([86d0eb8](https://github.com/mpaland/vic/commit/86d0eb8b043b3bed125fedb2503802f4debb1582))
+* **head:** Added native horizontal and vertical lines to the SSD1322 head ([3c79fad](https://github.com/mpaland/vic/commit/3c79fad9baa223f4bd92e7e267d55b6f4ba9b9b5))
+* **head:** Added native horizontal and vertical lines to the SSD1680 head ([cfbc39c](https://github.com/mpaland/vic/commit/cfbc39c42c04f648102ba845396a2d1532adcc43))
+* **head:** Added native horizontal and vertical lines to the ST7565 head ([74bc3be](https://github.com/mpaland/vic/commit/74bc3be8da0c5f35e55932bf9e65cf35005d6018))
+* **head:** Added native horizontal and vertical lines to the ST7920 head ([463b3f2](https://github.com/mpaland/vic/commit/463b3f27140a040c0a96565a2495fde51ef6f6b8))
+* **head:** Added native vertical lines and boxes to the ILI9325 head ([640e5b2](https://github.com/mpaland/vic/commit/640e5b22a0d79edf35958b703828e2581c7f15f2))
+* **head:** Forward lines, boxes and pixel blocks of the multihead to the native head functions ([7e6ce6d](https://github.com/mpaland/vic/commit/7e6ce6de90bc11d97e55a63f4e922ad07cc9c874))
+* **widget:** The battery draws only the changed part of the level ([ead2656](https://github.com/mpaland/vic/commit/ead2656e1c0c9f22a1c05fdf264817af4f407740))
+
+
+### Documentation
+
+* **head:** Added the IT8951 programming summary, readme and site docs ([f60ce71](https://github.com/mpaland/vic/commit/f60ce71f71c5a37b81624ddabaf429e0d2a08a39))
+* **head:** Added the JD79667 native line functions ([a5105e6](https://github.com/mpaland/vic/commit/a5105e6e91dc348534d29d5c0b4079b17a3c71d4))
+* **head:** Added the JD79667 programming summary ([68a6622](https://github.com/mpaland/vic/commit/68a6622386768b25e72612850707d12a450bc9ce))
+* **head:** Added the native draw functions of the multihead, ILI9325, SSD1322, ST7920 and ST7565 heads ([2825487](https://github.com/mpaland/vic/commit/28254874deae6098acd96d872190e15820209fcd))
+* **head:** Added the SSD1306 native line functions ([dbbeda3](https://github.com/mpaland/vic/commit/dbbeda30de6ca8c3b9acba379936f208fca6bf3a))
+* **head:** Added the SSD1680 native line functions ([e96bc36](https://github.com/mpaland/vic/commit/e96bc36505a6c87374bd017c2fb8f48bb8e5eabd))
+* **readme:** Added a comparison table with LVGL, LovyanGFX, TFT_eSPI, Adafruit GFX and U8g2 to the readme and the site ([e87c241](https://github.com/mpaland/vic/commit/e87c241e4d68c64f55d7b0033ec8b07178d116c4))
+* **readme:** Added canvas_sheet_xy ([b655644](https://github.com/mpaland/vic/commit/b6556441293cd3714cc4af07adf9a0e0c8651e96))
+* **readme:** Added the docs badge ([1194264](https://github.com/mpaland/vic/commit/119426464d0e11db1910c0fa45eb085cd1ce068e))
+* **readme:** Added the JD79667 head ([0ddbfa6](https://github.com/mpaland/vic/commit/0ddbfa65fc07628fb0f20f53b4b4e221c227ea39))
+* **site:** Added canvas_sheet_xy and the sprite type comparison ([758301c](https://github.com/mpaland/vic/commit/758301c1238595419c94cc40f8e069a1d9717c3b))
+* **site:** Added the GitHub Pages website ([124eed0](https://github.com/mpaland/vic/commit/124eed0878029c3635e6a34e690e191a7856929c))
+* **site:** Added the JD79667 head ([30d5708](https://github.com/mpaland/vic/commit/30d5708264e5f4b811b6465e6144bc3b4ecc9ded))
+* **site:** Added the JD79667 native line functions ([b502291](https://github.com/mpaland/vic/commit/b502291c096681b4ed975c8c7ae9efd7ea01e6b3))
+* **site:** Added the SSD1306 native line functions ([3c03186](https://github.com/mpaland/vic/commit/3c03186ae4e4a3e7ce6861a58bfbbb9727c2646f))
+* **site:** Added the SSD1680 native line functions ([862dbae](https://github.com/mpaland/vic/commit/862dbae95e26d0b44d51816220649124e8d89511))
+* **site:** Moved the available heads to the top of the heads page ([dbbef6c](https://github.com/mpaland/vic/commit/dbbef6c5b3c634b4fabf2811002d7fadb2626480))
+* **site:** Redesigned the landing page with an animated pipeline hero ([61a0397](https://github.com/mpaland/vic/commit/61a03977f46b0336bff0d3e96d66156232e1657f))
+* **widget:** Added the vumeter and battery widgets to the demo, the readme and the site ([b7d9645](https://github.com/mpaland/vic/commit/b7d9645b6fe5c79e325d50a2c4942fc1c5cf7694))
+* **widget:** Recorded the widget demo with the fourth page, battery delta drawing ([dc61840](https://github.com/mpaland/vic/commit/dc61840fae37382069955f4f440d4c2908f815db))
+
 ## [2.2.0](https://github.com/mpaland/vic/compare/v2.1.0...v2.2.0) (2026-11-10)
 
 
