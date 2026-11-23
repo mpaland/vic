@@ -228,7 +228,7 @@ void init(handle_type device_handle);
 | `device_handle` | logical device handle of the display |
 
 Called by `init()` of the head before the first command. Configure the bus and the control pins (D/C, CS, BUSY) and
-pulse the reset line of the display: several heads rely on it (ILI9341, GC9A01, ST7565R / ST7567, SSD1680, JD79667). When
+pulse the reset line of the display: several heads rely on it (ILI9341, GC9A01, ST7565R / ST7567, SSD1680, JD79667, IT8951). When
 several heads share one bus, it is called once per head.
 
 ### io::write
@@ -292,6 +292,8 @@ Return `false` if the bus can't read (SPI without MISO, write only modules): the
 | `SSD1306` | 1 | 1 GDDRAM byte (parallel bus, without framebuffer), with the dummy read |
 | `HD44780` | 0 | 1 byte busy flag (bit 7) and address counter (`HD44780_WAIT_BUSY`); `false`: the head waits with `io::delay()` |
 | `SSD1680` | 2 | 1 byte, bit 0 = level of the BUSY pin; `false`: the head waits `Refresh_Delay` |
+| `IT8951` | 1 | data words, big endian: send the read preamble `10h 00h`, drop the dummy word, read the words in the same CS low period; `false`: no device info, no `pixel_get()`, fixed refresh delays |
+| `IT8951` | 2 | 1 byte, bit 0 = 1 while busy (the HRDY pin is low, return the inverted level); `false`: the head sends without waiting, use a slow SPI clock |
 | `JD79667` | 2 | 1 byte, bit 0 = 1 while busy (the BUSY_N pin is low, return the inverted level); `false`: the head waits 200 ms resp. `Refresh_Delay` |
 | `BA6x` | 0 | 4 byte status answer with timeout (100 ms, 30 s for the self test); `init()` flushes the receive buffer with timeout 0 |
 
