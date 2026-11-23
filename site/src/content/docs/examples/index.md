@@ -81,7 +81,7 @@ The Windows `main.cpp` contains a multihead variant too, see [Multiple heads](/v
 |---|---|
 | `demo_fill.cpp` | `dc::fill()` in slow motion on a RGB565 framebuffer, bounded and background mode |
 | `demo_font.cpp` | All bitmap fonts with a pangram, digits, Latin-1 and color escapes |
-| `demo_vecfont.cpp` | The vector fonts in every size, a word zooming from 8 pixel to full width |
+| `demo_vecfont.cpp` | The vector fonts in every size, a DSEG segment display, a word zooming from 8 pixel to full width |
 | `demo_sprite.cpp` | Sheet and canvas sprites, rotation, z-order, alpha blending, collision detection |
 | `demo_gauges.cpp` | An aircraft engine page with round gauges, bar gauges, labels and group boxes |
 | `demo_input.cpp` | A settings page with input widgets and a compass, operated by a simulated touch |

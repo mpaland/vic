@@ -25,8 +25,10 @@
 //
 // \brief Vector font demo
 // One font header, every size: a waterfall of Montserrat_vec and Michroma_vec
-// from 9 to 44 pixel line height, then a word zooming smoothly from 8 to the
-// largest size that fits the screen width, one pixel size per frame.
+// from 9 to 44 pixel line height, the DSEG7_vec and DSEG14_vec LCD segment
+// fonts as a running stopwatch and a ticker over their unlit segments, then a
+// word zooming smoothly from 8 to the largest size that fits the screen width,
+// one pixel size per frame.
 //
 // Link this file together with windows/main.cpp (see demo/CMakeLists.txt)
 //
@@ -41,6 +43,8 @@
 
 #include "font/Montserrat_vec.h"
 #include "font/Michroma_vec.h"
+#include "font/DSEG7_vec.h"
+#include "font/DSEG14_vec.h"
 
 
 // the head is created in main.cpp
@@ -63,6 +67,8 @@ const std::uint32_t PAGE_MS   = 3500U;
 
 vic::font::Montserrat_vec montserrat;
 vic::font::Michroma_vec   michroma;
+vic::font::DSEG7_vec      dseg7;
+vic::font::DSEG14_vec     dseg14;
 
 
 // title band and gradient text area
@@ -103,6 +109,40 @@ void waterfall(vic::dc& _dc, const vic::font::font_type& font, const char* name)
     y = static_cast<std::int16_t>(y + sizes[n] + 2);
   }
   _dc.present_lock(false);
+}
+
+
+// LCD text: the unlit segments (all on: '8' or '~') in a dim color, the text on top of them.
+// All digits, '!' (blank) and ':' of the lit text have the width of the unlit chars, '.' has no width
+void lcd(vic::tc& _tc, const vic::font::font_type& font, std::uint8_t size, vic::vertex_type pos, const char* unlit, const char* text)
+{
+  _tc.set_font(font, size);
+  _tc.set_color(vic::color::argb(0x48U, 0x40U, 0x68U));
+  _tc.out(pos, reinterpret_cast<const std::uint8_t*>(unlit));
+  _tc.set_color(vic::color::argb(0x60U, 0xF0U, 0xFFU));
+  _tc.out(pos, reinterpret_cast<const std::uint8_t*>(text));
+}
+
+
+// the segment fonts: a stopwatch, a ticker and small readouts, one frame per 1/10 second
+void segments(vic::dc& _dc)
+{
+  static const char ticker[] = "!!!!!!!!!!!!VIC!VECTOR!FONTS!-!DSEG7!AND!DSEG14!-!ANY!SIZE!!!!!!!!!!!!";
+  vic::tc _tc(_dc);
+  for (std::uint32_t frame = 0U; frame < PAGE_MS / 100U; ++frame) {
+    _dc.present_lock();
+    background(_dc, _tc, "vic FFD040DSEG7_vec  DSEG14_vecFFFFFF  LCD segments");
+    char text[32];
+    const std::uint32_t t = 754U + frame;   // stopwatch in 1/10 seconds
+    std::snprintf(text, sizeof(text), "%02u:%02u.%u", static_cast<unsigned>(t / 600U), static_cast<unsigned>(t / 10U % 60U), static_cast<unsigned>(t % 10U));
+    lcd(_tc, dseg7, 56U, { 40, 34 }, "88:88.8", text);
+    std::snprintf(text, sizeof(text), "%.12s", &ticker[frame % (sizeof(ticker) - 13U)]);
+    lcd(_tc, dseg14, 26U, { 33, 108 }, "~~~~~~~~~~~~", text);
+    lcd(_tc, dseg7,  24U, { 33, 150 }, "888.8Â°", "-12.5Â°");
+    lcd(_tc, dseg14, 24U, { 170, 150 }, "~~~~~~", "RH!45%");
+    _dc.present_lock(false);
+    vic::io::delay(100U);
+  }
 }
 
 
@@ -153,6 +193,7 @@ void demo()
     vic::io::delay(PAGE_MS);
     waterfall(_dc, michroma, "Michroma_vec");
     vic::io::delay(PAGE_MS);
+    segments(_dc);
     zoom(_dc);
   }
 }
