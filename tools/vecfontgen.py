@@ -439,8 +439,8 @@ def extract(path, ranges, axes=None):
             if contours:
                 b = outline.get_bbox()
                 bbox = (b.xMin, b.yMin, b.xMax, b.yMax)
-            elif code not in (0x20, 0xA0):
-                missing.append(code)    # not a space but no ink: an empty glyph, skip it
+            elif (code not in (0x20, 0xA0)) and (g.metrics.horiAdvance == 0):
+                missing.append(code)    # not a space, no ink and no advance: an empty glyph, skip it
                 continue
             glyphs.append(Glyph(code, int(g.metrics.horiAdvance), contours, bbox))
     return face, family, glyphs, missing

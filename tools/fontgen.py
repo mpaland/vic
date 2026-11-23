@@ -215,8 +215,9 @@ def rasterize(path, size, bpp, ranges, darken='auto'):
         if factor != 1.0:
             cov = [min(255, int(c * factor + 0.5)) for c in cov]
         if ysize == 0:
-            if code not in (0x20, 0xA0):
-                # not a space but no ink: an empty glyph, skip it
+            if (code not in (0x20, 0xA0)) and (xdist == 0):
+                # not a space, no ink and no advance: an empty glyph, skip it (a blank with an advance stays,
+                # like the all segments off '!' of DSEG)
                 missing.append(code)
                 continue
             glyphs.append(Glyph(code, 0, 0, 0, 0, xdist, b'\x00'))

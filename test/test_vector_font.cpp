@@ -16,6 +16,10 @@
 #include "font/Montserrat_vec.h"
 #include "font/Michroma_vec.h"
 #include "font/Doto_vec.h"
+#include "font/DSEG7_vec.h"
+#include "font/DSEG14_vec.h"
+#include "font/DSEG7_24_aa4.h"
+#include "font/DSEG14_32_aa4.h"
 #include "font/Montserrat_24_aa4.h"
 
 using namespace vic;
@@ -470,9 +474,15 @@ TEST_CASE(fonts_vector_consistency)
   font::Montserrat_vec montserrat;
   font::Michroma_vec   michroma;
   font::Doto_vec       doto;
-  const font::font_type* fonts[] = { &montserrat, &michroma, &doto };
-  for (std::size_t f = 0U; f < 3U; ++f) {
-    const font::info_type& info = fonts[f]->info();
+  font::DSEG7_vec      dseg7;
+  font::DSEG14_vec     dseg14;
+  // the DSEG segment fonts have a reduced char set, a zero width '.' and the blank '!' (all segments off)
+  const struct { const font::font_type* font; std::size_t glyphs; bool segment; } fonts[] = {
+    { &montserrat, 175U, false }, { &michroma, 175U, false }, { &doto, 175U, false },
+    { &dseg7, 65U, true }, { &dseg14, 85U, true }
+  };
+  for (std::size_t f = 0U; f < sizeof(fonts) / sizeof(fonts[0]); ++f) {
+    const font::info_type& info = fonts[f].font->info();
     CHECK(info.attr == (font::FORMAT_VECTOR | font::ENCODING_UNICODE | font::TYPE_PROP));
     CHECK(info.family.vector->units > 0U);
     CHECK(info.family.vector->ascent > 0);
@@ -486,7 +496,7 @@ TEST_CASE(fonts_vector_consistency)
       for (std::uint32_t c = b->first; c <= b->last; ++c) {
         const font::vector_charinfo_type& g = b->char_info[c - b->first];
         CHECK(g.data != nullptr);
-        CHECK(g.xdist > 0U);
+        CHECK((g.xdist > 0U) || (fonts[f].segment && (c == '.')));
         // the hints: y edges and stems (2 words per edge: position, zone), x edges and stems (1 word),
         // each with increasing position, at most 24 knots (VEC_KNOTS of txr.h) per axis
         std::uint32_t k = 0U;
@@ -531,11 +541,11 @@ TEST_CASE(fonts_vector_consistency)
         }
         CHECK_EQ(k, static_cast<std::uint32_t>(g.size));
         CHECK(inside);
-        CHECK((g.size == 0U) == ((c == 0x20U) || (c == 0xA0U)));
+        CHECK((g.size == 0U) == ((c == 0x20U) || (c == 0xA0U) || (fonts[f].segment && (c == '!'))));
         ++glyphs;
       }
     }
-    CHECK(glyphs >= 175U);
+    CHECK(glyphs >= fonts[f].glyphs);
   }
 }
 
@@ -639,4 +649,60 @@ TEST_CASE(fonts_vector_clip_width)
   const rect_type ink = ink_box(h);
   CHECK(ink.right >= 0);
   CHECK(ink.right - ink.left < VIC_TXR_VECTOR_MAX_WIDTH);
+}
+
+
+TEST_CASE(fonts_dseg)
+{
+  // the DSEG segment fonts, vector and bitmap: '!' is the blank of a digit (all segments off) and '.' has no
+  // width, so "!8" and "8.8" are as wide as "88". The horizontal segments of an '8' are solid rows (hinted), the
+  // vertical segments run from the top of the line box (vector, the ascent is the line height) to the baseline
+  font::DSEG7_vec     dseg7;
+  font::DSEG14_vec    dseg14;
+  font::DSEG7_24_aa4  dseg7_24;
+  font::DSEG14_32_aa4 dseg14_32;
+  const struct { const font::font_type* font; std::uint8_t size; } fonts[] = {
+    { &dseg7, 24U }, { &dseg7, 32U }, { &dseg14, 24U }, { &dseg14, 32U }, { &dseg7_24, 0U }, { &dseg14_32, 0U }
+  };
+  for (std::size_t f = 0U; f < sizeof(fonts) / sizeof(fonts[0]); ++f) {
+    static head::memory<80, 48> h;
+    dc d(h);
+    d.cls();
+    tc t(d);
+    t.set_font(*fonts[f].font, fonts[f].size);
+    t.set_color(color::white);
+    const std::uint8_t size = t.char_height();
+    const std::uint8_t baseline = fonts[f].size ? size : fonts[f].font->info().baseline;
+    rect_type r88, r8d8, rb8;
+    t.get_extend(r88,  (const std::uint8_t*)"88");
+    t.get_extend(r8d8, (const std::uint8_t*)"8.8");
+    t.get_extend(rb8,  (const std::uint8_t*)"!8");
+    CHECK(r88.right > size);
+    CHECK_EQ(r8d8.right, r88.right);
+    CHECK_EQ(rb8.right, r88.right);
+
+    t.out({ 4, 4 }, (const std::uint8_t*)"!");
+    CHECK_EQ(vic_test::count_pixels_not(h, color::none), 0U);
+
+    t.out({ 4, 4 }, (const std::uint8_t*)"8");
+    std::size_t segments = 0U;
+    int top = -1, bottom = -1;
+    bool solid_last = false;
+    for (int y = 0; y < 48; ++y) {
+      std::uint32_t full = 0U, ink = 0U;
+      for (int x = 0; x < 80; ++x) {
+        full += (alpha(h, x, y) == 255U) ? 1U : 0U;
+        ink  += (alpha(h, x, y) > 0U) ? 1U : 0U;
+      }
+      const bool solid = full > size / 4U;
+      segments += (solid && !solid_last) ? 1U : 0U;
+      solid_last = solid;
+      top    = ((top < 0) && (ink > 0U)) ? y : top;
+      bottom = (ink > 0U) ? y : bottom;
+    }
+    CHECK_EQ(segments, 3U);
+    CHECK((top >= 4) && (top <= 5));
+    CHECK(!fonts[f].size || (top == 4));
+    CHECK_EQ(bottom, 3 + baseline);
+  }
 }

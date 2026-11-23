@@ -51,6 +51,12 @@ tc.out({ 0, 30 }, (const std::uint8_t*)"23.5");
 | `Michroma_12_aa2` | `font/Michroma_12_aa2.h` | Proportional, UNICODE | 12 | 2 | ASCII + Latin-1 |
 | `Michroma_16_aa4` | `font/Michroma_16_aa4.h` | Proportional, UNICODE | 16 | 4 | ASCII + Latin-1 |
 | `Michroma_24_aa4` | `font/Michroma_24_aa4.h` | Proportional, UNICODE | 24 | 4 | ASCII + Latin-1 |
+| `DSEG7_16_aa4` | `font/DSEG7_16_aa4.h` | 7 segment LCD, proportional, UNICODE | 16 | 4 | DSEG7 char set |
+| `DSEG7_24_aa4` | `font/DSEG7_24_aa4.h` | 7 segment LCD, proportional, UNICODE | 24 | 4 | DSEG7 char set |
+| `DSEG7_32_aa4` | `font/DSEG7_32_aa4.h` | 7 segment LCD, proportional, UNICODE | 32 | 4 | DSEG7 char set |
+| `DSEG14_16_aa4` | `font/DSEG14_16_aa4.h` | 14 segment LCD, proportional, UNICODE | 16 | 4 | DSEG14 char set |
+| `DSEG14_24_aa4` | `font/DSEG14_24_aa4.h` | 14 segment LCD, proportional, UNICODE | 24 | 4 | DSEG14 char set |
+| `DSEG14_32_aa4` | `font/DSEG14_32_aa4.h` | 14 segment LCD, proportional, UNICODE | 32 | 4 | DSEG14 char set |
 | `Arial_std_12_aa2` | `font/Arial_std_12_aa2.h` | Proportional, UNICODE (legacy) | 12 | 2 | `0x20` - `0x7E`, `0xA3` - `0xAA`, `0xB0` - `0xFF` |
 | `Arial_num_16x24_aa4` | `font/Arial_num_16x24_AA4.h` | Proportional, digits 16 x 24 (legacy) | 24 | 4 | `!`, `+` - `:`, `=`, `°`, `±` |
 
@@ -65,11 +71,31 @@ the soft hyphen `0xAD`.
 | `Montserrat_vec` | `font/Montserrat_vec.h` | Proportional, ASCII + Latin-1 | 26776 byte | 11308 byte |
 | `Michroma_vec` | `font/Michroma_vec.h` | Proportional, ASCII + Latin-1 | 31574 byte | 13464 byte |
 | `Doto_vec` | `font/Doto_vec.h` | Dot matrix with round dots, the look of an LED display, ASCII + Latin-1 | 26246 byte | 13364 byte |
+| `DSEG7_vec` | `font/DSEG7_vec.h` | 7 segment LCD, DSEG7 char set | 10898 byte | 10738 byte |
+| `DSEG14_vec` | `font/DSEG14_vec.h` | 14 segment LCD, DSEG14 char set | 20880 byte | 20614 byte |
 
-All three are generated with `tools/vecfontgen.py` from the OFL fonts in `src/font/ttf/`, `Doto_vec` from the
+All are generated with `tools/vecfontgen.py` from the OFL fonts in `src/font/ttf/`, `Doto_vec` from the
 variable font with `--axes ROND=100,wght=700`. The default size is 16 pixel. The dots of `Doto_vec` are stored as
 moves of one dot contour, its dot grid is exactly regular at line heights of multiples of 39 pixel (39 px: 3 px
 dots every 4 px).
+
+### DSEG segment fonts
+
+`DSEG7_*` and `DSEG14_*` are the Classic Regular style of [DSEG](https://github.com/keshikan/DSEG) by keshikan
+(v0.46, SIL Open Font License, `src/font/ttf/DSEG-OFL.txt`), the look of a 7 and a 14 segment LCD. They are
+generated with `--ranges 20-7E,B0`, the chars the fonts don't have are skipped: DSEG7 has the digits, `A` - `Z` and
+`a` - `z` as far as 7 segments can show them, space, `!`, `-`, `.`, `:`, `_` and `°`, DSEG14 has most of ASCII.
+The digit cell fills the whole line box, the vector fonts at size N have N pixel high digits.
+
+- All digits, `!` and `-` have the same width, `!` is the blank digit (all segments off).
+- `.` has no width, it is drawn into the gap after the previous digit: `"12.5"` is three digits wide.
+- `:` and space have the same narrow width.
+
+```cpp
+vic::font::DSEG7_vec seg7;
+tc.set_font(seg7, 48U);
+tc.out({ 0, 0 }, (const std::uint8_t*)"!8.5\xC2\xB0");   // " 8.5°" with a blank first digit
+```
 
 ## Using vector fonts
 
@@ -172,7 +198,7 @@ contour.
 ## Generating fonts
 
 Both generators need Python 3 with `freetype-py` (`pip install freetype-py`). `tools/gen_fonts.cmd` regenerates all
-Montserrat, Michroma and vector fonts of the repository.
+Montserrat, Michroma, DSEG and vector fonts of the repository.
 
 ### Bitmap fonts: `tools/fontgen.py`
 
