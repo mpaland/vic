@@ -103,10 +103,10 @@ void render_face(const vic::vertex_type& center)
   _dc.circle(center, radius);
 
   // background fill
-  vic::shader::gradient<4> gr = { { center.x, static_cast<std::int16_t>(center.y - radius), vic::color::darkred },
-                                  { static_cast<std::int16_t>(center.x + radius), center.y, vic::color::darkgreen },
-                                  { center.x, static_cast<std::int16_t>(center.y + radius), vic::color::darkblue },
-                                  { static_cast<std::int16_t>(center.x - radius), center.y, vic::color::darkyellow }
+  vic::shader::gradient<4> gr = { { { center.x, static_cast<std::int16_t>(center.y - radius) }, vic::color::darkred },
+                                  { { static_cast<std::int16_t>(center.x + radius), center.y }, vic::color::darkgreen },
+                                  { { center.x, static_cast<std::int16_t>(center.y + radius) }, vic::color::darkblue },
+                                  { { static_cast<std::int16_t>(center.x - radius), center.y }, vic::color::darkyellow }
                                 };
   _dc.shader_register(&gr);
   _dc.fill(center, vic::color::gray);

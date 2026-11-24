@@ -105,9 +105,9 @@ inline vic::rect_type R(std::int16_t xo, std::int32_t left, std::int32_t top, st
 // the panel background: a vertical gradient, used for the initial background and to clear the animated zone
 vic::shader::gradient_vertical<3>& background()
 {
-  static vic::shader::gradient_vertical<3> gradient = { { 0, PANEL_TOP,    vic::color::argb(0x18U, 0x20U, 0x38U) },
-                                                        { 0, ANIM_TOP,     vic::color::argb(0x30U, 0x28U, 0x50U) },
-                                                        { 0, ANIM_BOT - 1, vic::color::argb(0x60U, 0x30U, 0x40U) } };
+  static vic::shader::gradient_vertical<3> gradient = { { { 0, PANEL_TOP },    vic::color::argb(0x18U, 0x20U, 0x38U) },
+                                                        { { 0, ANIM_TOP },     vic::color::argb(0x30U, 0x28U, 0x50U) },
+                                                        { { 0, ANIM_BOT - 1 }, vic::color::argb(0x60U, 0x30U, 0x40U) } };
   return gradient;
 }
 

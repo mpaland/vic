@@ -140,9 +140,9 @@ static void render_background()
   _dc.present_lock();
 
   // S K Y  -  a vertical gradient from deep blue to a warm horizon
-  vic::shader::gradient_vertical<3> sky = { {   0,            0, vic::color::argb(0x10U, 0x10U, 0x40U) },
-                                            {   0,          100, vic::color::argb(0x50U, 0x30U, 0x70U) },
-                                            {   0, GROUND_Y - 1, vic::color::argb(0xE0U, 0x70U, 0x30U) } };
+  vic::shader::gradient_vertical<3> sky = { { {   0,            0 }, vic::color::argb(0x10U, 0x10U, 0x40U) },
+                                            { {   0,          100 }, vic::color::argb(0x50U, 0x30U, 0x70U) },
+                                            { {   0, GROUND_Y - 1 }, vic::color::argb(0xE0U, 0x70U, 0x30U) } };
   _dc.shader_register(&sky);
   _dc.set_color(vic::color::white);
   _dc.box({ 0, 0, SCREEN_W, GROUND_Y });
