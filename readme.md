@@ -201,9 +201,9 @@ instance of a variable font (`Doto_vec`: `--axes ROND=100,wght=700`).
 `#define VIC_FONT_VECTOR_ASCII_ONLY 1` in `vic_cfg.h` keeps the ASCII chars only, that is less than half of the
 data: `Montserrat_vec` 11 KB, `Michroma_vec` 13 KB, `Orbitron_vec` 12 KB, `Doto_vec` 13 KB.
 
-The `demo/demo_vecfont.cpp` shows `Montserrat_vec` and `Michroma_vec` from 9 to 44 px, `DSEG7_vec` and `DSEG14_vec`
-as a stopwatch and a ticker over their unlit segments and zooms a word from 8 to 85 px, one pixel size per frame
-(one cycle of the demo):
+The `demo/demo_vecfont.cpp` shows `Montserrat_vec`, `Michroma_vec` and `Orbitron_vec` from 9 to 44 px,
+`DSEG7_vec` and `DSEG14_vec` as a stopwatch and a ticker over their unlit segments and zooms a word from 8 to 85 px,
+one pixel size per frame (one cycle of the demo):
 
 ![](doc/demo_vecfont.gif)
 

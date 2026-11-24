@@ -24,7 +24,7 @@
 // THE SOFTWARE.
 //
 // \brief Vector font demo
-// One font header, every size: a waterfall of Montserrat_vec and Michroma_vec
+// One font header, every size: a waterfall of Montserrat_vec, Michroma_vec and Orbitron_vec
 // from 9 to 44 pixel line height, the DSEG7_vec and DSEG14_vec LCD segment
 // fonts as a running stopwatch and a ticker over their unlit segments, then a
 // word zooming smoothly from 8 to the largest size that fits the screen width,
@@ -43,6 +43,7 @@
 
 #include "font/Montserrat_vec.h"
 #include "font/Michroma_vec.h"
+#include "font/Orbitron_vec.h"
 #include "font/DSEG7_vec.h"
 #include "font/DSEG14_vec.h"
 
@@ -67,6 +68,7 @@ const std::uint32_t PAGE_MS   = 3500U;
 
 vic::font::Montserrat_vec montserrat;
 vic::font::Michroma_vec   michroma;
+vic::font::Orbitron_vec   orbitron;
 vic::font::DSEG7_vec      dseg7;
 vic::font::DSEG14_vec     dseg14;
 
@@ -192,6 +194,8 @@ void demo()
     waterfall(_dc, montserrat, "Montserrat_vec");
     vic::io::delay(PAGE_MS);
     waterfall(_dc, michroma, "Michroma_vec");
+    vic::io::delay(PAGE_MS);
+    waterfall(_dc, orbitron, "Orbitron_vec");
     vic::io::delay(PAGE_MS);
     segments(_dc);
     zoom(_dc);
