@@ -51,6 +51,10 @@ tc.out({ 0, 30 }, (const std::uint8_t*)"23.5");
 | `Michroma_12_aa2` | `font/Michroma_12_aa2.h` | Proportional, UNICODE | 12 | 2 | ASCII + Latin-1 |
 | `Michroma_16_aa4` | `font/Michroma_16_aa4.h` | Proportional, UNICODE | 16 | 4 | ASCII + Latin-1 |
 | `Michroma_24_aa4` | `font/Michroma_24_aa4.h` | Proportional, UNICODE | 24 | 4 | ASCII + Latin-1 |
+| `Orbitron_10_aa2` | `font/Orbitron_10_aa2.h` | Proportional, UNICODE | 10 | 2 | ASCII + Latin-1 (partly) |
+| `Orbitron_12_aa2` | `font/Orbitron_12_aa2.h` | Proportional, UNICODE | 12 | 2 | ASCII + Latin-1 (partly) |
+| `Orbitron_16_aa4` | `font/Orbitron_16_aa4.h` | Proportional, UNICODE | 16 | 4 | ASCII + Latin-1 (partly) |
+| `Orbitron_24_aa4` | `font/Orbitron_24_aa4.h` | Proportional, UNICODE | 24 | 4 | ASCII + Latin-1 (partly) |
 | `DSEG7_16_aa4` | `font/DSEG7_16_aa4.h` | 7 segment LCD, proportional, UNICODE | 16 | 4 | DSEG7 char set |
 | `DSEG7_24_aa4` | `font/DSEG7_24_aa4.h` | 7 segment LCD, proportional, UNICODE | 24 | 4 | DSEG7 char set |
 | `DSEG7_32_aa4` | `font/DSEG7_32_aa4.h` | 7 segment LCD, proportional, UNICODE | 32 | 4 | DSEG7 char set |
@@ -60,9 +64,11 @@ tc.out({ 0, 30 }, (const std::uint8_t*)"23.5");
 | `Arial_std_12_aa2` | `font/Arial_std_12_aa2.h` | Proportional, UNICODE (legacy) | 12 | 2 | `0x20` - `0x7E`, `0xA3` - `0xAA`, `0xB0` - `0xFF` |
 | `Arial_num_16x24_aa4` | `font/Arial_num_16x24_AA4.h` | Proportional, digits 16 x 24 (legacy) | 24 | 4 | `!`, `+` - `:`, `=`, `°`, `±` |
 
-The Montserrat and Michroma bitmap fonts are generated with `tools/fontgen.py` from the TTF files in
+The Montserrat, Michroma and Orbitron bitmap fonts are generated with `tools/fontgen.py` from the TTF files in
 `src/font/ttf/` (SIL Open Font License), ASCII + Latin-1 are the chars `0x20` - `0x7E` and `0xA0` - `0xFF` without
-the soft hyphen `0xAD`.
+the soft hyphen `0xAD`. Orbitron (the Regular instance of the variable font) has 163 of them: the letters with
+umlauts and accents, `°`, `£`, `¢`, but not `^`, `±`, `µ`, `©`, `«` `»`, the superscripts and fractions, `Ð`,
+`Ø`, `Þ`, `ð`, `ø`, `þ` and a few more symbols.
 
 ### Vector fonts
 
@@ -70,6 +76,7 @@ the soft hyphen `0xAD`.
 |---|---|---|---|---|
 | `Montserrat_vec` | `font/Montserrat_vec.h` | Proportional, ASCII + Latin-1 | 26776 byte | 11308 byte |
 | `Michroma_vec` | `font/Michroma_vec.h` | Proportional, ASCII + Latin-1 | 31574 byte | 13464 byte |
+| `Orbitron_vec` | `font/Orbitron_vec.h` | Proportional, geometric, ASCII + Latin-1 (partly) | 22956 byte | 11932 byte |
 | `Doto_vec` | `font/Doto_vec.h` | Dot matrix with round dots, the look of an LED display, ASCII + Latin-1 | 26246 byte | 13364 byte |
 | `DSEG7_vec` | `font/DSEG7_vec.h` | 7 segment LCD, DSEG7 char set | 10898 byte | 10738 byte |
 | `DSEG14_vec` | `font/DSEG14_vec.h` | 14 segment LCD, DSEG14 char set | 20880 byte | 20614 byte |
@@ -198,7 +205,7 @@ contour.
 ## Generating fonts
 
 Both generators need Python 3 with `freetype-py` (`pip install freetype-py`). `tools/gen_fonts.cmd` regenerates all
-Montserrat, Michroma, DSEG and vector fonts of the repository.
+Montserrat, Michroma, Orbitron, DSEG and vector fonts of the repository.
 
 ### Bitmap fonts: `tools/fontgen.py`
 

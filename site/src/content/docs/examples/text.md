@@ -59,7 +59,7 @@ Key points:
 
 ## Vector fonts
 
-A vector font (`Montserrat_vec`, `Michroma_vec`, `Doto_vec`, `DSEG7_vec`, `DSEG14_vec`) is one header for every size. The size is the line height
+A vector font (`Montserrat_vec`, `Michroma_vec`, `Orbitron_vec`, `Doto_vec`, `DSEG7_vec`, `DSEG14_vec`) is one header for every size. The size is the line height
 in pixel, given as second parameter of `set_font()`. Condensed from `demo_vecfont.cpp`:
 
 ```cpp

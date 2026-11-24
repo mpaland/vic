@@ -182,6 +182,8 @@ Fonts are header files in `src/font/`, a font is a class with one `info()` metho
 - `Montserrat_10_aa2`, `Montserrat_12_aa2`, `Montserrat_16_aa4`, `Montserrat_24_aa4`: proportional, anti aliased,
   ASCII + Latin-1, generated from the Montserrat TTF (OFL)
 - `Michroma_10_aa2`, `Michroma_12_aa2`, `Michroma_16_aa4`, `Michroma_24_aa4`: same for the Michroma TTF (OFL)
+- `Orbitron_10_aa2`, `Orbitron_12_aa2`, `Orbitron_16_aa4`, `Orbitron_24_aa4`: same for the Orbitron TTF (OFL), ASCII
+  and most of Latin-1
 - `DSEG7_16_aa4`, `DSEG7_24_aa4`, `DSEG7_32_aa4`, `DSEG14_16_aa4`, `DSEG14_24_aa4`, `DSEG14_32_aa4`: 7 and 14 segment
   LCD look, generated from the DSEG Classic TTFs (OFL). `!` is the blank digit, `.` has no width
 - `Arial_std_12_aa2`, `Arial_num_16x24_aa4`: legacy fonts
@@ -189,6 +191,7 @@ Fonts are header files in `src/font/`, a font is a class with one `info()` metho
 Vector (outline) fonts scale to any size, one header serves all sizes: `set_font(font, size)`, size is the line
 height in pixel. Stems, bars and dot rows are hinted to whole pixels, so they stay crisp at every size:
 - `Montserrat_vec` (27 KB), `Michroma_vec` (32 KB): proportional, ASCII + Latin-1 (OFL)
+- `Orbitron_vec` (23 KB): proportional, geometric, ASCII and most of Latin-1 (OFL)
 - `Doto_vec` (26 KB, the dots are stored as moves of one dot): dot matrix with round dots, the look of an LED display, ASCII + Latin-1
   (OFL). The dot grid is exactly regular at line heights of multiples of 39 px (39 px: 3 px dots every 4 px)
 - `DSEG7_vec` (11 KB), `DSEG14_vec` (21 KB): 7 and 14 segment LCD look (DSEG Classic, OFL), the digits fill the line height
@@ -196,7 +199,7 @@ height in pixel. Stems, bars and dot rows are hinted to whole pixels, so they st
 They are generated with `tools/vecfontgen.py` from TrueType fonts with quadratic outlines, `--axes` selects the
 instance of a variable font (`Doto_vec`: `--axes ROND=100,wght=700`).
 `#define VIC_FONT_VECTOR_ASCII_ONLY 1` in `vic_cfg.h` keeps the ASCII chars only, that is less than half of the
-data: `Montserrat_vec` 11 KB, `Michroma_vec` 13 KB, `Doto_vec` 13 KB.
+data: `Montserrat_vec` 11 KB, `Michroma_vec` 13 KB, `Orbitron_vec` 12 KB, `Doto_vec` 13 KB.
 
 The `demo/demo_vecfont.cpp` shows `Montserrat_vec` and `Michroma_vec` from 9 to 44 px, `DSEG7_vec` and `DSEG14_vec`
 as a stopwatch and a ticker over their unlit segments and zooms a word from 8 to 85 px, one pixel size per frame

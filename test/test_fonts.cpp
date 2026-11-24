@@ -16,6 +16,10 @@
 #include "font/Michroma_12_aa2.h"
 #include "font/Michroma_16_aa4.h"
 #include "font/Michroma_24_aa4.h"
+#include "font/Orbitron_10_aa2.h"
+#include "font/Orbitron_12_aa2.h"
+#include "font/Orbitron_16_aa4.h"
+#include "font/Orbitron_24_aa4.h"
 
 using namespace vic;
 
@@ -29,6 +33,7 @@ struct font_entry {
   std::uint8_t           size;
   std::uint8_t           bpp;
   bool                   latin1;    // font has the Latin-1 block
+  std::size_t            glyphs;    // at least this number of glyphs
 };
 
 font::Montserrat_10_aa2  montserrat_10;
@@ -39,16 +44,24 @@ font::Michroma_10_aa2 michroma_10;
 font::Michroma_12_aa2 michroma_12;
 font::Michroma_16_aa4 michroma_16;
 font::Michroma_24_aa4 michroma_24;
+font::Orbitron_10_aa2 orbitron_10;
+font::Orbitron_12_aa2 orbitron_12;
+font::Orbitron_16_aa4 orbitron_16;
+font::Orbitron_24_aa4 orbitron_24;
 
 const font_entry fonts[] = {
-  { &montserrat_10, "Montserrat_10_aa2", 10U, 2U, true },
-  { &montserrat_12, "Montserrat_12_aa2", 12U, 2U, true },
-  { &montserrat_16, "Montserrat_16_aa4", 16U, 4U, true },
-  { &montserrat_24, "Montserrat_24_aa4", 24U, 4U, true },
-  { &michroma_10, "Michroma_10_aa2", 10U, 2U, true },
-  { &michroma_12, "Michroma_12_aa2", 12U, 2U, true },
-  { &michroma_16, "Michroma_16_aa4", 16U, 4U, true },
-  { &michroma_24, "Michroma_24_aa4", 24U, 4U, true },
+  { &montserrat_10, "Montserrat_10_aa2", 10U, 2U, true, 180U },
+  { &montserrat_12, "Montserrat_12_aa2", 12U, 2U, true, 180U },
+  { &montserrat_16, "Montserrat_16_aa4", 16U, 4U, true, 180U },
+  { &montserrat_24, "Montserrat_24_aa4", 24U, 4U, true, 180U },
+  { &michroma_10, "Michroma_10_aa2", 10U, 2U, true, 180U },
+  { &michroma_12, "Michroma_12_aa2", 12U, 2U, true, 180U },
+  { &michroma_16, "Michroma_16_aa4", 16U, 4U, true, 180U },
+  { &michroma_24, "Michroma_24_aa4", 24U, 4U, true, 180U },
+  { &orbitron_10, "Orbitron_10_aa2", 10U, 2U, true, 160U },   // Orbitron lacks 28 of ASCII + Latin-1
+  { &orbitron_12, "Orbitron_12_aa2", 12U, 2U, true, 160U },
+  { &orbitron_16, "Orbitron_16_aa4", 16U, 4U, true, 160U },
+  { &orbitron_24, "Orbitron_24_aa4", 24U, 4U, true, 160U },
 };
 const std::size_t font_count = sizeof(fonts) / sizeof(fonts[0]);
 
@@ -110,7 +123,7 @@ TEST_CASE(fonts_consistency)
     }
     // ASCII + Latin-1 minus the glyphs the font lacks (ASCII only: 95 minus the missing ones)
     const bool latin1 = fonts[f].latin1;
-    CHECK_MSG(glyphs >= (latin1 ? 180U : 80U), fonts[f].name);
+    CHECK_MSG(glyphs >= fonts[f].glyphs, fonts[f].name);
 
     // 'A', 'g' and space are present (space is empty but advances), the umlauts in the Latin-1 fonts
     CHECK_MSG(find_glyph(info, 'A') != nullptr, fonts[f].name);
@@ -140,13 +153,14 @@ TEST_CASE(fonts_render)
     CHECK_MSG(t.char_height() == fonts[f].size, fonts[f].name);
     CHECK_MSG(t.char_width() > 0U, fonts[f].name);
 
-    // "Ag" renders inside its extent
+    // "Age" renders inside its extent (the round 'e' has anti aliased pixels in every font, the straight strokes of
+    // 'A' and 'g' of a geometric font like Orbitron may be all solid)
     rect_type r;
-    CHECK_EQ(t.get_extend(r, (const std::uint8_t*)"Ag"), 2U);
+    CHECK_EQ(t.get_extend(r, (const std::uint8_t*)"Age"), 3U);
     CHECK_MSG(r.bottom == fonts[f].size, fonts[f].name);
     CHECK_MSG(r.right > 0 && r.right < 60, fonts[f].name);
     t.set_pos({ 4, 4 });
-    t.out((const std::uint8_t*)"Ag");
+    t.out((const std::uint8_t*)"Age");
     CHECK_MSG(vic_test::count_pixels_not(h, color::none) > 10U, fonts[f].name);
     bool inside = true, has_partial = false, has_full = false;
     for (std::int16_t y = 0; y < 40; ++y) {

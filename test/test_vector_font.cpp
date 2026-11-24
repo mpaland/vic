@@ -16,6 +16,7 @@
 #include "font/Montserrat_vec.h"
 #include "font/Michroma_vec.h"
 #include "font/Doto_vec.h"
+#include "font/Orbitron_vec.h"
 #include "font/DSEG7_vec.h"
 #include "font/DSEG14_vec.h"
 #include "font/DSEG7_24_aa4.h"
@@ -474,11 +475,12 @@ TEST_CASE(fonts_vector_consistency)
   font::Montserrat_vec montserrat;
   font::Michroma_vec   michroma;
   font::Doto_vec       doto;
+  font::Orbitron_vec   orbitron;
   font::DSEG7_vec      dseg7;
   font::DSEG14_vec     dseg14;
   // the DSEG segment fonts have a reduced char set, a zero width '.' and the blank '!' (all segments off)
   const struct { const font::font_type* font; std::size_t glyphs; bool segment; } fonts[] = {
-    { &montserrat, 175U, false }, { &michroma, 175U, false }, { &doto, 175U, false },
+    { &montserrat, 175U, false }, { &michroma, 175U, false }, { &doto, 175U, false }, { &orbitron, 160U, false },
     { &dseg7, 65U, true }, { &dseg14, 85U, true }
   };
   for (std::size_t f = 0U; f < sizeof(fonts) / sizeof(fonts[0]); ++f) {
