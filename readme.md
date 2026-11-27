@@ -685,7 +685,7 @@ find_package(vic CONFIG REQUIRED)
 
 # or fetched at configure time
 include(FetchContent)
-FetchContent_Declare(vic GIT_REPOSITORY https://github.com/mpaland/vic.git GIT_TAG v2.3.0)   # x-release-please-version
+FetchContent_Declare(vic GIT_REPOSITORY https://github.com/mpaland/vic.git GIT_TAG v2.4.0)   # x-release-please-version
 FetchContent_MakeAvailable(vic)
 
 # or as a sub folder / git submodule
