@@ -1,5 +1,21 @@
 # Changelog
 
+## [2.4.0](https://github.com/mpaland/vic/compare/v2.3.0...v2.4.0) (2026-11-27)
+
+
+### Features
+
+* **demo:** Added the DSEG segment fonts to the vector font demo ([a03fc2f](https://github.com/mpaland/vic/commit/a03fc2ffea4438edc2830c38f379840311ef8302))
+* **demo:** Added the Orbitron font to the vector font demo ([09b6fa1](https://github.com/mpaland/vic/commit/09b6fa15bcdb22b4abada520142cb60fabfad72e))
+* **font:** Added the DSEG7 and DSEG14 segment fonts, vector and bitmap, with test and docs ([e22012c](https://github.com/mpaland/vic/commit/e22012cd29eb8603d2e7a1169fb75ca2c4fb835a))
+* **font:** Added the Orbitron font, vector and bitmap, with test and docs ([6ba03a7](https://github.com/mpaland/vic/commit/6ba03a78115a421496f0192e14c1621391d158e3))
+* **head:** Added blit_raw() for the framebuffer transfer of RGB565 blocks to the MIPI DCS head, with test and docs ([c332d06](https://github.com/mpaland/vic/commit/c332d06a177d83a67172cb061db498b237d76257))
+
+
+### Bug Fixes
+
+* **demo:** Added the missing braces around the gradient pixel vertices ([d350190](https://github.com/mpaland/vic/commit/d35019045bbf8aa7413d016fe8e4d575c8bf2eb3))
+
 ## [2.3.0](https://github.com/mpaland/vic/compare/v2.2.0...v2.3.0) (2026-11-23)
 
 
