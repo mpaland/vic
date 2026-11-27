@@ -1,6 +1,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 // \brief Tests for head/framebuffer.h: storage formats, dirty rect transfer via
-// blit(), planes and the use in front of a head which can't read its pixels
+// blit() and blit_raw(), planes and the use in front of a head which can't read its pixels
 ///////////////////////////////////////////////////////////////////////////////
 
 #include "vic_test.h"
@@ -9,6 +9,10 @@
 #include "sprite.h"
 #include "head/memory.h"
 #include "head/framebuffer.h"
+#include "head/MIPI_DCS.h"
+#include "io_stub.h"
+
+#include <vector>
 
 using namespace vic;
 
@@ -293,4 +297,283 @@ TEST_CASE(framebuffer_display_control)
   d.display_brightness(255U);
   CHECK(!h.enable_);
   CHECK_EQ(h.brightness_, 255U);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// transfer to the head behind: an RGB565 framebuffer in front of a MIPI DCS display hands its dirty rect over as
+// it is stored (blit_raw): one address window and a stream of large blocks. Any other pair goes the old way, ARGB
+// pieces of a line through blit(). The display is a model of the controller RAM behind the io stub: it follows
+// the address window like a MIPI DCS controller and counts the io jobs. So the tests compare what both ways leave
+// in the display RAM, and what they cost.
+
+namespace {
+
+// the RAM of a MIPI DCS controller: address window 2Ah / 2Bh, memory write 2Ch with the pointer that runs through
+// the window, pixels of two bytes (high byte first)
+class panel
+{
+public:
+  static const std::size_t size = 512U;     // columns and rows of the model
+
+  panel()
+    : gram_(size * size, 0xFFFFU)
+    , cmd_(0U)
+    , args_(0U)
+    , x0_(0U), x1_(0U), y0_(0U), y1_(0U), x_(0U), y_(0U)
+    , high_(0U)
+    , half_(false)
+    , jobs_(0U)
+    , windows_(0U)
+    , outside_(0U)
+  { }
+
+  // io_stub write hook: the device handle is the panel
+  static void hook(io::handle_type device_handle, std::uint32_t option, const std::uint8_t* data, std::size_t length)
+  {
+    const_cast<panel*>(static_cast<const panel*>(device_handle))->write(option, data, length);
+  }
+
+  void write(std::uint32_t option, const std::uint8_t* data, std::size_t length)
+  {
+    ++jobs_;
+    if (option == 0U) {
+      // a command
+      cmd_  = data[0];
+      args_ = 0U;
+      half_ = false;
+      if (cmd_ == 0x2CU) {
+        x_ = x0_;
+        y_ = y0_;
+        ++windows_;
+      }
+      return;
+    }
+    for (std::size_t i = 0U; i < length; ++i) {
+      const std::uint8_t b = data[i];
+      if (cmd_ == 0x2AU) {
+        arg(x0_, x1_, b);
+      }
+      else if (cmd_ == 0x2BU) {
+        arg(y0_, y1_, b);
+      }
+      else if (cmd_ == 0x2CU) {
+        if (!half_) {
+          high_ = b;
+          half_ = true;
+          continue;
+        }
+        half_ = false;
+        if ((x_ < size) && (y_ < size) && (x_ <= x1_) && (y_ <= y1_)) {
+          gram_[y_ * size + x_] = static_cast<std::uint16_t>((static_cast<std::uint16_t>(high_) << 8U) | b);
+        }
+        else {
+          ++outside_;
+        }
+        if (++x_ > x1_) {
+          x_ = x0_;
+          if (++y_ > y1_) {
+            y_ = y0_;
+          }
+        }
+      }
+    }
+  }
+
+  const std::vector<std::uint16_t>& gram() const
+  { return gram_; }
+
+  // io jobs (calls of io::write) so far
+  std::size_t jobs() const
+  { return jobs_; }
+
+  // memory writes (2Ch) so far: one per address window
+  std::size_t windows() const
+  { return windows_; }
+
+  // pixels written outside the window or the model
+  std::size_t outside() const
+  { return outside_; }
+
+  void reset_counters()
+  {
+    jobs_    = 0U;
+    windows_ = 0U;
+  }
+
+private:
+  // the four argument bytes of 2Ah / 2Bh: start and end, high byte first
+  void arg(std::size_t& start, std::size_t& end, std::uint8_t b)
+  {
+    switch (args_++) {
+      case 0U : start = static_cast<std::size_t>(b) << 8U;  break;
+      case 1U : start |= b;                                 break;
+      case 2U : end   = static_cast<std::size_t>(b) << 8U;  break;
+      case 3U : end   |= b;                                 break;
+      default :                                             break;
+    }
+  }
+
+  std::vector<std::uint16_t>  gram_;
+  std::uint8_t                cmd_;
+  std::size_t                 args_;
+  std::size_t                 x0_, x1_, y0_, y1_, x_, y_;
+  std::uint8_t                high_;
+  bool                        half_;
+  std::size_t                 jobs_;
+  std::size_t                 windows_;
+  std::size_t                 outside_;
+};
+
+
+// a picture with many colors, edges that are no multiple of the transfer pieces and single pixels
+void picture(dc& d, std::int16_t w, std::int16_t h)
+{
+  d.present_lock();
+  d.cls(color::argb(0x10U, 0x20U, 0x40U));
+  for (std::int16_t i = 0; i < 12; ++i) {
+    d.set_color(color::argb(static_cast<std::uint8_t>(i * 21), static_cast<std::uint8_t>(255 - i * 17), static_cast<std::uint8_t>(i * 9 + 40)));
+    d.box({ static_cast<std::int16_t>(3 + i * 23), static_cast<std::int16_t>(5 + i * 7),
+            static_cast<std::int16_t>(3 + i * 23 + 37), static_cast<std::int16_t>(5 + i * 7 + 61) });
+  }
+  d.set_color(color::argb(0xFFU, 0xFFU, 0x00U));
+  d.line({ 0, 0 }, { static_cast<std::int16_t>(w - 1), static_cast<std::int16_t>(h - 1) });
+  d.line({ static_cast<std::int16_t>(w - 1), 0 }, { 0, static_cast<std::int16_t>(h - 1) });
+  d.set_color(color::argb(0xFFU, 0xFFU, 0xFFU));
+  d.pixel_set({ 0, 0 });
+  d.pixel_set({ static_cast<std::int16_t>(w - 1), static_cast<std::int16_t>(h - 1) });
+  d.present_lock(false);
+}
+
+
+// one screen in both ways: the RGB565 framebuffer (raw transfer) and the ARGB8888 framebuffer (pieces through blit)
+template<typename LCD, std::uint16_t W, std::uint16_t H>
+void compare_ways()
+{
+  io_stub::clear();
+  io_stub::set_write_hook(&panel::hook);
+  static panel raw_panel, old_panel;
+  static LCD raw_lcd(&raw_panel), old_lcd(&old_panel);
+  static head::framebuffer<W, H, 1U, color::format_RGB565>   raw_fb(raw_lcd);
+  static head::framebuffer<W, H, 1U, color::format_ARGB8888> old_fb(old_lcd);
+  raw_fb.init();
+  old_fb.init();
+  dc raw_dc(raw_fb), old_dc(old_fb);
+  const std::int16_t w = static_cast<std::int16_t>(W), h = static_cast<std::int16_t>(H);
+
+  // a whole picture
+  picture(raw_dc, w, h);
+  picture(old_dc, w, h);
+  CHECK(raw_panel.gram() == old_panel.gram());
+
+  // a small change: only its rect goes to the display
+  raw_panel.reset_counters();
+  old_panel.reset_counters();
+  raw_dc.set_color(color::argb(0x00U, 0xC0U, 0x30U));
+  old_dc.set_color(color::argb(0x00U, 0xC0U, 0x30U));
+  raw_dc.box({ 70, 33, 141, 52 });      // 71 x 19 pixels: more than one piece of 64 pixels per line
+  old_dc.box({ 70, 33, 141, 52 });
+  CHECK(raw_panel.gram() == old_panel.gram());
+  CHECK_EQ(raw_panel.windows(), 1U);
+  CHECK_EQ(raw_panel.jobs(), 5U + ((71U * 19U * 2U) + 511U) / 512U);
+  CHECK_EQ(old_panel.windows(), 19U * 2U);
+
+  // the whole screen: one window and blocks of 512 bytes against a window per piece of a line
+  raw_panel.reset_counters();
+  old_panel.reset_counters();
+  for (std::size_t n = 0U; n < 2U; ++n) {
+    dc& d = (n == 0U) ? raw_dc : old_dc;
+    d.present_lock();
+    d.set_color(color::argb(0x80U, 0x00U, 0x60U));
+    d.box({ 0, 0, w, h });
+    d.set_color(color::argb(0x00U, 0xFFU, 0xFFU));
+    d.line({ 0, static_cast<std::int16_t>(h - 1) }, { static_cast<std::int16_t>(w - 1), 0 });
+    d.present_lock(false);
+  }
+  CHECK(raw_panel.gram() == old_panel.gram());
+  const std::size_t pieces = (static_cast<std::size_t>(W) + 63U) / 64U;
+  CHECK_EQ(raw_panel.windows(), 1U);
+  CHECK_EQ(raw_panel.jobs(), 5U + ((static_cast<std::size_t>(W) * H * 2U) + 511U) / 512U);
+  CHECK_EQ(old_panel.windows(), static_cast<std::size_t>(H) * pieces);
+  CHECK_EQ(old_panel.jobs(), static_cast<std::size_t>(H) * pieces * 6U);
+
+  CHECK_EQ(raw_panel.outside(), 0U);
+  CHECK_EQ(old_panel.outside(), 0U);
+  io_stub::clear();
+}
+
+} // namespace
+
+
+// ST7789, 320 x 240 landscape
+TEST_CASE(framebuffer_raw_transfer_320x240)
+{
+  compare_ways<head::MIPI_DCS<head::MIPI_DCS_ST7789, 320U, 240U, drv::orientation_90, false, true>, 320U, 240U>();
+}
+
+
+// ST7789, 320 x 172 landscape, the panel 34 rows into the controller RAM
+TEST_CASE(framebuffer_raw_transfer_320x172_offset)
+{
+  compare_ways<head::MIPI_DCS<head::MIPI_DCS_ST7789, 320U, 172U, drv::orientation_270, false, true, false, 0U, 34U>, 320U, 172U>();
+}
+
+
+// a display with 18 bit pixels does not take RGB565 blocks: the old way, the same picture
+TEST_CASE(framebuffer_raw_transfer_18bit_head)
+{
+  io_stub::clear();
+  io_stub::set_write_hook(&panel::hook);
+  static panel p;
+  static head::MIPI_DCS<head::MIPI_DCS_ILI9488, 64U, 48U> lcd(&p);
+  static head::framebuffer<64U, 48U, 1U, color::format_RGB565> fb(lcd);
+  fb.init();
+  dc d(fb);
+  p.reset_counters();
+  d.set_color(color::argb(0xFFU, 0x80U, 0x00U));
+  d.box({ 0, 0, 64, 48 });
+  CHECK_EQ(p.windows(), 48U);     // a window per line: 64 pixels are one piece
+  io_stub::clear();
+}
+
+
+// a head without a raw transfer (the memory head): pieces of a line through blit(), as before
+TEST_CASE(framebuffer_raw_transfer_memory_head)
+{
+  static head::memory<100U, 40U> mem;
+  static head::framebuffer<100U, 40U, 1U, color::format_RGB565> fb(mem);
+  fb.init();
+  dc d(fb);
+  mem.reset_counters();
+  const color::value_type orange = color::argb(0xFFU, 0x80U, 0x10U);
+  d.set_color(orange);
+  d.box({ 10, 5, 90, 25 });       // 80 x 20 pixels: two pieces per line
+  CHECK_EQ(mem.blit_count(), 20U * 2U);
+  CHECK_EQ(mem.blit_pixels(), 80U * 20U);
+  // the pixels come back as RGB565 shows them
+  const color::value_type shown = color::RGB565_to_color(color::color_to_RGB565(orange));
+  CHECK_EQ(mem.pixel({ 10, 5 }), shown);
+  CHECK_EQ(mem.pixel({ 89, 24 }), shown);
+  CHECK(mem.pixel({ 9, 5 }) != shown);
+  CHECK(mem.pixel({ 90, 24 }) != shown);
+}
+
+
+// the 1 bit framebuffer has no bytes per pixel: always the old way
+TEST_CASE(framebuffer_raw_transfer_l1)
+{
+  static head::memory<12U, 8U> mem;
+  static head::framebuffer<12U, 8U, 1U, color::format_L1> fb(mem);
+  fb.init();
+  dc d(fb);
+  mem.reset_counters();
+  d.set_color(color::argb(0xFFU, 0xFFU, 0xFFU));
+  d.box({ 2, 1, 9, 6 });          // 7 x 5 pixels
+  CHECK_EQ(mem.blit_count(), 5U);
+  CHECK_EQ(mem.blit_pixels(), 7U * 5U);
+  CHECK_EQ(mem.pixel({ 2, 1 }), color::L1_to_color(1U));
+  CHECK_EQ(mem.pixel({ 8, 5 }), color::L1_to_color(1U));
+  // only the changed rect went to the head
+  CHECK(mem.pixel({ 1, 1 }) != color::L1_to_color(1U));
+  CHECK(mem.pixel({ 9, 5 }) != color::L1_to_color(1U));
 }

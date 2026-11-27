@@ -18,6 +18,7 @@ namespace {
   std::uint8_t  g_read_data[256];
   std::size_t   g_read_size    = 0U;
   std::uint32_t g_read_option  = 0xFFFFFFFFUL;   // any
+  io_stub::write_hook_type g_write_hook = nullptr;
 }
 
 
@@ -39,12 +40,19 @@ void clear()
   g_delay_total  = 0U;
   g_read_size    = 0U;
   g_read_option  = 0xFFFFFFFFUL;
+  g_write_hook   = nullptr;
 }
 
 
 void set_read_option(std::uint32_t option)
 {
   g_read_option = option;
+}
+
+
+void set_write_hook(write_hook_type hook)
+{
+  g_write_hook = hook;
 }
 
 void set_read_data(const std::uint8_t* data, std::size_t length)
@@ -76,8 +84,11 @@ bool write(handle_type device_handle,
            std::uint8_t* data_in, std::size_t data_in_length,
            std::uint32_t timeout)
 {
-  (void)device_handle; (void)option; (void)timeout;
+  (void)timeout;
   ++g_write_calls;
+  if (g_write_hook) {
+    g_write_hook(device_handle, option, data_out, data_out_length);
+  }
   if (data_out && data_out_length) {
     const std::size_t n = (g_written_size + data_out_length <= io_stub::capacity) ? data_out_length : (io_stub::capacity - g_written_size);
     std::memcpy(&g_written[g_written_size], data_out, n);

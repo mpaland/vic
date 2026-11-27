@@ -26,7 +26,9 @@ dc.disc({ 120, 160 }, 50);            // edge pixels blended against black
 If the real pixels are needed (sprites, flood fill, anti aliasing on images and gradients, translucent boxes), put
 the [`framebuffer`](/vic/heads/framebuffer/) head between the display driver and the drawing context. It keeps a RAM
 copy in the format you choose (ARGB8888, RGB565, RGB332 or 1 bit L1), remembers the dirty rect and transfers only the
-changed window with `blit()` on `present()`.
+changed window on `present()`: as one block in its storage format if the head behind it takes that format
+(`blit_raw()`, e.g. an RGB565 framebuffer in front of a MIPI DCS display: one address window, no conversion), else with
+`blit()`.
 
 This is also the "render in RAM, stream the changed window" model modern TFT controllers with an auto incrementing
 GRAM window are made for. It is your decision per display, the device drivers themselves keep no buffers.

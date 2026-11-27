@@ -6,8 +6,8 @@ sidebar:
 ---
 
 The `framebuffer` head is a RAM framebuffer (with one or more planes) in front of any other head, the bound head. All
-drawing goes into the buffer, `present()` transfers only the changed area (the dirty rect) with `blit()` to the bound
-head. The device heads keep no buffers themselves, so the framebuffer is your decision per display. Use it
+drawing goes into the buffer, `present()` transfers only the changed area (the dirty rect) to the bound head, as one
+block with `blit_raw()` if the head takes the storage format, else with `blit()`. The device heads keep no buffers themselves, so the framebuffer is your decision per display. Use it
 
 - in front of a display which can't read its pixels back (`pixel_get()` returns `color::none`), to get alpha
   blending, anti aliasing on images and gradients, sprites and `fill()`, see
@@ -52,9 +52,11 @@ Other formats are rejected with a `static_assert`. `plane_size()` returns the by
 
 - `pixel_set()`, `line_horz()`, `line_vert()`, `box()`, `move()` and `blit()` write the active (access) plane and
   extend its dirty rect. `pixel_get()` reads the active plane, so read back always works.
-- `present()` transfers the dirty rect of the displayed plane to the bound head, row by row in chunks of up to 64
-  pixels with `head.blit()`, clears the dirty rect and calls `head.present()`. A head with a GRAM window streams
-  every chunk with one address setup.
+- `present()` transfers the dirty rect of the displayed plane to the bound head, clears the dirty rect and calls
+  `head.present()`. It first offers the rect as it is stored with `head.blit_raw()`: a head which takes the storage
+  format (the `MIPI_DCS` head takes RGB565) streams the whole rect with one address setup and no conversion. Else it
+  goes row by row in chunks of up to 64 pixels with `head.blit()`; a head with a GRAM window streams every chunk with
+  one address setup.
 - `cls()` clears the active plane; if it is the displayed plane, the bound head clears itself with its own (fast)
   `cls()` and nothing has to be transferred.
 - `init()`, `shutdown()`, `is_graphic()` and the display controls (`display_enable()`, `display_brightness()`,

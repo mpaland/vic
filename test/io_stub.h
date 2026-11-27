@@ -9,6 +9,8 @@
 #include <cstdint>
 #include <cstddef>
 
+#include "io.h"
+
 namespace io_stub {
 
 // capacity of the record buffer
@@ -30,6 +32,10 @@ void set_read_data(const std::uint8_t* data, std::size_t length);
 
 // serve the read data only to io::read() calls with this option, reads with another option fail (reset by clear())
 void set_read_option(std::uint32_t option);
+
+// a function that sees every io::write() call besides the record, e.g. a model of the display RAM (reset by clear())
+typedef void (*write_hook_type)(vic::io::handle_type device_handle, std::uint32_t option, const std::uint8_t* data_out, std::size_t data_out_length);
+void set_write_hook(write_hook_type hook);
 
 } // namespace io_stub
 

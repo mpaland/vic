@@ -84,7 +84,8 @@ talks to the hardware only through the four functions of `io.h`. See [Heads](/vi
 ## Native hooks
 
 The native hooks are deliberately limited to primitives which have exactly one correct pixel result: `line_horz`,
-`line_vert`, `box`, `move`, `cls` and `blit` (a block of pixels). Everything else (diagonal lines, circles, discs,
+`line_vert`, `box`, `move`, `cls`, `blit` (a block of pixels) and `blit_raw` (a block of pixels in a display format,
+the flush of a framebuffer). Everything else (diagonal lines, circles, discs,
 sectors, triangles, text) is decomposed by the `gpr` into these hooks, so **every head renders exactly the same
 pixels** and the anti aliasing stays deterministic: the interior of an anti aliased disc is still sent as native
 horizontal runs, only the edge pixels are single alpha pixels. There are no hooks for native diagonal lines or circles

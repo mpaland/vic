@@ -235,6 +235,27 @@ protected:
 
 
   /**
+   * Write a block of pixels which is stored in a display format (raw bit block transfer)
+   * This is the fast path of a framebuffer: a head whose display takes the pixels in this format streams the
+   * block with one address setup and without the conversion of every pixel to ARGB and back.
+   * The default takes no format: the caller converts the block and uses blit().
+   * \param rect Destination rect on the screen, right and bottom are outside the rect
+   * \param data Pixel block in the given format, row major, first pixel is the left/top pixel of rect:
+   *             format_RGB565   two bytes per pixel, low byte first
+   *             format_RGB332   one byte per pixel
+   *             format_ARGB8888 four bytes per pixel: blue, green, red, alpha
+   * \param stride Distance between two rows in bytes
+   * \param format Format of the pixels
+   * \return true if the block is written, false if the head does not take the format (nothing is written)
+   */
+  virtual bool blit_raw(const rect_type& rect, const std::uint8_t* data, std::size_t stride, color::format_type format)
+  {
+    (void)rect; (void)data; (void)stride; (void)format;
+    return false;
+  }
+
+
+  /**
    * Draw a horizontal line in the given color, width is one pixel
    * This is a slow fallback implementation which should be overridden by a high speed driver implementation
    * \param v0 Start vertex, included in line

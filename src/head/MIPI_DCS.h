@@ -47,7 +47,7 @@
 
 
 // defines the head name and version
-#define VIC_HEAD_MIPI_DCS_VERSION   "MIPI DCS head 1.00"
+#define VIC_HEAD_MIPI_DCS_VERSION   "MIPI DCS head 1.01"
 
 namespace vic {
 namespace head {
@@ -283,8 +283,9 @@ class MIPI_DCS final : public drv
                                       (Orientation == orientation_270)  ? (MADCTL_MY | MADCTL_MV) :
                                                                           MADCTL_MV);
 
-  // pixels per io::write() in a data stream
-  static const std::size_t STREAM_PIXELS = 32U;
+  // pixels per io::write() in a data stream: the data of a window is sent in blocks of this size, so a larger
+  // block means fewer io jobs per line (512 bytes with RGB565 pixels, 768 bytes with 18 bit pixels)
+  static const std::size_t STREAM_PIXELS = 256U;
   static const std::size_t PIXEL_BYTES   = Color_18bit ? 3U : 2U;
 
   // the ST7735 / ST7789 read the GRAM in the 18 bit pixel format only, an RGB565 head switches 3Ah for the read
@@ -294,7 +295,7 @@ class MIPI_DCS final : public drv
 
   // vars
   const io::handle_type device_handle_;
-  std::uint8_t          stream_[STREAM_PIXELS * 3U];  // data stream buffer
+  std::uint8_t          stream_[STREAM_PIXELS * PIXEL_BYTES];   // data stream buffer
   std::size_t           stream_idx_;
   struct tag_window_type {
     std::int16_t x0, x1, y0, y1;                      // logical address window, inclusive
@@ -569,6 +570,43 @@ protected:
     }
     stream_end();
     advance(static_cast<std::size_t>(r.width()) * static_cast<std::size_t>(r.height()));
+  }
+
+
+  /**
+   * Write a block of RGB565 pixels as it is stored (the flush of an RGB565 framebuffer): one address window, the
+   * pixels are streamed with their bytes in the order of the display, without a conversion
+   * \return false for any other format and for a head with 18 bit pixels
+   */
+  virtual bool blit_raw(const rect_type& rect, const std::uint8_t* data, std::size_t stride, color::format_type format)
+  {
+    if (Color_18bit || (format != color::format_RGB565)) {
+      return false;
+    }
+    rect_type r = rect;
+    std::size_t skip_x = 0U, skip_y = 0U;
+    if (r.left < 0) { skip_x = static_cast<std::size_t>(-r.left); r.left = 0; }
+    if (r.top  < 0) { skip_y = static_cast<std::size_t>(-r.top);  r.top  = 0; }
+    if (!clip(r)) {
+      return true;    // nothing of the block is on the screen
+    }
+    set_window(r.left, static_cast<std::int16_t>(r.right - 1), r.top, static_cast<std::int16_t>(r.bottom - 1));
+    const std::uint8_t* row = data + skip_y * stride + skip_x * 2U;
+    stream_begin();
+    for (std::int16_t y = r.top; y < r.bottom; ++y, row += stride) {
+      const std::uint8_t* p = row;
+      for (std::int16_t x = r.left; x < r.right; ++x, p += 2) {
+        // the block has the low byte first, the display takes the high byte first
+        stream_[stream_idx_++] = p[1];
+        stream_[stream_idx_++] = p[0];
+        if (stream_idx_ >= STREAM_PIXELS * PIXEL_BYTES) {
+          stream_end();
+        }
+      }
+    }
+    stream_end();
+    advance(static_cast<std::size_t>(r.width()) * static_cast<std::size_t>(r.height()));
+    return true;
   }
 
 

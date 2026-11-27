@@ -101,6 +101,7 @@ faster, typically with one address window setup and a pixel stream or a native c
 | `box(rect, color)` | one `line_horz()` per row | a window fill or a rectangle command |
 | `move(source, destination)` | `pixel_get()` / `pixel_set()` per pixel | a copy command or a RAM buffer |
 | `blit(rect, pixels, stride)` | clipped `pixel_set()` per pixel | an auto incrementing GRAM window |
+| `blit_raw(rect, data, stride, format)` | takes no format (returns false), the caller uses `blit()` | a display which takes the format as it is (the flush of a `framebuffer`) |
 | `cls(bg_color)` | no-op | every head |
 | `present()` | no-op | heads with a RAM buffer (sends it to the display) |
 

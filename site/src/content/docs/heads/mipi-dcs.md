@@ -104,6 +104,7 @@ MV); the reference drivers (TFT_eSPI, Adafruit) use MX as their rotation 0, whic
 | `line_vert()` | a one column wide window |
 | `box()` | window over the clipped rect and a pixel stream |
 | `blit()` | window over the clipped block, the pixels are streamed |
+| `blit_raw()` | RGB565 blocks (not with `Color_18bit`): window over the clipped block, the bytes are streamed in display order without conversion; the flush of an RGB565 `framebuffer` |
 | `cls()` | one stream over the whole screen |
 | `move()` | `drv` fallback (needs `pixel_get()`) |
 | `present()` | nothing, the data is written directly |

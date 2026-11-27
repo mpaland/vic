@@ -110,7 +110,8 @@ drawing context then blends alpha and anti aliasing pixels against its backgroun
 `dc::set_bg_color()`, which is exact on uniform backgrounds and needs no RAM. If the real pixels are needed (sprites, fill, anti aliasing on
 images), put the `framebuffer` head between the display driver and the drawing context. It keeps a RAM copy in the
 format you choose (ARGB8888, RGB565, RGB332 or 1 bit L1), remembers the dirty rect and transfers only the changed
-window with `blit()` on `present()`. This is also the "render in RAM, stream the changed window" model modern TFT
+window on `present()`: as one block in its storage format if the head behind it takes that format (`blit_raw()`, e.g.
+an RGB565 framebuffer in front of a MIPI DCS display: one address window, no conversion), else with `blit()`. This is also the "render in RAM, stream the changed window" model modern TFT
 controllers with an autoincrementing GRAM window are made for, and it is the user's decision per display, the device
 drivers themselves keep no buffers.
 
@@ -145,7 +146,8 @@ All graphic functions which the controller/driver can't provide natively are han
 Of course, native rendering on a specialized LCD controller is always faster and should be preferred.
 
 The native hooks are deliberately limited to primitives which have exactly one correct pixel result: `line_horz`,
-`line_vert`, `box`, `move`, `cls` and `blit` (a block of pixels). Everything else (diagonal lines, circles, discs,
+`line_vert`, `box`, `move`, `cls`, `blit` (a block of pixels) and `blit_raw` (a block of pixels in a display format,
+the flush of a framebuffer). Everything else (diagonal lines, circles, discs,
 sectors, triangles, text) is decomposed by the `gpr` into these hooks, so every head renders exactly the same pixels
 and the anti aliasing stays deterministic: the interior of an anti aliased disc is still sent as native horizontal
 runs, only the edge pixels are single alpha pixels. There are no hooks for native diagonal lines or circles on

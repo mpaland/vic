@@ -47,7 +47,7 @@
 
 
 // defines the head name and version
-#define VIC_HEAD_FRAMEBUFFER_VERSION   "Framebuffer head 3.01"
+#define VIC_HEAD_FRAMEBUFFER_VERSION   "Framebuffer head 3.02"
 
 namespace vic {
 namespace head {
@@ -71,6 +71,8 @@ class framebuffer : public drv
   static const std::size_t PLANE_BYTES = (Format == color::format_L1)     ? ((PIXELS + 7U) / 8U) :
                                          (Format == color::format_RGB332) ? PIXELS :
                                          (Format == color::format_RGB565) ? PIXELS * 2U : PIXELS * 4U;
+  static const std::size_t PIXEL_BYTES = (Format == color::format_RGB565)   ? 2U :      // bytes per pixel, bit packed L1: unused
+                                         (Format == color::format_ARGB8888) ? 4U : 1U;
   static const std::size_t LINE_PIXELS = Screen_Size_X < 64U ? Screen_Size_X : 64U;   // transfer chunk
 
 public:
@@ -261,18 +263,26 @@ protected:
 
   /**
    * Transfer the dirty rect of the display plane to the head and present it
+   * The transfer is one blit_raw() of the rect if the head takes the storage format of the plane (e.g. an RGB565
+   * plane in front of a MIPI DCS display), else blit() calls of ARGB pixels
    */
   virtual void present()
   {
     rect_type& d = dirty_[plane_display_];
     if (!d.empty()) {
-      for (std::int16_t y = d.top; y < d.bottom; ++y) {
-        for (std::int16_t x = d.left; x < d.right; x = static_cast<std::int16_t>(x + static_cast<std::int16_t>(LINE_PIXELS))) {
-          const std::size_t n = static_cast<std::size_t>(d.right - x) < LINE_PIXELS ? static_cast<std::size_t>(d.right - x) : LINE_PIXELS;
-          for (std::size_t i = 0U; i < n; ++i) {
-            line_[i] = load(plane_display_, static_cast<std::size_t>(y) * Screen_Size_X + static_cast<std::size_t>(x) + i);
+      // a head that takes the storage format of the plane gets the rect as it is, with one transfer (blit_raw);
+      // any other head gets it converted to ARGB, in pieces of a line
+      const std::size_t first = (static_cast<std::size_t>(d.top) * Screen_Size_X + static_cast<std::size_t>(d.left)) * PIXEL_BYTES;
+      if ((Format == color::format_L1) ||
+          !head_.blit_raw(d, &buffer_[plane_display_][first], static_cast<std::size_t>(Screen_Size_X) * PIXEL_BYTES, Format)) {
+        for (std::int16_t y = d.top; y < d.bottom; ++y) {
+          for (std::int16_t x = d.left; x < d.right; x = static_cast<std::int16_t>(x + static_cast<std::int16_t>(LINE_PIXELS))) {
+            const std::size_t n = static_cast<std::size_t>(d.right - x) < LINE_PIXELS ? static_cast<std::size_t>(d.right - x) : LINE_PIXELS;
+            for (std::size_t i = 0U; i < n; ++i) {
+              line_[i] = load(plane_display_, static_cast<std::size_t>(y) * Screen_Size_X + static_cast<std::size_t>(x) + i);
+            }
+            head_.blit({ x, y, static_cast<std::int16_t>(x + static_cast<std::int16_t>(n)), static_cast<std::int16_t>(y + 1) }, line_, n);
           }
-          head_.blit({ x, y, static_cast<std::int16_t>(x + static_cast<std::int16_t>(n)), static_cast<std::int16_t>(y + 1) }, line_, n);
         }
       }
       d.clear();
